@@ -1,0 +1,189 @@
+import asyncio
+import uuid
+from typing import AsyncGenerator
+
+import pytest
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.config import settings
+import app.dependencies as _deps
+from app.dependencies import get_db, get_openai, get_hunter, get_email_client
+from app.infrastructure.database import get_session
+from app.infrastructure.redis_client import init_redis, close_redis, get_redis
+from app.models.base import Base
+from app.main import app
+
+
+# ---------------------------------------------------------------------------
+# Lightweight test stubs for external API clients
+# ---------------------------------------------------------------------------
+
+class OpenAIStub:
+    """Test stub that returns plausible data without hitting real OpenAI."""
+
+    async def parse_structured(self, system_prompt: str, user_content: str, response_schema: dict) -> dict:
+        # Return a response that satisfies both resume parsing and outreach drafting schemas
+        return {
+            "name": "Test User",
+            "headline": "Software Engineer",
+            "experiences": [{"company": "TestCo", "title": "Engineer"}],
+            "skills": ["Python", "FastAPI"],
+            "education": [{"institution": "MIT", "degree": "BS CS"}],
+            "certifications": [],
+            "summary": "Experienced engineer.",
+            "strengths": ["Python", "APIs", "Databases", "Testing", "Architecture"],
+            "gaps": ["Frontend", "Mobile"],
+            "career_stage": "mid",
+            "experience_summary": "Mid-level engineer with backend focus.",
+            # Outreach drafting fields
+            "subject": "Quick question about your team",
+            "body": "Hi, I noticed your team is doing great work. I'd love to connect.",
+            "personalization_points": ["team growth", "tech stack alignment"],
+            # Company dossier fields
+            "culture_summary": "Innovative and collaborative engineering culture.",
+            "culture_score": 8,
+            "red_flags": [],
+            "interview_format": "Phone screen, technical, system design, onsite",
+            "interview_questions": ["Tell me about yourself"],
+            "compensation_data": {"range": "150k-250k", "equity": "0.1%", "benefits": ["health"]},
+            "key_people": [{"name": "Jane Doe", "title": "CTO"}],
+            "why_hire_me": "Strong backend experience aligns with team needs.",
+            "recent_news": [{"title": "Series B", "date": "2025-01-01"}],
+        }
+
+    async def embed(self, text: str, dimensions: int = 1536) -> list[float]:
+        return [0.0] * dimensions
+
+    async def batch_embed(self, texts: list[str], dimensions: int = 1536) -> list[list[float]]:
+        return [[0.0] * dimensions for _ in texts]
+
+    async def chat(self, messages: list[dict]) -> str:
+        return "Test chat response"
+
+    async def vision(self, messages: list[dict], images: list[bytes]) -> str:
+        return "Test vision response"
+
+
+class HunterStub:
+    """Test stub that returns plausible Hunter.io-shaped data."""
+
+    async def domain_search(self, domain: str) -> dict:
+        return {
+            "domain": domain,
+            "organization": domain.split(".")[0].capitalize(),
+            "industry": "Technology",
+            "emails": [
+                {
+                    "value": f"contact@{domain}",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "position": "Engineering Manager",
+                    "confidence": 90,
+                }
+            ],
+        }
+
+    async def email_finder(self, domain: str, first_name: str, last_name: str) -> dict:
+        return {
+            "email": f"{first_name.lower()}.{last_name.lower()}@{domain}",
+            "confidence": 90,
+        }
+
+    async def email_verifier(self, email: str) -> dict:
+        return {"email": email, "result": "deliverable", "score": 90}
+
+    async def enrichment(self, email: str) -> dict:
+        return {"email": email}
+
+
+class ResendStub:
+    """Test stub that returns plausible Resend-shaped data."""
+
+    async def send(self, to: str, from_email: str, subject: str, body: str,
+                   tags: list[str] | None = None, headers: dict | None = None) -> dict:
+        return {"id": f"test_{uuid.uuid4().hex[:12]}"}
+
+    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+        import json
+        return json.loads(payload)
+
+# Use a separate test database (only replace the database name at the end of the URL)
+_base_url, _, _db_name = settings.DATABASE_URL.rpartition("/")
+TEST_DATABASE_URL = f"{_base_url}/{_db_name}_test"
+
+
+@pytest_asyncio.fixture(scope="session")
+async def test_engine():
+    engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+    async with engine.begin() as conn:
+        await conn.execute(
+            __import__("sqlalchemy").text("CREATE EXTENSION IF NOT EXISTS vector")
+        )
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    yield engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
+    session_factory = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with session_factory() as session:
+        yield session
+        await session.rollback()
+
+
+@pytest_asyncio.fixture
+async def redis():
+    r = await init_redis()
+    yield r
+    await r.flushdb()
+    await close_redis()
+
+
+@pytest_asyncio.fixture
+async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient, None]:
+    async def override_get_session():
+        yield db_session
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_db] = override_get_session
+    app.dependency_overrides[get_openai] = lambda: OpenAIStub()
+    app.dependency_overrides[get_hunter] = lambda: HunterStub()
+    app.dependency_overrides[get_email_client] = lambda: ResendStub()
+
+    # Also inject stubs into singletons for code that calls get_*() directly (not via DI)
+    _deps._openai_client = OpenAIStub()
+    _deps._hunter_client = HunterStub()
+    _deps._email_client = ResendStub()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+    _deps._openai_client = None
+    _deps._hunter_client = None
+    _deps._email_client = None
+
+
+@pytest_asyncio.fixture
+async def auth_headers(client: AsyncClient) -> dict:
+    """Register a test user and return auth headers."""
+    email = f"test-{uuid.uuid4().hex[:8]}@example.com"
+    await client.post(
+        f"{settings.API_V1_PREFIX}/auth/register",
+        json={"email": email, "password": "testpass123", "full_name": "Test User"},
+    )
+    resp = await client.post(
+        f"{settings.API_V1_PREFIX}/auth/login",
+        json={"email": email, "password": "testpass123"},
+    )
+    tokens = resp.json()
+    return {"Authorization": f"Bearer {tokens['access_token']}"}
