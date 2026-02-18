@@ -1,0 +1,54 @@
+import asyncio
+from functools import partial
+
+import resend
+import structlog
+from svix.webhooks import Webhook
+
+from app.config import settings
+
+logger = structlog.get_logger()
+
+
+class ResendClient:
+    def __init__(self):
+        resend.api_key = settings.RESEND_API_KEY
+        self._webhook_secret = settings.RESEND_WEBHOOK_SECRET
+
+    async def send(
+        self,
+        to: str,
+        from_email: str,
+        subject: str,
+        body: str,
+        tags: list[str] | None = None,
+        headers: dict | None = None,
+    ) -> dict:
+        params = {
+            "from_": from_email,
+            "to": [to],
+            "subject": subject,
+            "text": body,
+        }
+        if tags:
+            params["tags"] = [{"name": t, "value": "true"} for t in tags]
+        if headers:
+            params["headers"] = headers
+
+        # Resend SDK is synchronous — run in executor
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, partial(resend.Emails.send, params)
+        )
+        logger.info("email_sent_via_resend", to=to, message_id=result.get("id"))
+        return result
+
+    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+        wh = Webhook(self._webhook_secret)
+        # Svix expects headers dict
+        headers = {
+            "svix-id": "",
+            "svix-timestamp": "",
+            "svix-signature": signature,
+        }
+        return wh.verify(payload, headers)

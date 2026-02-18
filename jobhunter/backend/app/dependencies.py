@@ -1,0 +1,109 @@
+import uuid
+
+import structlog
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWTError as JWTError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.infrastructure.database import get_session
+from app.infrastructure.protocols import (
+    EmailClientProtocol,
+    HunterClientProtocol,
+    OpenAIClientProtocol,
+)
+from app.infrastructure.redis_client import get_redis, redis_safe_get
+from app.models.candidate import Candidate
+from app.utils.security import decode_token
+
+logger = structlog.get_logger()
+
+security = HTTPBearer()
+
+TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
+
+# Singleton client instances (initialized on first use)
+_openai_client: OpenAIClientProtocol | None = None
+_hunter_client: HunterClientProtocol | None = None
+_email_client: EmailClientProtocol | None = None
+
+
+async def get_db() -> AsyncSession:  # type: ignore[misc]
+    async for session in get_session():
+        yield session
+
+
+def get_openai() -> OpenAIClientProtocol:
+    global _openai_client
+    if _openai_client is None:
+        from app.infrastructure.openai_client import OpenAIClient
+        _openai_client = OpenAIClient()
+    return _openai_client
+
+
+def get_hunter() -> HunterClientProtocol:
+    global _hunter_client
+    if _hunter_client is None:
+        from app.infrastructure.hunter_client import HunterClient
+        _hunter_client = HunterClient()
+    return _hunter_client
+
+
+def get_email_client() -> EmailClientProtocol:
+    global _email_client
+    if _email_client is None:
+        from app.infrastructure.resend_client import ResendClient
+        _email_client = ResendClient()
+    return _email_client
+
+
+async def get_current_candidate(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
+) -> Candidate:
+    token = credentials.credentials
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type",
+        )
+
+    # Check blacklist (graceful degradation: if Redis is down, skip check and log warning)
+    jti = payload.get("jti")
+    if jti:
+        blacklisted = await redis_safe_get(f"{TOKEN_BLACKLIST_PREFIX}{jti}")
+        if blacklisted:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+            )
+
+    candidate_id = payload.get("sub")
+    if not candidate_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    result = await db.execute(
+        select(Candidate).where(Candidate.id == uuid.UUID(candidate_id))
+    )
+    candidate = result.scalar_one_or_none()
+
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Candidate not found",
+        )
+
+    return candidate
