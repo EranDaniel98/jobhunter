@@ -14,10 +14,10 @@ JobHunter AI is a semi-automated platform that combines AI intelligence with hum
   │ Frontend  │◄───►│ │  Auth    │  │  Resume  │  │ Company │  │
   │ (planned) │     │ │  System  │  │  Parser  │  │ Finder  │  │
   └───────────┘     │ └──────────┘  └──────────┘  └─────────┘  │
-                    │  ┌──────────┐  ┌──────────┐  ┌────────┐  │
-                    │  │ Outreach │  │ Contact   │  │Analyt.│  │
-                    │  │ Drafter  │  │ Finder    │  │Engine │  │
-                    │  └──────────┘  └──────────┘  └────────┘  │
+                    │  ┌──────────┐  ┌─────────┐  ┌─────────┐  │
+                    │  │ Outreach │  │ Contact │  │ Analyt. │  │
+                    │  │ Drafter  │  │ Finder  │  │ Engine  │  │
+                    │  └──────────┘  └─────────┘  └─────────┘  │
                     └──────────┬──────────┬──────────┬─────────┘
                                │          │          │
               ┌────────────────┼──────────┼──────────┼───────────────┐
