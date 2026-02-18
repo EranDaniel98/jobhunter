@@ -1,0 +1,62 @@
+from pathlib import Path
+
+from pydantic_settings import BaseSettings
+
+# Project root = backend/ directory
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+class Settings(BaseSettings):
+    # Database
+    DATABASE_URL: str = "postgresql+asyncpg://jobhunter:jobhunter@localhost:5432/jobhunter"
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # JWT
+    JWT_SECRET: str = "change-me-to-a-random-secret-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_EXPIRE_MINUTES: int = 1440  # 24 hours
+    JWT_REFRESH_EXPIRE_DAYS: int = 30
+
+    # API Keys
+    OPENAI_API_KEY: str = ""
+    HUNTER_API_KEY: str = ""
+    RESEND_API_KEY: str = ""
+
+    # Resend webhook
+    RESEND_WEBHOOK_SECRET: str = ""
+
+    # Unsubscribe link signing
+    UNSUBSCRIBE_SECRET: str = ""
+
+    # Email
+    DAILY_EMAIL_LIMIT: int = 50
+    SENDER_EMAIL: str = "outreach@eran-jobs.com"
+    SENDER_NAME: str = "Eran"
+    PHYSICAL_ADDRESS: str = "Tel Aviv, Israel"
+
+    # Frontend
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # Logging
+    LOG_LEVEL: str = "INFO"
+
+    # Database pool
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+
+    # App
+    APP_NAME: str = "JobHunter AI"
+    API_V1_PREFIX: str = "/api/v1"
+
+    # Paths
+    UPLOAD_DIR: str = str(BASE_DIR / "data" / "uploads")
+
+    model_config = {
+        "env_file": [str(BASE_DIR / ".env"), str(BASE_DIR.parent / ".env")],
+        "extra": "ignore",
+    }
+
+
+settings = Settings()

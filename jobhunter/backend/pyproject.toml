@@ -1,0 +1,52 @@
+[project]
+name = "jobhunter-backend"
+version = "0.1.0"
+description = "JobHunter AI — Intelligent job search automation platform"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "pgvector>=0.3.6",
+    "alembic>=1.14.0",
+    "PyJWT>=2.9.0",
+    "passlib>=1.7.4",
+    "bcrypt>=4.0.0,<4.1",
+    "python-multipart>=0.0.18",
+    "httpx>=0.28.0",
+    "openai>=1.60.0",
+    "resend>=2.5.0",
+    "svix>=1.0.0",
+    "pydantic-settings>=2.7.0",
+    "pydantic[email]>=2.10.0",
+    "structlog>=24.4.0",
+    "slowapi>=0.1.9",
+    "tenacity>=9.0.0",
+    "redis>=5.2.0",
+    "pypdf>=5.0.0",
+    "python-docx>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.0",
+    "respx>=0.22.0",
+    "coverage>=7.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
