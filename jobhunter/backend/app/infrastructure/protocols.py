@@ -55,6 +55,7 @@ class EmailClientProtocol(Protocol):
         body: str,
         tags: list[str] | None = None,
         headers: dict | None = None,
+        attachments: list[dict] | None = None,
     ) -> dict:
         """Send an email. Returns dict with 'id' key."""
         ...

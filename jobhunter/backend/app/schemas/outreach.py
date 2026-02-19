@@ -5,10 +5,12 @@ from pydantic import BaseModel, Field
 
 class OutreachDraftRequest(BaseModel):
     contact_id: str
+    language: str = "en"
 
 
 class OutreachLinkedInRequest(BaseModel):
     contact_id: str
+    language: str = "en"
 
 
 class OutreachEditRequest(BaseModel):

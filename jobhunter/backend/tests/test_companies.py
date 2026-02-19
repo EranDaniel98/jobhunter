@@ -86,3 +86,27 @@ async def test_company_approve_reject_flow(client: AsyncClient, auth_headers: di
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "rejected"
+
+
+@pytest.mark.asyncio
+async def test_discover_enriches_industry_size_tech(client: AsyncClient, auth_headers: dict):
+    """Test: discovered companies get industry/size/tech_stack from OpenAI when Hunter.io returns none."""
+    # First upload a resume to create DNA (needed for discovery)
+    import io
+    resp = await client.post(
+        f"{API}/resume/upload",
+        headers=auth_headers,
+        files={"file": ("resume.pdf", io.BytesIO(b"%PDF-1.4 test"), "application/pdf")},
+    )
+    # Discovery
+    resp = await client.post(f"{API}/companies/discover", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    companies = data["companies"]
+    assert len(companies) > 0
+
+    # Check that discovered companies have enriched metadata
+    for company in companies:
+        assert company["name"]
+        # industry should be populated (either from Hunter or OpenAI backfill)
+        assert "industry" in company

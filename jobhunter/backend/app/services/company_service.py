@@ -86,8 +86,64 @@ DOSSIER_SCHEMA = {
 }
 
 
+DISCOVERY_PROMPT = """You are a company discovery assistant for job seekers. Based on the candidate's profile, suggest 5-8 real companies they should target.
+
+CANDIDATE PROFILE:
+{candidate_summary}
+
+TARGET INDUSTRIES: {industries}
+TARGET ROLES: {roles}
+
+{location_constraint}
+
+EXISTING COMPANIES (do NOT suggest these again): {existing_domains}
+
+{filter_instructions}
+
+INSTRUCTIONS:
+- Suggest REAL companies with valid domain names
+- Focus on companies that match the candidate's skills and experience
+- Prefer companies that are actively hiring or growing
+- Include a mix of well-known and emerging companies
+- Each suggestion must have a real, working company website domain
+- For each company include its primary industry, approximate employee size range (e.g. "51-200", "201-500"), and known tech stack
+- Strictly follow the LOCATION REQUIREMENT above"""
+
+DISCOVERY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "companies": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "domain": {"type": "string"},
+                    "name": {"type": "string"},
+                    "reason": {"type": "string"},
+                    "industry": {"type": "string"},
+                    "size": {"type": "string"},
+                    "tech_stack": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+                "required": ["domain", "name", "reason", "industry", "size", "tech_stack"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["companies"],
+    "additionalProperties": False,
+}
+
+
 async def discover_companies(
-    db: AsyncSession, candidate_id: uuid.UUID
+    db: AsyncSession,
+    candidate_id: uuid.UUID,
+    industries: list[str] | None = None,
+    locations: list[str] | None = None,
+    company_size: str | None = None,
+    keywords: str | None = None,
 ) -> list[Company]:
     """Proactively discover companies based on candidate DNA and targets."""
     from app.models.candidate import Candidate
@@ -103,39 +159,83 @@ async def discover_companies(
 
     hunter = get_hunter()
 
-    # Build search queries from candidate targets
-    domains_to_search = set()
-    industries = candidate.target_industries or ["technology"]
+    # Gather existing company domains to exclude
+    existing_result = await db.execute(
+        select(Company.domain).where(Company.candidate_id == candidate_id)
+    )
+    existing_domains = [row[0] for row in existing_result.all()]
 
-    # Search Hunter.io for companies in target industries
-    # In production, this would use more sophisticated discovery
-    # For MVP, we search a curated set of domains per industry
-    INDUSTRY_DOMAINS = {
-        "fintech": ["stripe.com", "plaid.com", "brex.com"],
-        "saas": ["notion.so", "linear.app", "vercel.com"],
-        "cloud": ["datadog.com", "cloudflare.com"],
-        "developer tools": ["vercel.com", "linear.app"],
-        "technology": ["stripe.com", "vercel.com", "notion.so", "datadog.com", "linear.app"],
-    }
+    # Use filter overrides or fall back to candidate profile
+    target_industries = industries or candidate.target_industries or ["technology"]
+    target_roles = candidate.target_roles or ["software engineer"]
+    target_locations = locations or candidate.target_locations or []
 
-    for industry in industries:
-        domains = INDUSTRY_DOMAINS.get(industry.lower(), INDUSTRY_DOMAINS["technology"])
-        domains_to_search.update(domains)
+    # Separate "Remote" from physical locations
+    physical_locations = [loc for loc in target_locations if loc.lower() != "remote"]
+    includes_remote = any(loc.lower() == "remote" for loc in target_locations)
+
+    # Build location constraint
+    if physical_locations and includes_remote:
+        location_constraint = (
+            f"LOCATION REQUIREMENT (STRICT): Every company you suggest MUST either "
+            f"have a physical office in one of these locations: {', '.join(physical_locations)}, "
+            f"OR be a well-known remote-friendly company. Do NOT suggest companies that only "
+            f"have offices in other locations."
+        )
+    elif physical_locations:
+        location_constraint = (
+            f"LOCATION REQUIREMENT (STRICT): Every company you suggest MUST have a physical "
+            f"office or headquarters in one of these locations: {', '.join(physical_locations)}. "
+            f"Do NOT suggest companies that only have offices elsewhere."
+        )
+    elif includes_remote:
+        location_constraint = (
+            "LOCATION REQUIREMENT: Prefer remote-friendly companies or companies known for "
+            "supporting remote work. Location is flexible."
+        )
+    else:
+        location_constraint = "LOCATION: No location preference specified."
+
+    # Build filter instructions for additional filters
+    filter_parts = []
+    if company_size:
+        filter_parts.append(f"COMPANY SIZE PREFERENCE: {company_size}")
+    if keywords:
+        filter_parts.append(f"ADDITIONAL PREFERENCES: {keywords}")
+    filter_instructions = "\n".join(filter_parts)
+
+    client = get_openai()
+    prompt = DISCOVERY_PROMPT.format(
+        candidate_summary=dna.experience_summary if dna else "No detailed profile available",
+        industries=", ".join(target_industries),
+        roles=", ".join(target_roles),
+        location_constraint=location_constraint,
+        existing_domains=", ".join(existing_domains) if existing_domains else "None",
+        filter_instructions=filter_instructions,
+    )
+
+    suggestions = await client.parse_structured(prompt, "", DISCOVERY_SCHEMA)
 
     companies = []
-    for domain in domains_to_search:
-        # Check if already exists for this candidate
-        existing = await db.execute(
-            select(Company).where(
-                Company.candidate_id == candidate_id, Company.domain == domain
-            )
-        )
-        if existing.scalar_one_or_none():
+    seen_domains = set(existing_domains)
+    for suggestion in suggestions.get("companies", []):
+        domain = suggestion["domain"].strip().lower()
+
+        # Skip if already exists or already processed in this batch
+        if domain in seen_domains:
             continue
+        seen_domains.add(domain)
 
         try:
             data = await hunter.domain_search(domain)
             company = await _create_company_from_hunter(db, candidate_id, domain, data, dna)
+            # Backfill empty fields from OpenAI suggestion
+            if not company.industry and suggestion.get("industry"):
+                company.industry = suggestion["industry"]
+            if not company.size_range and suggestion.get("size"):
+                company.size_range = suggestion["size"]
+            if not company.tech_stack and suggestion.get("tech_stack"):
+                company.tech_stack = suggestion["tech_stack"]
             companies.append(company)
         except Exception as e:
             logger.error("company_discovery_failed", domain=domain, error=str(e))

@@ -24,6 +24,25 @@ class OpenAIStub:
     """Test stub that returns plausible data without hitting real OpenAI."""
 
     async def parse_structured(self, system_prompt: str, user_content: str, response_schema: dict) -> dict:
+        # Detect schema type by checking top-level required keys
+        schema_keys = set(response_schema.get("properties", {}).keys())
+
+        # Company discovery schema
+        if "companies" in schema_keys and len(schema_keys) == 1:
+            return {
+                "companies": [
+                    {"domain": "stripe.com", "name": "Stripe", "reason": "Strong fintech fit",
+                     "industry": "Financial Technology", "size": "1001-5000",
+                     "tech_stack": ["Ruby", "Go", "React"]},
+                    {"domain": "plaid.com", "name": "Plaid", "reason": "API-focused fintech",
+                     "industry": "Financial Technology", "size": "501-1000",
+                     "tech_stack": ["Python", "TypeScript", "Kubernetes"]},
+                    {"domain": "vercel.com", "name": "Vercel", "reason": "Developer tools",
+                     "industry": "Developer Tools", "size": "201-500",
+                     "tech_stack": ["Next.js", "Go", "Rust"]},
+                ]
+            }
+
         # Return a response that satisfies both resume parsing and outreach drafting schemas
         return {
             "name": "Test User",
@@ -102,7 +121,8 @@ class ResendStub:
     """Test stub that returns plausible Resend-shaped data."""
 
     async def send(self, to: str, from_email: str, subject: str, body: str,
-                   tags: list[str] | None = None, headers: dict | None = None) -> dict:
+                   tags: list[str] | None = None, headers: dict | None = None,
+                   attachments: list[dict] | None = None) -> dict:
         return {"id": f"test_{uuid.uuid4().hex[:12]}"}
 
     def verify_webhook(self, payload: bytes, signature: str) -> dict:
@@ -152,15 +172,17 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     async def override_get_session():
         yield db_session
 
+    from app.infrastructure.openai_client import OpenAIClient
+    from app.infrastructure.hunter_client import HunterClient
+
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_db] = override_get_session
-    app.dependency_overrides[get_openai] = lambda: OpenAIStub()
-    app.dependency_overrides[get_hunter] = lambda: HunterStub()
+    # Use real OpenAI and Hunter clients; only stub email sending
     app.dependency_overrides[get_email_client] = lambda: ResendStub()
 
-    # Also inject stubs into singletons for code that calls get_*() directly (not via DI)
-    _deps._openai_client = OpenAIStub()
-    _deps._hunter_client = HunterStub()
+    # Inject real clients into singletons for code that calls get_*() directly
+    _deps._openai_client = OpenAIClient()
+    _deps._hunter_client = HunterClient()
     _deps._email_client = ResendStub()
 
     transport = ASGITransport(app=app)

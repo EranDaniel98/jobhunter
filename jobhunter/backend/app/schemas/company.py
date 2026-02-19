@@ -9,6 +9,13 @@ class CompanyRejectRequest(BaseModel):
     reason: str = Field(max_length=500)
 
 
+class CompanyDiscoverRequest(BaseModel):
+    industries: list[str] | None = None
+    locations: list[str] | None = None
+    company_size: str | None = None
+    keywords: str | None = None
+
+
 class CompanyResponse(BaseModel):
     id: str
     name: str

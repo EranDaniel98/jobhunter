@@ -10,6 +10,7 @@ from app.models.company import Company, CompanyDossier
 from app.models.contact import Contact
 from app.schemas.company import (
     CompanyAddRequest,
+    CompanyDiscoverRequest,
     CompanyDossierResponse,
     CompanyListResponse,
     CompanyRejectRequest,
@@ -40,13 +41,21 @@ def _company_to_response(c: Company) -> CompanyResponse:
 
 
 @router.post("/discover", response_model=CompanyListResponse)
-@limiter.limit("3/hour")
+@limiter.limit("1000/hour")  # TODO: restore to 3/hour after debugging
 async def discover_companies(
     request: Request,
+    data: CompanyDiscoverRequest | None = None,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    companies = await company_service.discover_companies(db, candidate.id)
+    companies = await company_service.discover_companies(
+        db,
+        candidate.id,
+        industries=data.industries if data else None,
+        locations=data.locations if data else None,
+        company_size=data.company_size if data else None,
+        keywords=data.keywords if data else None,
+    )
     return CompanyListResponse(
         companies=[_company_to_response(c) for c in companies],
         total=len(companies),

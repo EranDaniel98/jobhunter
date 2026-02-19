@@ -82,3 +82,95 @@ async def test_outreach_full_flow(client: AsyncClient, auth_headers: dict):
     resp = await client.get(f"{API}/outreach/{message_id}", headers=auth_headers)
     assert resp.status_code == 200
     assert resp.json()["body"] == "Custom edited message body."
+
+
+@pytest.mark.asyncio
+async def test_delete_draft_message(client: AsyncClient, auth_headers: dict):
+    """Test: add company → get contacts → draft → delete draft → verify gone."""
+    # Setup: add company and get contact
+    resp = await client.post(
+        f"{API}/companies/add",
+        headers=auth_headers,
+        json={"domain": "deleteme.com"},
+    )
+    assert resp.status_code == 201
+    company_id = resp.json()["id"]
+
+    resp = await client.get(
+        f"{API}/companies/{company_id}/contacts", headers=auth_headers
+    )
+    contacts = resp.json()
+    assert len(contacts) > 0
+    contact_id = contacts[0]["id"]
+
+    # Draft a message
+    resp = await client.post(
+        f"{API}/outreach/draft",
+        headers=auth_headers,
+        json={"contact_id": contact_id},
+    )
+    assert resp.status_code == 201
+    message_id = resp.json()["id"]
+
+    # Delete the draft
+    resp = await client.delete(
+        f"{API}/outreach/{message_id}", headers=auth_headers
+    )
+    assert resp.status_code == 204
+
+    # Verify it's gone
+    resp = await client.get(
+        f"{API}/outreach/{message_id}", headers=auth_headers
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_sent_message_fails(client: AsyncClient, auth_headers: dict):
+    """Test: cannot delete a sent (non-draft) message."""
+    # Setup: add company, get contact, draft message
+    resp = await client.post(
+        f"{API}/companies/add",
+        headers=auth_headers,
+        json={"domain": "github.com"},
+    )
+    assert resp.status_code == 201
+    company_id = resp.json()["id"]
+
+    resp = await client.get(
+        f"{API}/companies/{company_id}/contacts", headers=auth_headers
+    )
+    contacts = resp.json()
+    assert len(contacts) > 0
+    contact_id = contacts[0]["id"]
+
+    resp = await client.post(
+        f"{API}/outreach/draft",
+        headers=auth_headers,
+        json={"contact_id": contact_id},
+    )
+    assert resp.status_code == 201
+    message_id = resp.json()["id"]
+
+    # Send the message
+    resp = await client.post(
+        f"{API}/outreach/{message_id}/send", headers=auth_headers
+    )
+    assert resp.status_code == 200
+
+    # Attempt to delete sent message — should fail
+    resp = await client.delete(
+        f"{API}/outreach/{message_id}", headers=auth_headers
+    )
+    assert resp.status_code == 400
+    assert "draft" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_delete_nonexistent_message(client: AsyncClient, auth_headers: dict):
+    """Test: deleting a message that doesn't exist returns 404."""
+    resp = await client.delete(
+        f"{API}/outreach/00000000-0000-0000-0000-000000000000",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 404

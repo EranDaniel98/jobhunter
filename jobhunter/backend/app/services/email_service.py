@@ -13,6 +13,7 @@ from app.infrastructure.redis_client import get_redis
 from app.models.analytics import AnalyticsEvent
 from app.models.contact import Contact
 from app.models.outreach import MessageEvent, OutreachMessage
+from app.models.candidate import Resume
 from app.models.suppression import EmailSuppression
 
 logger = structlog.get_logger()
@@ -20,7 +21,7 @@ logger = structlog.get_logger()
 DAILY_LIMIT_KEY = "email_limit:{candidate_id}:{date}"
 
 
-async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID) -> OutreachMessage:
+async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume: bool = False) -> OutreachMessage:
     """Send an outreach email with full compliance checks."""
     result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == outreach_id))
     message = result.scalar_one_or_none()
@@ -87,7 +88,29 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID) -> OutreachMes
         f"Unsubscribe: {unsubscribe_link}"
     )
 
-    # 5. Send via email client
+    # 5. Build attachments (resume PDF if requested)
+    attachments = None
+    if attach_resume:
+        resume_result = await db.execute(
+            select(Resume).where(
+                Resume.candidate_id == message.candidate_id,
+                Resume.is_primary == True,
+            )
+        )
+        resume = resume_result.scalar_one_or_none()
+        if resume and resume.file_path:
+            import pathlib
+            resume_path = pathlib.Path(resume.file_path)
+            if resume_path.exists():
+                attachments = [{
+                    "filename": resume_path.name,
+                    "content": list(resume_path.read_bytes()),
+                }]
+                logger.info("attaching_resume", file=str(resume_path))
+            else:
+                logger.warning("resume_file_not_found", path=str(resume_path))
+
+    # 6. Send via email client
     email_client = get_email_client()
     from_email = f"{settings.SENDER_NAME} <{settings.SENDER_EMAIL}>"
 
@@ -102,6 +125,7 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID) -> OutreachMes
                 "List-Unsubscribe": f"<{unsubscribe_link}>",
                 "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
             },
+            attachments=attachments,
         )
 
         # 6. Update message

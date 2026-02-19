@@ -13,6 +13,8 @@ from app.models.outreach import OutreachMessage
 
 logger = structlog.get_logger()
 
+LANGUAGE_NAMES = {"en": "English", "he": "Hebrew"}
+
 MESSAGE_SEQUENCE = ["initial", "followup_1", "followup_2", "breakup"]
 
 OUTREACH_PROMPT = """You are a career outreach specialist. Draft a personalized {message_type} email from a job candidate to a potential contact at a target company.
@@ -39,6 +41,7 @@ INSTRUCTIONS:
 - Keep it concise: 100-150 words for initial, 50-80 for follow-ups
 - Professional but warm tone — not robotic, not overly casual
 - Include a clear, low-pressure call to action
+- LANGUAGE: Write the entire email (subject and body) in {language_name}. If Hebrew, write right-to-left naturally.
 - {message_type_instructions}
 
 Return a JSON object with:
@@ -71,12 +74,13 @@ COMPANY: {company_name} — {culture_summary}
 CONTACT: {contact_name}, {contact_title}
 
 Keep it casual, specific, and ask to connect. Reference one specific thing about them or the company.
+LANGUAGE: Write the entire message in {language_name}. If Hebrew, write right-to-left naturally.
 
 Return JSON with subject (for InMail, null for connection) and body."""
 
 
 async def draft_message(
-    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID
+    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID, language: str = "en"
 ) -> OutreachMessage:
     """Draft a personalized outreach email."""
     # Load all context
@@ -96,6 +100,8 @@ async def draft_message(
     existing_messages = existing.scalars().all()
     message_type = _next_message_type(existing_messages)
 
+    language_name = LANGUAGE_NAMES.get(language, "English")
+
     client = get_openai()
     prompt = OUTREACH_PROMPT.format(
         message_type=message_type,
@@ -111,6 +117,7 @@ async def draft_message(
         contact_title=contact.title or "Unknown",
         contact_role=contact.role_type or "Unknown",
         message_type_instructions=MESSAGE_TYPE_INSTRUCTIONS.get(message_type, ""),
+        language_name=language_name,
     )
 
     result = await client.parse_structured(prompt, "", OUTREACH_SCHEMA)
@@ -144,13 +151,15 @@ async def draft_followup(db: AsyncSession, outreach_id: uuid.UUID) -> OutreachMe
 
 
 async def draft_linkedin_message(
-    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID
+    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID, language: str = "en"
 ) -> OutreachMessage:
     """Draft a LinkedIn connection/InMail message."""
     contact = await _get_contact(db, contact_id)
     company = await _get_company(db, contact.company_id)
     dossier = await _get_dossier(db, company.id)
     dna = await _get_dna(db, candidate_id)
+
+    language_name = LANGUAGE_NAMES.get(language, "English")
 
     client = get_openai()
     prompt = LINKEDIN_PROMPT.format(
@@ -159,6 +168,7 @@ async def draft_linkedin_message(
         culture_summary=dossier.culture_summary if dossier else "Great company",
         contact_name=contact.full_name,
         contact_title=contact.title or "Professional",
+        language_name=language_name,
     )
 
     result = await client.parse_structured(prompt, "", OUTREACH_SCHEMA)

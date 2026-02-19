@@ -23,9 +23,10 @@ class ResendClient:
         body: str,
         tags: list[str] | None = None,
         headers: dict | None = None,
+        attachments: list[dict] | None = None,
     ) -> dict:
         params = {
-            "from_": from_email,
+            "from": from_email,
             "to": [to],
             "subject": subject,
             "text": body,
@@ -34,6 +35,8 @@ class ResendClient:
             params["tags"] = [{"name": t, "value": "true"} for t in tags]
         if headers:
             params["headers"] = headers
+        if attachments:
+            params["attachments"] = attachments
 
         # Resend SDK is synchronous — run in executor
         loop = asyncio.get_event_loop()

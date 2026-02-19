@@ -49,7 +49,7 @@ async def draft_message(
 ):
     try:
         message = await outreach_service.draft_message(
-            db, candidate.id, _uuid.UUID(data.contact_id)
+            db, candidate.id, _uuid.UUID(data.contact_id), language=data.language
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -78,7 +78,7 @@ async def draft_linkedin(
 ):
     try:
         message = await outreach_service.draft_linkedin_message(
-            db, candidate.id, _uuid.UUID(data.contact_id)
+            db, candidate.id, _uuid.UUID(data.contact_id), language=data.language
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -141,6 +141,7 @@ async def edit_message(
 @router.post("/{message_id}/send", response_model=OutreachMessageResponse)
 async def send_message(
     message_id: str,
+    attach_resume: bool = Query(default=True),
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
@@ -151,11 +152,25 @@ async def send_message(
     # Email sending is handled by email_service (Step 7)
     from app.services.email_service import send_outreach
     try:
-        msg = await send_outreach(db, msg.id)
+        msg = await send_outreach(db, msg.id, attach_resume=attach_resume)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     return _message_to_response(msg)
+
+
+@router.delete("/{message_id}", status_code=204)
+async def delete_message(
+    message_id: str,
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    msg = await _get_candidate_message(db, message_id, candidate.id)
+    if msg.status != "draft":
+        raise HTTPException(status_code=400, detail="Can only delete draft messages")
+    await db.delete(msg)
+    await db.commit()
+    logger.info("outreach_deleted", message_id=message_id)
 
 
 @router.patch("/{message_id}/mark-replied", response_model=OutreachMessageResponse)
