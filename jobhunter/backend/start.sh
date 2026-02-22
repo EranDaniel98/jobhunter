@@ -6,12 +6,14 @@ export PATH="/app/.venv/bin:$PATH"
 
 # Enable pgvector extension before running migrations
 python -c "
-import asyncio, sqlalchemy
+import asyncio
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 from app.config import settings
 async def create_ext():
-    engine = sqlalchemy.ext.asyncio.create_async_engine(settings.DATABASE_URL)
+    engine = create_async_engine(settings.DATABASE_URL)
     async with engine.begin() as conn:
-        await conn.execute(sqlalchemy.text('CREATE EXTENSION IF NOT EXISTS vector'))
+        await conn.execute(text('CREATE EXTENSION IF NOT EXISTS vector'))
     await engine.dispose()
 asyncio.run(create_ext())
 "
