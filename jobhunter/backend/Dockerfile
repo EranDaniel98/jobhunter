@@ -18,6 +18,10 @@ RUN uv sync --no-dev --no-install-project
 COPY . .
 RUN uv sync --no-dev
 
+# Copy and prepare startup script
+COPY start.sh .
+RUN chmod +x start.sh
+
 # Create upload directory and non-root user
 RUN mkdir -p /app/data/uploads && \
     adduser --disabled-password --no-create-home appuser && \
@@ -26,8 +30,5 @@ RUN mkdir -p /app/data/uploads && \
 USER appuser
 
 EXPOSE 8000
-
-COPY start.sh .
-RUN chmod +x start.sh
 
 CMD ["./start.sh"]
