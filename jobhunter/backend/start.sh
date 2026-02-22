@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
+# Use the venv directly (already built during Docker build)
+export PATH="/app/.venv/bin:$PATH"
+
 # Enable pgvector extension before running migrations
-uv run python -c "
+python -c "
 import asyncio, sqlalchemy
 from app.config import settings
 async def create_ext():
@@ -13,5 +16,5 @@ async def create_ext():
 asyncio.run(create_ext())
 "
 
-uv run alembic upgrade head
-exec uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+alembic upgrade head
+exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
