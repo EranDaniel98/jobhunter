@@ -25,7 +25,7 @@ RUN chmod +x start.sh
 # Create upload directory and non-root user
 RUN mkdir -p /app/data/uploads && \
     adduser --disabled-password --no-create-home appuser && \
-    chown -R appuser:appuser /app/data /app/.venv
+    chown -R appuser:appuser /app
 
 ENV UV_NO_CACHE=1
 
