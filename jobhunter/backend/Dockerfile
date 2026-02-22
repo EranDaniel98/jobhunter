@@ -27,6 +27,8 @@ RUN mkdir -p /app/data/uploads && \
     adduser --disabled-password --no-create-home appuser && \
     chown -R appuser:appuser /app/data
 
+ENV UV_NO_CACHE=1
+
 USER appuser
 
 EXPOSE 8000
