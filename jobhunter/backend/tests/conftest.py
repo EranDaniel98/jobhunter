@@ -117,6 +117,25 @@ class HunterStub:
         return {"email": email}
 
 
+class StorageStub:
+    """In-memory storage stub for tests."""
+
+    def __init__(self):
+        self._data: dict[str, bytes] = {}
+
+    async def upload(self, key: str, data: bytes, content_type: str = "") -> str:
+        self._data[key] = data
+        return key
+
+    async def download(self, key: str) -> bytes:
+        if key not in self._data:
+            raise FileNotFoundError(f"Key not found: {key}")
+        return self._data[key]
+
+    async def delete(self, key: str) -> None:
+        self._data.pop(key, None)
+
+
 class ResendStub:
     """Test stub that returns plausible Resend-shaped data."""
 
@@ -185,6 +204,10 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     _deps._hunter_client = HunterClient()
     _deps._email_client = ResendStub()
 
+    # Use in-memory storage stub for tests
+    import app.infrastructure.storage as _storage_mod
+    _storage_mod._storage_instance = StorageStub()
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -193,6 +216,7 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     _deps._openai_client = None
     _deps._hunter_client = None
     _deps._email_client = None
+    _storage_mod._storage_instance = None
 
 
 @pytest_asyncio.fixture

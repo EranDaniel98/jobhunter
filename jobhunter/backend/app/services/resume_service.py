@@ -1,6 +1,5 @@
 import hashlib
 import json
-import os
 import uuid
 
 import structlog
@@ -9,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_openai
+from app.infrastructure.storage import get_storage
 from app.models.candidate import Candidate, CandidateDNA, Resume, Skill
 from app.services.embedding_service import batch_embed, embed_text
 
@@ -152,14 +152,13 @@ async def upload_resume(
     if ext not in ("pdf", "docx"):
         raise ValueError("Only PDF and DOCX files are supported")
 
-    # Compute hash and save file
+    # Compute hash and save file via storage abstraction
     file_hash = hashlib.sha256(file_bytes).hexdigest()
-    upload_dir = os.path.join(settings.UPLOAD_DIR, str(candidate_id))
-    os.makedirs(upload_dir, exist_ok=True)
-    file_path = os.path.join(upload_dir, f"{file_hash}.{ext}")
+    storage_key = f"resumes/{candidate_id}/{file_hash}.{ext}"
+    content_type = "application/pdf" if ext == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
-    with open(file_path, "wb") as f:
-        f.write(file_bytes)
+    storage = get_storage()
+    await storage.upload(storage_key, file_bytes, content_type)
 
     # Extract text
     if ext == "pdf":
@@ -177,7 +176,7 @@ async def upload_resume(
     resume = Resume(
         id=uuid.uuid4(),
         candidate_id=candidate_id,
-        file_path=file_path,
+        file_path=storage_key,
         file_hash=file_hash,
         raw_text=raw_text,
         is_primary=True,

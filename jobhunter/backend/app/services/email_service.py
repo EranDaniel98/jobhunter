@@ -99,16 +99,18 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
         )
         resume = resume_result.scalar_one_or_none()
         if resume and resume.file_path:
-            import pathlib
-            resume_path = pathlib.Path(resume.file_path)
-            if resume_path.exists():
+            from app.infrastructure.storage import get_storage
+            try:
+                storage = get_storage()
+                file_data = await storage.download(resume.file_path)
+                filename = resume.file_path.rsplit("/", 1)[-1]
                 attachments = [{
-                    "filename": resume_path.name,
-                    "content": list(resume_path.read_bytes()),
+                    "filename": filename,
+                    "content": list(file_data),
                 }]
-                logger.info("attaching_resume", file=str(resume_path))
-            else:
-                logger.warning("resume_file_not_found", path=str(resume_path))
+                logger.info("attaching_resume", key=resume.file_path)
+            except Exception as e:
+                logger.warning("resume_download_failed", key=resume.file_path, error=str(e))
 
     # 6. Send via email client
     email_client = get_email_client()

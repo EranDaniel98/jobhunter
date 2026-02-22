@@ -63,3 +63,18 @@ class EmailClientProtocol(Protocol):
     def verify_webhook(self, payload: bytes, signature: str) -> dict:
         """Verify and parse a webhook payload. Raises on invalid signature."""
         ...
+
+
+@runtime_checkable
+class StorageProtocol(Protocol):
+    async def upload(self, key: str, data: bytes, content_type: str = "") -> str:
+        """Upload data and return the storage key."""
+        ...
+
+    async def download(self, key: str) -> bytes:
+        """Download data by key."""
+        ...
+
+    async def delete(self, key: str) -> None:
+        """Delete data by key."""
+        ...

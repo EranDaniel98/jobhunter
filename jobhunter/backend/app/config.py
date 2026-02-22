@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     APP_NAME: str = "JobHunter AI"
     API_V1_PREFIX: str = "/api/v1"
 
+    # Cloudflare R2 (optional — falls back to local filesystem if not set)
+    R2_ENDPOINT_URL: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = ""
+
     # Paths
     UPLOAD_DIR: str = str(BASE_DIR / "data" / "uploads")
 
