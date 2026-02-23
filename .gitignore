@@ -52,3 +52,6 @@ yarn.lock
 # Claude Code (personal config)
 .claude/
 data/
+
+# Worktrees
+.worktrees/
