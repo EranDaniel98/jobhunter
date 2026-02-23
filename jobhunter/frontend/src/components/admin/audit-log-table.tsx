@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { AuditLogItem } from "@/lib/types";
 import {
   Table,
@@ -44,7 +45,7 @@ interface AuditLogTableProps {
   items: AuditLogItem[];
 }
 
-export function AuditLogTable({ items }: AuditLogTableProps) {
+function AuditLogTableInner({ items }: AuditLogTableProps) {
   if (items.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
@@ -107,3 +108,5 @@ export function AuditLogTable({ items }: AuditLogTableProps) {
     </Table>
   );
 }
+
+export const AuditLogTable = memo(AuditLogTableInner);

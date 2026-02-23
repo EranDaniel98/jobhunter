@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analytics import AnalyticsEvent
@@ -54,28 +54,36 @@ async def get_funnel(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
 
 
 async def get_outreach_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
-    """Get outreach performance statistics."""
+    """Get outreach performance statistics using SQL aggregation."""
+    sent_statuses = ("sent", "delivered", "opened", "replied")
+    opened_statuses = ("opened", "replied")
+
     result = await db.execute(
-        select(OutreachMessage)
+        select(
+            OutreachMessage.channel,
+            func.count(
+                case((OutreachMessage.status.in_(sent_statuses), 1))
+            ).label("sent"),
+            func.count(
+                case((OutreachMessage.status.in_(opened_statuses), 1))
+            ).label("opened"),
+            func.count(
+                case((OutreachMessage.status == "replied", 1))
+            ).label("replied"),
+        )
         .where(OutreachMessage.candidate_id == candidate_id)
+        .group_by(OutreachMessage.channel)
     )
-    messages = result.scalars().all()
+    rows = result.all()
 
-    total_sent = sum(1 for m in messages if m.status in ("sent", "delivered", "opened", "replied"))
-    total_opened = sum(1 for m in messages if m.status in ("opened", "replied"))
-    total_replied = sum(1 for m in messages if m.status == "replied")
+    total_sent = sum(r.sent for r in rows)
+    total_opened = sum(r.opened for r in rows)
+    total_replied = sum(r.replied for r in rows)
 
-    by_channel = {}
-    for m in messages:
-        ch = m.channel
-        if ch not in by_channel:
-            by_channel[ch] = {"sent": 0, "opened": 0, "replied": 0}
-        if m.status in ("sent", "delivered", "opened", "replied"):
-            by_channel[ch]["sent"] += 1
-        if m.status in ("opened", "replied"):
-            by_channel[ch]["opened"] += 1
-        if m.status == "replied":
-            by_channel[ch]["replied"] += 1
+    by_channel = {
+        r.channel: {"sent": r.sent, "opened": r.opened, "replied": r.replied}
+        for r in rows
+    }
 
     return {
         "total_sent": total_sent,
@@ -88,26 +96,20 @@ async def get_outreach_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
 
 
 async def get_pipeline_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
-    """Get company pipeline statistics."""
+    """Get company pipeline statistics (2 queries instead of 3)."""
+    # Combined query: status counts + researched count in one pass
     result = await db.execute(
-        select(Company.status, func.count())
-        .where(Company.candidate_id == candidate_id)
-        .group_by(Company.status)
-    )
-    counts = dict(result.all())
-
-    # Count researched (approved + completed research)
-    researched = await db.execute(
-        select(func.count())
-        .select_from(Company)
-        .where(
-            Company.candidate_id == candidate_id,
-            Company.research_status == "completed",
+        select(
+            func.count(case((Company.status == "suggested", 1))).label("suggested"),
+            func.count(case((Company.status == "approved", 1))).label("approved"),
+            func.count(case((Company.status == "rejected", 1))).label("rejected"),
+            func.count(case((Company.research_status == "completed", 1))).label("researched"),
         )
+        .where(Company.candidate_id == candidate_id)
     )
-    researched_count = researched.scalar() or 0
+    row = result.one()
 
-    # Count contacted (companies with at least one sent message)
+    # Contacted requires JOIN through Contact→OutreachMessage (separate query)
     contacted = await db.execute(
         select(func.count(func.distinct(Company.id)))
         .select_from(Company)
@@ -121,9 +123,9 @@ async def get_pipeline_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     contacted_count = contacted.scalar() or 0
 
     return {
-        "suggested": counts.get("suggested", 0),
-        "approved": counts.get("approved", 0),
-        "rejected": counts.get("rejected", 0),
-        "researched": researched_count,
+        "suggested": row.suggested,
+        "approved": row.approved,
+        "rejected": row.rejected,
+        "researched": row.researched,
         "contacted": contacted_count,
     }

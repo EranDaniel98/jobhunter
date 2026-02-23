@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { RegistrationTrend } from "@/lib/types";
 import {
   AreaChart,
@@ -15,7 +16,7 @@ interface RegistrationChartProps {
   data: RegistrationTrend[];
 }
 
-export function RegistrationChart({ data }: RegistrationChartProps) {
+function RegistrationChartInner({ data }: RegistrationChartProps) {
   const formatted = data.map((d) => ({
     ...d,
     label: new Date(d.date).toLocaleDateString("en-US", {
@@ -43,3 +44,5 @@ export function RegistrationChart({ data }: RegistrationChartProps) {
     </ResponsiveContainer>
   );
 }
+
+export const RegistrationChart = memo(RegistrationChartInner);

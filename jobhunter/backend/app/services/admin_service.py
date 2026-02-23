@@ -1,5 +1,7 @@
+import asyncio
 import csv
 import io
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -7,6 +9,7 @@ import structlog
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.infrastructure.redis_client import redis_safe_get, redis_safe_setex
 from app.models.analytics import AnalyticsEvent
 from app.models.audit import AdminAuditLog
 from app.models.candidate import Candidate
@@ -30,7 +33,16 @@ from app.schemas.admin import (
 logger = structlog.get_logger()
 
 
+OVERVIEW_CACHE_KEY = "admin:overview"
+OVERVIEW_CACHE_TTL = 60  # seconds
+
+
 async def get_system_overview(db: AsyncSession) -> SystemOverview:
+    # Check Redis cache first
+    cached = await redis_safe_get(OVERVIEW_CACHE_KEY)
+    if cached:
+        return SystemOverview.model_validate_json(cached)
+
     now = datetime.now(timezone.utc)
 
     total_users = (await db.execute(select(func.count(Candidate.id)))).scalar() or 0
@@ -58,7 +70,7 @@ async def get_system_overview(db: AsyncSession) -> SystemOverview:
         )
     )).scalar() or 0
 
-    return SystemOverview(
+    overview = SystemOverview(
         total_users=total_users,
         total_companies=total_companies,
         total_messages_sent=total_messages_sent,
@@ -67,6 +79,11 @@ async def get_system_overview(db: AsyncSession) -> SystemOverview:
         active_users_7d=active_7d,
         active_users_30d=active_30d,
     )
+
+    # Cache in Redis (graceful degradation if Redis is down)
+    await redis_safe_setex(OVERVIEW_CACHE_KEY, OVERVIEW_CACHE_TTL, overview.model_dump_json())
+
+    return overview
 
 
 async def list_users(
@@ -81,7 +98,25 @@ async def list_users(
         )
     total = (await db.execute(count_q)).scalar() or 0
 
-    # Main query with aggregated stats
+    # Correlated scalar subqueries to avoid Cartesian product
+    companies_sub = (
+        select(func.count(Company.id))
+        .where(Company.candidate_id == Candidate.id)
+        .correlate(Candidate)
+        .scalar_subquery()
+        .label("companies_count")
+    )
+    messages_sub = (
+        select(func.count(OutreachMessage.id))
+        .where(
+            OutreachMessage.candidate_id == Candidate.id,
+            OutreachMessage.status != "draft",
+        )
+        .correlate(Candidate)
+        .scalar_subquery()
+        .label("messages_sent_count")
+    )
+
     q = (
         select(
             Candidate.id,
@@ -90,18 +125,9 @@ async def list_users(
             Candidate.is_admin,
             Candidate.is_active,
             Candidate.created_at,
-            func.count(func.distinct(Company.id)).label("companies_count"),
-            func.count(
-                func.distinct(
-                    case(
-                        (OutreachMessage.status != "draft", OutreachMessage.id),
-                    )
-                )
-            ).label("messages_sent_count"),
+            companies_sub,
+            messages_sub,
         )
-        .outerjoin(Company, Company.candidate_id == Candidate.id)
-        .outerjoin(OutreachMessage, OutreachMessage.candidate_id == Candidate.id)
-        .group_by(Candidate.id)
         .order_by(Candidate.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -349,6 +375,23 @@ async def get_activity_feed(db: AsyncSession, limit: int = 50) -> list[ActivityF
 
 
 async def export_users_csv(db: AsyncSession) -> str:
+    companies_sub = (
+        select(func.count(Company.id))
+        .where(Company.candidate_id == Candidate.id)
+        .correlate(Candidate)
+        .scalar_subquery()
+        .label("companies_count")
+    )
+    messages_sub = (
+        select(func.count(OutreachMessage.id))
+        .where(
+            OutreachMessage.candidate_id == Candidate.id,
+            OutreachMessage.status != "draft",
+        )
+        .correlate(Candidate)
+        .scalar_subquery()
+        .label("messages_sent_count")
+    )
     q = (
         select(
             Candidate.id,
@@ -357,18 +400,9 @@ async def export_users_csv(db: AsyncSession) -> str:
             Candidate.is_admin,
             Candidate.is_active,
             Candidate.created_at,
-            func.count(func.distinct(Company.id)).label("companies_count"),
-            func.count(
-                func.distinct(
-                    case(
-                        (OutreachMessage.status != "draft", OutreachMessage.id),
-                    )
-                )
-            ).label("messages_sent_count"),
+            companies_sub,
+            messages_sub,
         )
-        .outerjoin(Company, Company.candidate_id == Candidate.id)
-        .outerjoin(OutreachMessage, OutreachMessage.candidate_id == Candidate.id)
-        .group_by(Candidate.id)
         .order_by(Candidate.created_at.desc())
     )
     rows = (await db.execute(q)).all()
@@ -462,28 +496,38 @@ async def broadcast_email(
     )
     candidates = result.scalars().all()
 
-    sent_count = 0
-    skipped_count = 0
     sender = getattr(app_settings, "SENDER_EMAIL", "noreply@example.com")
 
+    # Split eligible vs opted-out
+    eligible = []
+    skipped_count = 0
     for candidate in candidates:
-        # Check notification preferences — default to opted-in
         prefs = candidate.preferences or {}
         if prefs.get("email_notifications") is False:
             skipped_count += 1
-            continue
+        else:
+            eligible.append(candidate)
 
-        try:
-            await email_client.send(
-                to=candidate.email,
-                from_email=sender,
-                subject=subject,
-                body=body,
-            )
-            sent_count += 1
-        except Exception:
-            logger.warning("broadcast_send_failed", email=candidate.email)
-            skipped_count += 1
+    # Send concurrently with semaphore to limit parallelism
+    sem = asyncio.Semaphore(10)
+
+    async def _send(candidate):
+        async with sem:
+            try:
+                await email_client.send(
+                    to=candidate.email,
+                    from_email=sender,
+                    subject=subject,
+                    body=body,
+                )
+                return True
+            except Exception:
+                logger.warning("broadcast_send_failed", email=candidate.email)
+                return False
+
+    results = await asyncio.gather(*[_send(c) for c in eligible])
+    sent_count = sum(1 for r in results if r)
+    skipped_count += sum(1 for r in results if not r)
 
     await create_audit_log(
         db, admin_id, "broadcast_sent",
