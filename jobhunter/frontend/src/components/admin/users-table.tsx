@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { AdminUser } from "@/lib/types";
 import { useToggleAdmin, useDeleteUser, useToggleActive } from "@/lib/hooks/use-admin";
 import {
@@ -38,7 +38,7 @@ interface UsersTableProps {
   onSelectUser?: (id: string) => void;
 }
 
-export function UsersTable({ users, currentUserId, onSelectUser }: UsersTableProps) {
+function UsersTableInner({ users, currentUserId, onSelectUser }: UsersTableProps) {
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const toggleAdmin = useToggleAdmin();
   const toggleActive = useToggleActive();
@@ -207,3 +207,5 @@ export function UsersTable({ users, currentUserId, onSelectUser }: UsersTablePro
     </>
   );
 }
+
+export const UsersTable = memo(UsersTableInner);

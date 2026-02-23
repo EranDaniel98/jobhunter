@@ -7,7 +7,8 @@ export function useSystemOverview() {
   return useQuery({
     queryKey: ["admin", "overview"],
     queryFn: adminApi.getOverview,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -73,7 +74,8 @@ export function useRegistrationTrend(days: number = 30) {
   return useQuery({
     queryKey: ["admin", "registrations", days],
     queryFn: () => adminApi.getRegistrationTrend(days),
-    refetchInterval: 60000,
+    refetchInterval: 120000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -95,7 +97,8 @@ export function useActivityFeed(limit: number = 50) {
   return useQuery({
     queryKey: ["admin", "activity", limit],
     queryFn: () => adminApi.getActivityFeed(limit),
-    refetchInterval: 30000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
   });
 }
 

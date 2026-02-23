@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import {
@@ -16,13 +17,26 @@ import { exportUsersCsv } from "@/lib/api/admin";
 import { PageHeader } from "@/components/shared/page-header";
 import { CardSkeleton, TableSkeleton } from "@/components/shared/loading-skeleton";
 import { OverviewStats } from "@/components/admin/overview-stats";
-import { RegistrationChart } from "@/components/admin/registration-chart";
 import { UsersTable } from "@/components/admin/users-table";
 import { InviteChain } from "@/components/admin/invite-chain";
-import { ActivityFeed } from "@/components/admin/activity-feed";
-import { AuditLogTable } from "@/components/admin/audit-log-table";
-import { BroadcastForm } from "@/components/admin/broadcast-form";
-import { UserDetailDrawer } from "@/components/admin/user-detail-drawer";
+
+// Lazy-loaded tab components
+const RegistrationChart = dynamic(
+  () => import("@/components/admin/registration-chart").then((m) => ({ default: m.RegistrationChart })),
+  { ssr: false },
+);
+const ActivityFeed = dynamic(
+  () => import("@/components/admin/activity-feed").then((m) => ({ default: m.ActivityFeed })),
+);
+const AuditLogTable = dynamic(
+  () => import("@/components/admin/audit-log-table").then((m) => ({ default: m.AuditLogTable })),
+);
+const BroadcastForm = dynamic(
+  () => import("@/components/admin/broadcast-form").then((m) => ({ default: m.BroadcastForm })),
+);
+const UserDetailDrawer = dynamic(
+  () => import("@/components/admin/user-detail-drawer").then((m) => ({ default: m.UserDetailDrawer })),
+);
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

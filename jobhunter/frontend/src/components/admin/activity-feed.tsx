@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { ActivityFeedItem } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -41,7 +42,7 @@ interface ActivityFeedProps {
   items: ActivityFeedItem[];
 }
 
-export function ActivityFeed({ items }: ActivityFeedProps) {
+function ActivityFeedInner({ items }: ActivityFeedProps) {
   if (items.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
@@ -88,3 +89,5 @@ export function ActivityFeed({ items }: ActivityFeedProps) {
     </div>
   );
 }
+
+export const ActivityFeed = memo(ActivityFeedInner);
