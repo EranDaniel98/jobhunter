@@ -229,3 +229,33 @@ export interface BroadcastResponse {
   sent_count: number;
   skipped_count: number;
 }
+
+// Approvals
+export interface PendingAction {
+  id: string;
+  candidate_id: string;
+  action_type: string;
+  entity_type: string;
+  entity_id: string;
+  status: string;
+  ai_reasoning: string | null;
+  metadata_: Record<string, unknown> | null;
+  message_subject: string | null;
+  message_body: string | null;
+  contact_name: string | null;
+  company_name: string | null;
+  message_type: string | null;
+  channel: string | null;
+  reviewed_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface PendingActionListResponse {
+  actions: PendingAction[];
+  total: number;
+}
+
+export interface PendingCountResponse {
+  count: number;
+}

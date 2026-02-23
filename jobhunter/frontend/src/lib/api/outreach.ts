@@ -44,9 +44,15 @@ export async function editMessage(
   return data;
 }
 
-export async function sendMessage(id: string, attachResume = true): Promise<OutreachMessageResponse> {
+export async function sendMessage(
+  id: string,
+  attachResume = true,
+  autoApprove = true,
+): Promise<OutreachMessageResponse> {
   const { data } = await api.post<OutreachMessageResponse>(
-    `/outreach/${id}/send`, null, { params: { attach_resume: attachResume } }
+    `/outreach/${id}/send`, null, {
+      params: { attach_resume: attachResume, auto_approve: autoApprove },
+    }
   );
   return data;
 }

@@ -6,11 +6,13 @@ import { useAuth } from "@/providers/auth-provider";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useApprovalCount } from "@/lib/hooks/use-approvals";
 import {
   LayoutDashboard,
   FileText,
   Building2,
   Mail,
+  ClipboardCheck,
   BarChart3,
   Settings,
   LogOut,
@@ -23,6 +25,7 @@ const navItems = [
   { href: "/resume", label: "Resume & DNA", icon: FileText },
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/outreach", label: "Outreach", icon: Mail },
+  { href: "/approvals", label: "Approvals", icon: ClipboardCheck, badge: true },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -37,6 +40,7 @@ interface MobileNavProps {
 export function MobileNav({ open, onOpenChange }: MobileNavProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { data: approvalCount } = useApprovalCount();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -62,6 +66,11 @@ export function MobileNav({ open, onOpenChange }: MobileNavProps) {
                 >
                   <Icon className="h-4 w-4" />
                   {item.label}
+                  {"badge" in item && item.badge && approvalCount?.count ? (
+                    <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                      {approvalCount.count > 99 ? "99+" : approvalCount.count}
+                    </span>
+                  ) : null}
                 </Button>
               </Link>
             );

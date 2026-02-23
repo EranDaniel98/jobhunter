@@ -41,6 +41,7 @@ async def health_check(
         status_code=status_code,
         content={
             "status": "healthy" if all_healthy else "degraded",
+            "version": "0.2.0",
             "checks": checks,
         },
     )
