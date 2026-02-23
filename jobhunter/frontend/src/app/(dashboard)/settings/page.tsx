@@ -273,7 +273,7 @@ function TagInput({
               className="inline-flex items-center gap-1 rounded-md bg-secondary px-2.5 py-1 text-sm"
             >
               {tag}
-              <button onClick={() => onRemove(i)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => onRemove(i)} className="text-muted-foreground hover:text-foreground" aria-label={`Remove ${tag}`}>
                 <X className="h-3 w-3" />
               </button>
             </span>

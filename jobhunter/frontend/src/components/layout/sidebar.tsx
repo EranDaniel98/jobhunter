@@ -52,7 +52,7 @@ export function Sidebar() {
     .slice(0, 2) || "?";
 
   return (
-    <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r bg-card">
+    <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r bg-card" role="navigation" aria-label="Main navigation">
       <div className="flex h-16 items-center gap-2 border-b px-6">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
           <Briefcase className="h-4 w-4 text-primary-foreground" />
