@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/providers/auth-provider";
 import { usePipelineStats, useFunnel, useOutreachStats } from "@/lib/hooks/use-analytics";
 import { useCompanies } from "@/lib/hooks/use-companies";
+import * as candidatesApi from "@/lib/api/candidates";
+import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FitScore } from "@/components/shared/fit-score";
@@ -37,6 +40,7 @@ export default function DashboardPage() {
   const funnelQuery = useFunnel();
   const statsQuery = useOutreachStats();
   const companiesQuery = useCompanies();
+  const dnaQuery = useQuery({ queryKey: ["dna"], queryFn: candidatesApi.getDNA, retry: 1 });
 
   const isLoading =
     pipelineQuery.isLoading || funnelQuery.isLoading || statsQuery.isLoading;
@@ -67,6 +71,13 @@ export default function DashboardPage() {
           Add Company
         </Button>
       </div>
+
+      {/* Onboarding checklist */}
+      <OnboardingChecklist
+        hasResume={!!dnaQuery.data}
+        hasCompanies={(pipeline ? pipeline.suggested + pipeline.approved + pipeline.researched + pipeline.contacted : 0) > 0}
+        hasSentMessages={(stats?.total_sent || 0) > 0}
+      />
 
       {/* Stats cards */}
       {isLoading ? (
