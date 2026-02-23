@@ -7,46 +7,52 @@ JobHunter AI is a semi-automated platform that combines AI intelligence with hum
 ## Architecture
 
 ```
-                    ┌──────────────────────────────────────────┐
-                    │              FastAPI Backend             │
-                    │                                          │
-  ┌───────────┐     │ ┌──────────┐  ┌──────────┐  ┌─────────┐  │
-  │ Frontend  │◄───►│ │  Auth    │  │  Resume  │  │ Company │  │
-  │ (planned) │     │ │  System  │  │  Parser  │  │ Finder  │  │
-  └───────────┘     │ └──────────┘  └──────────┘  └─────────┘  │
-                    │  ┌──────────┐  ┌─────────┐  ┌─────────┐  │
-                    │  │ Outreach │  │ Contact │  │ Analyt. │  │
-                    │  │ Drafter  │  │ Finder  │  │ Engine  │  │
-                    │  └──────────┘  └─────────┘  └─────────┘  │
-                    └──────────┬──────────┬──────────┬─────────┘
-                               │          │          │
-              ┌────────────────┼──────────┼──────────┼───────────────┐
-              │                ▼          ▼          ▼               │
-              │  ┌──────────┐  ┌───────┐  ┌────────┐  ┌───────────┐  │
-              │  │PostgreSQL│  │ Redis │  │ OpenAI │  │ Hunter.io │  │
-              │  │+ pgvector│  │       │  │ GPT-4o │  │           │  │
-              │  └──────────┘  └───────┘  └────────┘  └───────────┘  │
-              └──────────────────────────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                      Next.js Frontend                           │
+  │  Dashboard · Companies · Outreach · Resume · Analytics · Admin  │
+  └───────────────────────────┬─────────────────────────────────────┘
+                              │ REST API (/api/v1/)
+  ┌───────────────────────────▼─────────────────────────────────────┐
+  │                       FastAPI Backend                            │
+  │                                                                  │
+  │  ┌──────────┐  ┌──────────┐  ┌─────────┐  ┌──────────────────┐  │
+  │  │  Auth &   │  │  Resume  │  │ Company │  │    Admin         │  │
+  │  │  Invites  │  │  Parser  │  │ Finder  │  │  Dashboard       │  │
+  │  └──────────┘  └──────────┘  └─────────┘  └──────────────────┘  │
+  │  ┌──────────┐  ┌─────────┐  ┌─────────┐  ┌──────────────────┐  │
+  │  │ Outreach │  │ Contact │  │ Analyt. │  │ Email Broadcast  │  │
+  │  │ Drafter  │  │ Finder  │  │ Engine  │  │ & Audit Log      │  │
+  │  └──────────┘  └─────────┘  └─────────┘  └──────────────────┘  │
+  └──────────┬──────────┬──────────┬──────────┬─────────────────────┘
+             │          │          │          │
+  ┌──────────▼──────────▼──────────▼──────────▼─────────────────────┐
+  │  ┌──────────┐  ┌───────┐  ┌────────┐  ┌───────────┐  ┌──────┐  │
+  │  │PostgreSQL│  │ Redis │  │ OpenAI │  │ Hunter.io │  │Resend│  │
+  │  │+ pgvector│  │       │  │ GPT-4o │  │           │  │      │  │
+  │  └──────────┘  └───────┘  └────────┘  └───────────┘  └──────┘  │
+  └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
+| **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui, React Query |
 | **API** | FastAPI, Pydantic v2, Uvicorn |
 | **Database** | PostgreSQL + pgvector (vector similarity search) |
 | **Cache** | Redis (rate limiting, token blacklist, deduplication) |
 | **AI** | OpenAI GPT-4o (structured output), text-embedding-3-large |
 | **Email Discovery** | Hunter.io (domain search, email finder, verification) |
 | **Email Sending** | Resend (transactional email with webhook tracking) |
-| **Auth** | JWT (PyJWT) with access + refresh tokens |
+| **Auth** | JWT (PyJWT) with access + refresh tokens, invite-only registration |
 | **ORM** | SQLAlchemy 2.0 async |
-| **Migrations** | Alembic |
+| **Migrations** | Alembic (5 migrations) |
 | **Container** | Docker Compose |
-| **Package Manager** | uv |
+| **Package Managers** | uv (backend), npm (frontend) |
 
 ## Features
 
+### Core
 - **Resume Intelligence** — Upload PDF/DOCX, AI extracts skills taxonomy with explicit/transferable/adjacent categorization
 - **Candidate DNA** — Vector representation of your professional identity for semantic company matching
 - **Company Discovery** — Hunter.io integration for finding target companies with AI-computed fit scores
@@ -57,12 +63,30 @@ JobHunter AI is a semi-automated platform that combines AI intelligence with hum
 - **Compliance** — Daily send limits, suppression lists, CAN-SPAM unsubscribe links, webhook tracking
 - **Analytics** — Pipeline funnel and outreach performance metrics
 
+### Admin Dashboard
+- **System overview** — Total users, companies, messages, contacts, invites, active users (7d/30d)
+- **User management** — List, search, paginate, toggle admin/active, delete with cascade, user detail drawer
+- **User suspension** — Suspend/activate users; suspended users blocked at login (403)
+- **Activity feed** — Cross-tenant event stream with relative timestamps and event icons
+- **Admin audit log** — Tracks toggle_admin, toggle_active, delete_user, broadcast_sent actions
+- **CSV export** — Download all users with aggregated stats
+- **Broadcast email** — Send to all active opted-in users with confirmation dialog
+- **Registration trend** — 30-day chart with auto-refresh
+- **Invite chain** — Tracks who invited whom
+- **Top users** — Leaderboard by messages sent or companies added
+
+### Settings
+- **Profile management** — Name, headline, location, target roles/industries/locations, salary range
+- **Notification preferences** — Opt in/out of platform emails (affects broadcast)
+- **Invite system** — Generate invite links, filter by status (active/used/expired), scrollable list
+
 ## Quick Start
 
 ### Prerequisites
 
 - Docker & Docker Compose
 - Python 3.12+
+- Node.js 18+
 - [uv](https://docs.astral.sh/uv/) package manager
 - API keys: OpenAI, Hunter.io, Resend
 
@@ -80,22 +104,28 @@ cp .env.example .env
 # Start infrastructure
 docker compose up -d
 
-# Install dependencies
+# Backend
 cd backend
 uv sync --all-extras
-
-# Run migrations
 uv run alembic upgrade head
-
-# Start the server
 uv run uvicorn app.main:app --reload
+
+# Frontend (in another terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
 ### Running Tests
 
 ```bash
+# Backend (117 tests)
 cd backend
 uv run pytest tests/ -x -q
+
+# Frontend build check
+cd frontend
+npm run build
 ```
 
 Tests use lightweight stubs — no real API keys needed.
@@ -106,8 +136,10 @@ All endpoints are under `/api/v1/`. Full OpenAPI docs at `/docs` when running.
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /auth/register` | Create account |
+| `POST /auth/register` | Create account (invite required) |
 | `POST /auth/login` | Get JWT tokens |
+| `GET /auth/me` | Get profile (includes preferences) |
+| `PATCH /auth/me` | Update profile & preferences |
 | `POST /candidates/resume` | Upload & parse resume |
 | `GET /candidates/me/dna` | Get candidate DNA profile |
 | `POST /companies/add` | Add company by domain |
@@ -115,26 +147,54 @@ All endpoints are under `/api/v1/`. Full OpenAPI docs at `/docs` when running.
 | `GET /companies/{id}/dossier` | Get AI research dossier |
 | `POST /outreach/draft` | AI-draft personalized email |
 | `POST /outreach/{id}/send` | Send approved email |
+| `DELETE /outreach/{id}` | Delete draft message |
 | `GET /analytics/funnel` | Pipeline analytics |
+| `GET /admin/overview` | System stats (admin) |
+| `GET /admin/users` | User list with search (admin) |
+| `GET /admin/users/export` | CSV export (admin) |
+| `PATCH /admin/users/{id}/active` | Suspend/activate user (admin) |
+| `GET /admin/activity` | Activity feed (admin) |
+| `GET /admin/audit-log` | Audit log (admin) |
+| `POST /admin/broadcast` | Send broadcast email (admin) |
+| `POST /invites` | Generate invite code |
 | `GET /health` | Service health check |
 
 ## Project Structure
 
 ```
 jobhunter/
-├── docker-compose.yml          # PostgreSQL + pgvector, Redis
-└── backend/
-    ├── app/
-    │   ├── api/                # FastAPI route handlers
-    │   ├── models/             # SQLAlchemy ORM models
-    │   ├── schemas/            # Pydantic request/response types
-    │   ├── services/           # Business logic layer
-    │   ├── infrastructure/     # External clients (OpenAI, Hunter, Resend)
-    │   ├── middleware/         # Logging, error handling, request ID
-    │   └── utils/              # JWT, retry logic
-    ├── alembic/                # Database migrations
-    ├── tests/                  # 28 async tests
-    └── scripts/                # Dev tools (seeding, env check)
+├── docker-compose.yml              # PostgreSQL + pgvector, Redis
+├── backend/
+│   ├── app/
+│   │   ├── api/                    # FastAPI route handlers
+│   │   │   ├── auth.py             # Register, login, profile
+│   │   │   ├── admin.py            # Admin dashboard endpoints
+│   │   │   ├── companies.py        # Company CRUD & discovery
+│   │   │   ├── outreach.py         # Message drafting & sending
+│   │   │   └── invites.py          # Invite code management
+│   │   ├── models/                 # SQLAlchemy ORM models
+│   │   ├── schemas/                # Pydantic request/response types
+│   │   ├── services/               # Business logic layer
+│   │   ├── infrastructure/         # External clients (OpenAI, Hunter, Resend)
+│   │   ├── middleware/             # Logging, error handling, request ID
+│   │   └── utils/                  # JWT, retry logic
+│   ├── alembic/                    # 5 database migrations
+│   ├── tests/                      # 117 async tests
+│   └── scripts/                    # Dev tools (seeding, env check)
+└── frontend/
+    └── src/
+        ├── app/                    # Next.js pages
+        │   ├── (auth)/             # Login, register
+        │   └── (dashboard)/        # Dashboard, companies, outreach,
+        │                           # resume, analytics, admin, settings
+        ├── components/
+        │   ├── admin/              # Admin dashboard components
+        │   ├── shared/             # Reusable components
+        │   └── ui/                 # shadcn/ui primitives
+        ├── lib/
+        │   ├── api/                # Typed API clients
+        │   └── hooks/              # React Query hooks
+        └── providers/              # Auth context
 ```
 
 ## Design Philosophy
@@ -146,7 +206,11 @@ jobhunter/
 
 ## Roadmap
 
-- [ ] Frontend (React/Next.js)
+- [x] Frontend (Next.js + React)
+- [x] Invite-only registration
+- [x] Admin dashboard with user management
+- [x] Activity feed & audit log
+- [x] Broadcast email & notification preferences
 - [ ] LangGraph orchestration for multi-step AI workflows
 - [ ] Background job queue (ARQ/Celery)
 - [ ] WebSocket notifications
