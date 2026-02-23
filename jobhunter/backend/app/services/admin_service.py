@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import delete, func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.candidate import Candidate
@@ -85,7 +85,7 @@ async def list_users(
             func.count(func.distinct(Company.id)).label("companies_count"),
             func.count(
                 func.distinct(
-                    func.case(
+                    case(
                         (OutreachMessage.status != "draft", OutreachMessage.id),
                     )
                 )

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import {
@@ -36,13 +36,22 @@ export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const overviewQuery = useSystemOverview();
   const usersQuery = useAdminUsers({
     skip: page * PAGE_SIZE,
     limit: PAGE_SIZE,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
   });
   const trendQuery = useRegistrationTrend(30);
   const invitesQuery = useInviteChain();
@@ -157,10 +166,7 @@ export default function AdminPage() {
             <Input
               placeholder="Search by name or email..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(0);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
             />
           </div>

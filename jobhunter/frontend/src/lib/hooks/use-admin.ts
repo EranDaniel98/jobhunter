@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as adminApi from "@/lib/api/admin";
 
 export function useSystemOverview() {
@@ -18,6 +18,7 @@ export function useAdminUsers(params?: {
   return useQuery({
     queryKey: ["admin", "users", params],
     queryFn: () => adminApi.listUsers(params),
+    placeholderData: keepPreviousData,
   });
 }
 
