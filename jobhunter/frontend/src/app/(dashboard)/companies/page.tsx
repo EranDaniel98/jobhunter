@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { toastError } from "@/lib/api/error-utils";
 import { Building2, Loader2, Search, Plus, Check, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 
 export default function CompaniesPage() {
@@ -108,10 +109,7 @@ export default function CompaniesPage() {
         toast.success(`Discovered ${result.total} companies`);
       },
       onError: (err: unknown) => {
-        const msg =
-          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-          "Discovery failed";
-        toast.error(msg);
+        toastError(err, "Discovery failed");
       },
     });
   }

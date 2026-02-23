@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { toastError } from "@/lib/api/error-utils";
 import { Mail, Linkedin, Loader2, Send, Reply, Edit2, MessageSquare, Trash2, Paperclip } from "lucide-react";
 
 function detectDir(text: string): "rtl" | "ltr" {
@@ -85,7 +86,7 @@ export default function OutreachPage() {
           setEditing(false);
           toast.success("Message updated");
         },
-        onError: () => toast.error("Failed to save"),
+        onError: (err: unknown) => toastError(err, "Failed to save message"),
       }
     );
   }
@@ -98,8 +99,8 @@ export default function OutreachPage() {
         setDeleteConfirmId(null);
         toast.success("Message deleted");
       },
-      onError: () => {
-        toast.error("Failed to delete");
+      onError: (err: unknown) => {
+        toastError(err, "Failed to delete message");
         setDeleteConfirmId(null);
       },
     });
@@ -115,10 +116,7 @@ export default function OutreachPage() {
         toast.success("Message sent!");
       },
       onError: (err: unknown) => {
-        const msg =
-          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-          "Send failed";
-        toast.error(msg);
+        toastError(err, "Send failed");
         setSendConfirmId(null);
       },
     });
@@ -325,7 +323,7 @@ export default function OutreachPage() {
                                   toast.success("Follow-up draft created");
                                   setSelectedMessage(null);
                                 },
-                                onError: () => toast.error("Failed to create follow-up"),
+                                onError: (err: unknown) => toastError(err, "Failed to create follow-up"),
                               })
                             }
                             disabled={followupMutation.isPending}

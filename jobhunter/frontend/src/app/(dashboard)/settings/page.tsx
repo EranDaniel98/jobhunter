@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { toastError } from "@/lib/api/error-utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Copy, Loader2, Plus, X } from "lucide-react";
 
@@ -75,8 +76,8 @@ export default function SettingsPage() {
         salary_max: salaryMax ? parseInt(salaryMax) : null,
       });
       toast.success("Settings saved");
-    } catch {
-      toast.error("Failed to save settings");
+    } catch (err) {
+      toastError(err, "Failed to save settings");
     } finally {
       setLoading(false);
     }
@@ -205,8 +206,8 @@ export default function SettingsPage() {
                     },
                   });
                   toast.success("Notification preference saved");
-                } catch {
-                  toast.error("Failed to update preference");
+                } catch (err) {
+                  toastError(err, "Failed to update preference");
                 }
               }}
             />
@@ -296,8 +297,8 @@ function InviteSection() {
       const result = await createInvite.mutateAsync();
       await navigator.clipboard.writeText(result.invite_url);
       toast.success("Invite link copied to clipboard");
-    } catch {
-      toast.error("Failed to generate invite");
+    } catch (err) {
+      toastError(err, "Failed to generate invite");
     }
   }
 

@@ -17,6 +17,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { toastError } from "@/lib/api/error-utils";
 import {
   ClipboardCheck,
   Check,
@@ -56,7 +57,7 @@ export default function ApprovalsPage() {
         toast.success("Action approved — message sent");
         setSelectedAction(null);
       },
-      onError: () => toast.error("Failed to approve"),
+      onError: (err: unknown) => toastError(err, "Failed to approve"),
     });
   }
 
@@ -66,7 +67,7 @@ export default function ApprovalsPage() {
         toast.success("Action rejected");
         setSelectedAction(null);
       },
-      onError: () => toast.error("Failed to reject"),
+      onError: (err: unknown) => toastError(err, "Failed to reject"),
     });
   }
 
