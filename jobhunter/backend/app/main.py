@@ -74,6 +74,8 @@ from app.api.contacts import router as contacts_router  # noqa: E402
 from app.api.outreach import router as outreach_router  # noqa: E402
 from app.api.analytics import router as analytics_router  # noqa: E402
 from app.api.webhooks import router as webhooks_router  # noqa: E402
+from app.api.invites import router as invites_router  # noqa: E402
+from app.api.admin import router as admin_router  # noqa: E402
 
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
@@ -83,3 +85,5 @@ app.include_router(contacts_router, prefix=settings.API_V1_PREFIX)
 app.include_router(outreach_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
 app.include_router(webhooks_router, prefix=settings.API_V1_PREFIX)
+app.include_router(invites_router, prefix=settings.API_V1_PREFIX)
+app.include_router(admin_router, prefix=settings.API_V1_PREFIX)

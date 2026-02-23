@@ -5,6 +5,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=255)
+    invite_code: str = Field(min_length=1, max_length=64)
 
 
 class LoginRequest(BaseModel):
@@ -33,5 +34,6 @@ class CandidateResponse(BaseModel):
     target_locations: list[str] | None = None
     salary_min: int | None = None
     salary_max: int | None = None
+    is_admin: bool = False
 
     model_config = {"from_attributes": True}

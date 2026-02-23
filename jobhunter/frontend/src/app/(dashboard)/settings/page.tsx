@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
+import { useInvites, useCreateInvite } from "@/lib/hooks/use-invites";
 import { PageHeader } from "@/components/shared/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2, X } from "lucide-react";
+import { Copy, Loader2, Plus, X } from "lucide-react";
 
 export default function SettingsPage() {
   const { user, updateProfile } = useAuth();
@@ -188,6 +190,8 @@ export default function SettingsPage() {
           Save changes
         </Button>
       </div>
+
+      <InviteSection />
     </div>
   );
 }
@@ -244,5 +248,91 @@ function TagInput({
         </div>
       )}
     </div>
+  );
+}
+
+function InviteSection() {
+  const { data: invites } = useInvites();
+  const createInvite = useCreateInvite();
+
+  async function handleGenerate() {
+    try {
+      const result = await createInvite.mutateAsync();
+      await navigator.clipboard.writeText(result.invite_url);
+      toast.success("Invite link copied to clipboard");
+    } catch {
+      toast.error("Failed to generate invite");
+    }
+  }
+
+  function copyInviteUrl(code: string) {
+    const url = `${window.location.origin}/register?invite=${code}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied");
+  }
+
+  function getStatus(invite: { is_used: boolean; expires_at: string }) {
+    if (invite.is_used) return { label: "Used", variant: "secondary" as const };
+    if (new Date(invite.expires_at) < new Date()) return { label: "Expired", variant: "destructive" as const };
+    return { label: "Active", variant: "default" as const };
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Invite people</CardTitle>
+        <Button
+          size="sm"
+          onClick={handleGenerate}
+          disabled={createInvite.isPending}
+        >
+          {createInvite.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="mr-2 h-4 w-4" />
+          )}
+          Generate invite link
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {invites && invites.length > 0 ? (
+          <div className="space-y-3">
+            {invites.map((invite) => {
+              const status = getStatus(invite);
+              return (
+                <div
+                  key={invite.id}
+                  className="flex items-center justify-between rounded-md border px-4 py-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Badge variant={status.variant}>{status.label}</Badge>
+                    <code className="text-xs text-muted-foreground truncate">
+                      {invite.code.slice(0, 16)}...
+                    </code>
+                    {invite.used_by_email && (
+                      <span className="text-xs text-muted-foreground">
+                        {invite.used_by_email}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => copyInviteUrl(invite.code)}
+                    title="Copy invite link"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No invites yet. Generate one to share with others.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

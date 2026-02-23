@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     SENDER_NAME: str = "Eran"
     PHYSICAL_ADDRESS: str = "Tel Aviv, Israel"
 
+    # Invites
+    INVITE_EXPIRE_DAYS: int = 7
+
     # Frontend
     FRONTEND_URL: str = "http://localhost:3000"
 

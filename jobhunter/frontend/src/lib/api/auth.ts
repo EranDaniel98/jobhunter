@@ -9,12 +9,14 @@ export async function login(email: string, password: string): Promise<TokenPair>
 export async function register(
   email: string,
   password: string,
-  full_name: string
+  full_name: string,
+  invite_code: string
 ): Promise<CandidateResponse> {
   const { data } = await api.post<CandidateResponse>("/auth/register", {
     email,
     password,
     full_name,
+    invite_code,
   });
   return data;
 }

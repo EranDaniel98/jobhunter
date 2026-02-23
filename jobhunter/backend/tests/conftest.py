@@ -1,5 +1,7 @@
 import asyncio
+import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
 
 import pytest
@@ -13,6 +15,7 @@ from app.dependencies import get_db, get_openai, get_hunter, get_email_client
 from app.infrastructure.database import get_session
 from app.infrastructure.redis_client import init_redis, close_redis, get_redis
 from app.models.base import Base
+from app.models.invite import InviteCode
 from app.main import app
 
 
@@ -219,13 +222,54 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     _storage_mod._storage_instance = None
 
 
+async def _create_invite_code(db_session: AsyncSession) -> str:
+    """Create an invite code directly in the DB for testing."""
+    # We need a candidate to be the inviter. Create a system-level one.
+    from app.models.candidate import Candidate
+    from app.utils.security import hash_password
+
+    # Check if seed inviter already exists
+    from sqlalchemy import select
+    result = await db_session.execute(
+        select(Candidate).where(Candidate.email == "seed-inviter@test.local")
+    )
+    inviter = result.scalar_one_or_none()
+    if not inviter:
+        inviter = Candidate(
+            id=uuid.uuid4(),
+            email="seed-inviter@test.local",
+            password_hash=hash_password("seedpass123"),
+            full_name="Seed Inviter",
+        )
+        db_session.add(inviter)
+        await db_session.flush()
+
+    code = secrets.token_urlsafe(16)
+    invite = InviteCode(
+        id=uuid.uuid4(),
+        code=code,
+        invited_by_id=inviter.id,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+    )
+    db_session.add(invite)
+    await db_session.flush()
+    return code
+
+
 @pytest_asyncio.fixture
-async def auth_headers(client: AsyncClient) -> dict:
+async def invite_code(db_session: AsyncSession) -> str:
+    """Return a valid invite code for test registration."""
+    return await _create_invite_code(db_session)
+
+
+@pytest_asyncio.fixture
+async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict:
     """Register a test user and return auth headers."""
+    code = await _create_invite_code(db_session)
     email = f"test-{uuid.uuid4().hex[:8]}@example.com"
     await client.post(
         f"{settings.API_V1_PREFIX}/auth/register",
-        json={"email": email, "password": "testpass123", "full_name": "Test User"},
+        json={"email": email, "password": "testpass123", "full_name": "Test User", "invite_code": code},
     )
     resp = await client.post(
         f"{settings.API_V1_PREFIX}/auth/login",

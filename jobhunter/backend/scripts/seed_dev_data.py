@@ -11,6 +11,7 @@ from app.models.analytics import AnalyticsEvent
 from app.models.candidate import Candidate, CandidateDNA, Resume, Skill
 from app.models.company import Company, CompanyDossier
 from app.models.contact import Contact
+from app.models.invite import InviteCode
 from app.models.outreach import MessageEvent, OutreachMessage
 from app.utils.security import hash_password
 
@@ -33,6 +34,7 @@ async def seed():
             target_locations=["Remote", "Tel Aviv", "San Francisco"],
             salary_min=150000,
             salary_max=280000,
+            is_admin=True,
         )
         db.add(candidate)
 
@@ -260,9 +262,19 @@ async def seed():
                 occurred_at=now - timedelta(hours=len(event_types)),
             ))
 
+        # 9. Dev invite code (never expires, for local dev registration)
+        db.add(InviteCode(
+            id=uuid.uuid4(),
+            code="dev-invite-code",
+            invited_by_id=candidate_id,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=365 * 10),
+            is_used=False,
+        ))
+
         await db.commit()
         print(f"Seed data created successfully!")
         print(f"  Candidate: test@example.com / testpass123")
+        print(f"  Invite code: dev-invite-code")
         print(f"  Companies: {len(companies_data)}")
         print(f"  Contacts: {len(all_contacts)}")
         print(f"  Messages: {len(message_statuses)}")

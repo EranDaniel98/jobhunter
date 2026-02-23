@@ -10,6 +10,7 @@ from app.config import settings
 from app.infrastructure.redis_client import get_redis
 from app.models.candidate import Candidate
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenPair
+from app.services import invite_service
 from app.utils.security import (
     create_access_token,
     create_refresh_token,
@@ -24,6 +25,9 @@ TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 
 
 async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
+    # Validate invite code first
+    await invite_service.validate_invite(db, data.invite_code)
+
     # Check for existing email
     result = await db.execute(select(Candidate).where(Candidate.email == data.email))
     if result.scalar_one_or_none():
@@ -39,9 +43,14 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
         full_name=data.full_name,
     )
     db.add(candidate)
+    await db.flush()
+
+    # Consume invite code atomically
+    await invite_service.consume_invite(db, data.invite_code, candidate)
+
     await db.commit()
     await db.refresh(candidate)
-    logger.info("candidate_registered", candidate_id=str(candidate.id))
+    logger.info("candidate_registered", candidate_id=str(candidate.id), invite_code=data.invite_code)
     return candidate
 
 
