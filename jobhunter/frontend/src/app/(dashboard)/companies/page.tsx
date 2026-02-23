@@ -260,6 +260,7 @@ export default function CompaniesPage() {
                             size="icon"
                             variant="ghost"
                             className="h-8 w-8 text-green-600"
+                            aria-label={`Approve ${company.name}`}
                             onClick={() =>
                               approveMutation.mutate(company.id, {
                                 onSuccess: () => toast.success("Company approved"),
@@ -273,6 +274,7 @@ export default function CompaniesPage() {
                             size="icon"
                             variant="ghost"
                             className="h-8 w-8 text-red-600"
+                            aria-label={`Reject ${company.name}`}
                             onClick={() =>
                               rejectMutation.mutate(
                                 { id: company.id, reason: "Not interested" },

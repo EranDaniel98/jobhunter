@@ -144,6 +144,7 @@ export default function ApprovalsPage() {
                         size="sm"
                         variant="outline"
                         className="text-green-600"
+                        aria-label={`Approve ${action.contact_name || "action"}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleApprove(action.id);
@@ -156,6 +157,7 @@ export default function ApprovalsPage() {
                         size="sm"
                         variant="outline"
                         className="text-red-600"
+                        aria-label={`Reject ${action.contact_name || "action"}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleReject(action.id);
