@@ -157,6 +157,14 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
 
         await db.commit()
         await db.refresh(message)
+
+        # Notify via WebSocket
+        from app.infrastructure.websocket_manager import ws_manager
+        await ws_manager.broadcast(
+            str(message.candidate_id), "email_sent",
+            {"message_id": str(message.id), "contact_email": contact.email},
+        )
+
         logger.info("outreach_email_sent", message_id=str(message.id), to=contact.email)
         return message
 
@@ -241,6 +249,15 @@ async def handle_resend_webhook(
         await _auto_suppress(db, data.get("to", [None])[0] if isinstance(data.get("to"), list) else data.get("to"), "complaint")
 
     await db.commit()
+
+    # Notify via WebSocket
+    from app.infrastructure.websocket_manager import ws_manager
+    ws_event = f"email_{mapped_type}"  # email_delivered, email_opened, etc.
+    await ws_manager.broadcast(
+        str(message.candidate_id), ws_event,
+        {"message_id": str(message.id), "event_type": mapped_type},
+    )
+
     logger.info("webhook_processed", event_type=mapped_type, message_id=str(message.id))
 
 

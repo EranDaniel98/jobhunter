@@ -63,6 +63,12 @@ async def _run_async_background(resume_id, candidate_id):
             if resume:
                 resume.parse_status = "completed"
                 await db.commit()
+            # Notify via WebSocket
+            from app.infrastructure.websocket_manager import ws_manager
+            await ws_manager.broadcast(
+                str(candidate_id), "resume_parsed",
+                {"resume_id": str(resume_id), "status": "completed"},
+            )
             logger.info("background_resume_processing_complete", resume_id=str(resume_id))
         except Exception as e:
             logger.error("background_resume_processing_failed", error=str(e), resume_id=str(resume_id))
