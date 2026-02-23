@@ -41,6 +41,7 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
         email=data.email,
         password_hash=hash_password(data.password),
         full_name=data.full_name,
+        preferences=data.preferences.model_dump() if data.preferences else None,
     )
     db.add(candidate)
     await db.flush()

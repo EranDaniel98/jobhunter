@@ -6,11 +6,14 @@ import { useAuth } from "@/providers/auth-provider";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { Footer } from "@/components/layout/footer";
+import { useWebSocket } from "@/lib/hooks/use-websocket";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useWebSocket(); // Global WebSocket connection for real-time events
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -35,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="lg:pl-64">
         <Header onMenuClick={() => setMobileNavOpen(true)} />
         <main className="p-4 md:p-6 lg:p-8">{children}</main>
+        <Footer />
       </div>
     </div>
   );

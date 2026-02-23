@@ -7,6 +7,7 @@ from app.models.suppression import EmailSuppression
 from app.models.analytics import AnalyticsEvent
 from app.models.invite import InviteCode
 from app.models.audit import AdminAuditLog
+from app.models.pending_action import PendingAction
 
 __all__ = [
     "Base",
@@ -23,4 +24,5 @@ __all__ = [
     "AnalyticsEvent",
     "InviteCode",
     "AdminAuditLog",
+    "PendingAction",
 ]

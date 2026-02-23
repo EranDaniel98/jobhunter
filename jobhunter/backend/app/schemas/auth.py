@@ -1,4 +1,10 @@
-from pydantic import BaseModel, EmailStr, Field
+import re
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+class RegistrationPreferences(BaseModel):
+    email_notifications: bool = True
 
 
 class RegisterRequest(BaseModel):
@@ -6,6 +12,25 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=255)
     invite_code: str = Field(min_length=1, max_length=64)
+    preferences: RegistrationPreferences | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def sanitize_full_name(cls, v: str) -> str:
+        v = re.sub(r"<[^>]*>", "", v).strip()
+        if not v:
+            raise ValueError("Name cannot be empty")
+        if not re.match(r"^[\w\s\-'.]+$", v, re.UNICODE):
+            raise ValueError("Name contains invalid characters")
+        return v
+
+    @field_validator("invite_code")
+    @classmethod
+    def sanitize_invite_code(cls, v: str) -> str:
+        v = v.strip()
+        if not re.match(r"^[a-zA-Z0-9\-_]+$", v):
+            raise ValueError("Invalid invite code format")
+        return v
 
 
 class LoginRequest(BaseModel):

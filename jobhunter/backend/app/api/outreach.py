@@ -138,10 +138,11 @@ async def edit_message(
     return _message_to_response(msg)
 
 
-@router.post("/{message_id}/send", response_model=OutreachMessageResponse)
+@router.post("/{message_id}/send")
 async def send_message(
     message_id: str,
     attach_resume: bool = Query(default=True),
+    auto_approve: bool = Query(default=False),
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
@@ -149,14 +150,39 @@ async def send_message(
     if msg.status not in ("draft", "approved"):
         raise HTTPException(status_code=400, detail=f"Cannot send message with status '{msg.status}'")
 
-    # Email sending is handled by email_service (Step 7)
-    from app.services.email_service import send_outreach
-    try:
-        msg = await send_outreach(db, msg.id, attach_resume=attach_resume)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    # If already approved (via approvals page), send immediately
+    if msg.status == "approved" or auto_approve:
+        from app.services.email_service import send_outreach
+        try:
+            # If auto_approve, also create approved PendingAction for audit trail
+            if auto_approve and msg.status == "draft":
+                from app.services.approval_service import create_pending_action
+                action = await create_pending_action(
+                    db, candidate.id, action_type="send_email", entity_id=msg.id,
+                    metadata={"auto_approved": True, "attach_resume": attach_resume},
+                )
+                from app.services.approval_service import approve_action
+                await approve_action(db, action.id, candidate.id)
 
-    return _message_to_response(msg)
+            msg = await send_outreach(db, msg.id, attach_resume=attach_resume)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return _message_to_response(msg)
+
+    # Otherwise, create a PendingAction for approval
+    from app.services.approval_service import create_pending_action
+    action = await create_pending_action(
+        db, candidate.id,
+        action_type="send_email",
+        entity_id=msg.id,
+        metadata={"attach_resume": attach_resume},
+    )
+    return {
+        "status": "pending_approval",
+        "message_id": str(msg.id),
+        "action_id": str(action.id),
+        "detail": "Message queued for approval",
+    }
 
 
 @router.delete("/{message_id}", status_code=204)

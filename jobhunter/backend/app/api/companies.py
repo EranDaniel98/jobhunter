@@ -239,6 +239,15 @@ async def _research_background(company_id):
     async with async_session_factory() as db:
         try:
             await company_service.research_company(db, company_id)
+            # Notify via WebSocket
+            result = await db.execute(select(Company).where(Company.id == company_id))
+            company = result.scalar_one_or_none()
+            if company:
+                from app.infrastructure.websocket_manager import ws_manager
+                await ws_manager.broadcast(
+                    str(company.candidate_id), "research_completed",
+                    {"company_id": str(company_id), "company_name": company.name},
+                )
         except Exception as e:
             logger.error("background_research_failed", error=str(e), company_id=str(company_id))
             # Mark as failed

@@ -10,13 +10,15 @@ export async function register(
   email: string,
   password: string,
   full_name: string,
-  invite_code: string
+  invite_code: string,
+  preferences?: Record<string, unknown>
 ): Promise<CandidateResponse> {
   const { data } = await api.post<CandidateResponse>("/auth/register", {
     email,
     password,
     full_name,
     invite_code,
+    preferences,
   });
   return data;
 }
