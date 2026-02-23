@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { AdminUser } from "@/lib/types";
-import { useToggleAdmin, useDeleteUser } from "@/lib/hooks/use-admin";
+import { useToggleAdmin, useDeleteUser, useToggleActive } from "@/lib/hooks/use-admin";
 import {
   Table,
   TableBody,
@@ -29,17 +29,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Shield, ShieldOff, Trash2 } from "lucide-react";
+import { MoreHorizontal, Shield, ShieldOff, Trash2, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 
 interface UsersTableProps {
   users: AdminUser[];
   currentUserId: string;
+  onSelectUser?: (id: string) => void;
 }
 
-export function UsersTable({ users, currentUserId }: UsersTableProps) {
+export function UsersTable({ users, currentUserId, onSelectUser }: UsersTableProps) {
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const toggleAdmin = useToggleAdmin();
+  const toggleActive = useToggleActive();
   const deleteUser = useDeleteUser();
 
   const handleToggleAdmin = (user: AdminUser) => {
@@ -54,6 +56,22 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
           );
         },
         onError: () => toast.error("Failed to update admin status"),
+      }
+    );
+  };
+
+  const handleToggleActive = (user: AdminUser) => {
+    toggleActive.mutate(
+      { id: user.id, isActive: !user.is_active },
+      {
+        onSuccess: () => {
+          toast.success(
+            user.is_active
+              ? `Suspended ${user.full_name}`
+              : `Activated ${user.full_name}`
+          );
+        },
+        onError: () => toast.error("Failed to update status"),
       }
     );
   };
@@ -79,13 +97,17 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
             <TableHead>Joined</TableHead>
             <TableHead className="text-right">Companies</TableHead>
             <TableHead className="text-right">Messages</TableHead>
-            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead className="w-[50px]" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id}>
+            <TableRow
+              key={user.id}
+              className={onSelectUser ? "cursor-pointer" : ""}
+              onClick={() => onSelectUser?.(user.id)}
+            >
               <TableCell className="font-medium">{user.full_name}</TableCell>
               <TableCell className="text-muted-foreground">{user.email}</TableCell>
               <TableCell className="text-muted-foreground">
@@ -94,22 +116,32 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
               <TableCell className="text-right">{user.companies_count}</TableCell>
               <TableCell className="text-right">{user.messages_sent_count}</TableCell>
               <TableCell>
-                {user.is_admin && (
-                  <Badge variant="default" className="gap-1">
-                    <Shield className="h-3 w-3" />
-                    Admin
-                  </Badge>
-                )}
+                <div className="flex gap-1">
+                  {user.is_admin && (
+                    <Badge variant="default" className="gap-1">
+                      <Shield className="h-3 w-3" />
+                      Admin
+                    </Badge>
+                  )}
+                  {!user.is_active && (
+                    <Badge variant="destructive">Suspended</Badge>
+                  )}
+                </div>
               </TableCell>
               <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleToggleAdmin(user)}>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleAdmin(user); }}>
                       {user.is_admin ? (
                         <>
                           <ShieldOff className="mr-2 h-4 w-4" />
@@ -122,10 +154,23 @@ export function UsersTable({ users, currentUserId }: UsersTableProps) {
                         </>
                       )}
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleActive(user); }}>
+                      {user.is_active ? (
+                        <>
+                          <UserX className="mr-2 h-4 w-4" />
+                          Suspend
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="mr-2 h-4 w-4" />
+                          Activate
+                        </>
+                      )}
+                    </DropdownMenuItem>
                     {user.id !== currentUserId && (
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => setDeleteTarget(user)}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(user); }}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete user

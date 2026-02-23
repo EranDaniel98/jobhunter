@@ -6,6 +6,9 @@ import type {
   RegistrationTrend,
   InviteChainItem,
   TopUserItem,
+  ActivityFeedItem,
+  AuditLogItem,
+  BroadcastResponse,
 } from "../types";
 
 export async function getOverview(): Promise<SystemOverview> {
@@ -37,6 +40,17 @@ export async function toggleAdmin(
   return data;
 }
 
+export async function toggleActive(
+  id: string,
+  isActive: boolean
+): Promise<AdminUserDetail> {
+  const { data } = await api.patch<AdminUserDetail>(
+    `/admin/users/${id}/active`,
+    { is_active: isActive }
+  );
+  return data;
+}
+
 export async function deleteUser(id: string): Promise<void> {
   await api.delete(`/admin/users/${id}`);
 }
@@ -62,6 +76,48 @@ export async function getTopUsers(
 ): Promise<TopUserItem[]> {
   const { data } = await api.get<TopUserItem[]>("/admin/analytics/top-users", {
     params: { metric, limit },
+  });
+  return data;
+}
+
+export async function getActivityFeed(
+  limit: number = 50
+): Promise<ActivityFeedItem[]> {
+  const { data } = await api.get<ActivityFeedItem[]>("/admin/activity", {
+    params: { limit },
+  });
+  return data;
+}
+
+export async function getAuditLog(
+  limit: number = 50
+): Promise<AuditLogItem[]> {
+  const { data } = await api.get<AuditLogItem[]>("/admin/audit-log", {
+    params: { limit },
+  });
+  return data;
+}
+
+export async function exportUsersCsv(): Promise<void> {
+  const { data } = await api.get("/admin/users/export", {
+    responseType: "blob",
+  });
+  const blob = new Blob([data], { type: "text/csv" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "users_export.csv";
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function sendBroadcast(
+  subject: string,
+  body: string
+): Promise<BroadcastResponse> {
+  const { data } = await api.post<BroadcastResponse>("/admin/broadcast", {
+    subject,
+    body,
   });
   return data;
 }

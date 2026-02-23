@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Copy, Loader2, Plus, X } from "lucide-react";
 
 export default function SettingsPage() {
@@ -184,6 +185,38 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="email-notifications"
+              checked={
+                (user?.preferences as Record<string, unknown> | null)?.email_notifications !== false
+              }
+              onCheckedChange={async (checked) => {
+                try {
+                  await updateProfile({
+                    preferences: {
+                      ...((user?.preferences as Record<string, unknown>) || {}),
+                      email_notifications: !!checked,
+                    },
+                  });
+                  toast.success("Notification preference saved");
+                } catch {
+                  toast.error("Failed to update preference");
+                }
+              }}
+            />
+            <Label htmlFor="email-notifications" className="cursor-pointer">
+              Receive platform emails (announcements, tips)
+            </Label>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={loading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -251,9 +284,12 @@ function TagInput({
   );
 }
 
+type InviteFilter = "all" | "active" | "used" | "expired";
+
 function InviteSection() {
   const { data: invites } = useInvites();
   const createInvite = useCreateInvite();
+  const [filter, setFilter] = useState<InviteFilter>("all");
 
   async function handleGenerate() {
     try {
@@ -272,10 +308,23 @@ function InviteSection() {
   }
 
   function getStatus(invite: { is_used: boolean; expires_at: string }) {
-    if (invite.is_used) return { label: "Used", variant: "secondary" as const };
-    if (new Date(invite.expires_at) < new Date()) return { label: "Expired", variant: "destructive" as const };
-    return { label: "Active", variant: "default" as const };
+    if (invite.is_used) return { label: "Used", variant: "secondary" as const, key: "used" as const };
+    if (new Date(invite.expires_at) < new Date()) return { label: "Expired", variant: "destructive" as const, key: "expired" as const };
+    return { label: "Active", variant: "default" as const, key: "active" as const };
   }
+
+  const filtered = invites?.filter((invite) => {
+    if (filter === "all") return true;
+    return getStatus(invite).key === filter;
+  });
+
+  const counts = invites?.reduce(
+    (acc, invite) => {
+      acc[getStatus(invite).key]++;
+      return acc;
+    },
+    { active: 0, used: 0, expired: 0 } as Record<string, number>
+  );
 
   return (
     <Card>
@@ -294,10 +343,30 @@ function InviteSection() {
           Generate invite link
         </Button>
       </CardHeader>
-      <CardContent>
-        {invites && invites.length > 0 ? (
-          <div className="space-y-3">
-            {invites.map((invite) => {
+      <CardContent className="space-y-3">
+        {invites && invites.length > 0 && (
+          <div className="flex gap-2">
+            {(["all", "active", "used", "expired"] as InviteFilter[]).map((f) => (
+              <Button
+                key={f}
+                variant={filter === f ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(f)}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {f !== "all" && counts && (
+                  <span className="ml-1.5 text-xs opacity-70">
+                    {counts[f] ?? 0}
+                  </span>
+                )}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {filtered && filtered.length > 0 ? (
+          <div className="max-h-[320px] overflow-y-auto space-y-3 pr-1">
+            {filtered.map((invite) => {
               const status = getStatus(invite);
               return (
                 <div
@@ -329,7 +398,9 @@ function InviteSection() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No invites yet. Generate one to share with others.
+            {invites && invites.length > 0
+              ? "No invites match this filter."
+              : "No invites yet. Generate one to share with others."}
           </p>
         )}
       </CardContent>

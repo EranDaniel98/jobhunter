@@ -64,6 +64,12 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenPair:
             detail="Invalid email or password",
         )
 
+    if not candidate.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account suspended",
+        )
+
     access_token, _ = create_access_token(str(candidate.id))
     refresh_token, _ = create_refresh_token(str(candidate.id))
 

@@ -58,3 +58,38 @@ class TopUserItem(BaseModel):
 
 class ToggleAdminRequest(BaseModel):
     is_admin: bool
+
+
+class ToggleActiveRequest(BaseModel):
+    is_active: bool
+
+
+class ActivityFeedItem(BaseModel):
+    id: str
+    user_email: str
+    user_name: str
+    event_type: str
+    entity_type: str | None = None
+    details: dict | None = None
+    occurred_at: datetime
+
+
+class AuditLogItem(BaseModel):
+    id: str
+    admin_email: str | None = None
+    admin_name: str | None = None
+    action: str
+    target_email: str | None = None
+    target_name: str | None = None
+    details: dict | None = None
+    created_at: datetime
+
+
+class BroadcastRequest(BaseModel):
+    subject: str
+    body: str
+
+
+class BroadcastResponse(BaseModel):
+    sent_count: int
+    skipped_count: int

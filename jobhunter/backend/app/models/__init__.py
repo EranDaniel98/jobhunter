@@ -6,6 +6,7 @@ from app.models.outreach import MessageEvent, OutreachMessage
 from app.models.suppression import EmailSuppression
 from app.models.analytics import AnalyticsEvent
 from app.models.invite import InviteCode
+from app.models.audit import AdminAuditLog
 
 __all__ = [
     "Base",
@@ -21,4 +22,5 @@ __all__ = [
     "EmailSuppression",
     "AnalyticsEvent",
     "InviteCode",
+    "AdminAuditLog",
 ]

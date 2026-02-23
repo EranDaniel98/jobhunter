@@ -9,13 +9,20 @@ import {
   useRegistrationTrend,
   useInviteChain,
   useTopUsers,
+  useActivityFeed,
+  useAuditLog,
 } from "@/lib/hooks/use-admin";
+import { exportUsersCsv } from "@/lib/api/admin";
 import { PageHeader } from "@/components/shared/page-header";
 import { CardSkeleton, TableSkeleton } from "@/components/shared/loading-skeleton";
 import { OverviewStats } from "@/components/admin/overview-stats";
 import { RegistrationChart } from "@/components/admin/registration-chart";
 import { UsersTable } from "@/components/admin/users-table";
 import { InviteChain } from "@/components/admin/invite-chain";
+import { ActivityFeed } from "@/components/admin/activity-feed";
+import { AuditLogTable } from "@/components/admin/audit-log-table";
+import { BroadcastForm } from "@/components/admin/broadcast-form";
+import { UserDetailDrawer } from "@/components/admin/user-detail-drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,7 +35,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
 
@@ -38,6 +46,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -56,6 +65,8 @@ export default function AdminPage() {
   const trendQuery = useRegistrationTrend(30);
   const invitesQuery = useInviteChain();
   const topUsersQuery = useTopUsers("messages_sent", 5);
+  const activityQuery = useActivityFeed(50);
+  const auditLogQuery = useAuditLog(50);
 
   // Guard: redirect non-admin users
   if (!authLoading && user && !user.is_admin) {
@@ -79,6 +90,15 @@ export default function AdminPage() {
 
   const totalPages = Math.ceil((usersQuery.data?.total || 0) / PAGE_SIZE);
 
+  const handleExportCsv = async () => {
+    try {
+      await exportUsersCsv();
+      toast.success("CSV exported");
+    } catch {
+      toast.error("Failed to export CSV");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Admin Dashboard" description="Manage users and monitor platform health" />
@@ -88,6 +108,8 @@ export default function AdminPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="invites">Invites</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-4">
@@ -169,13 +191,21 @@ export default function AdminPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
             />
+            <Button variant="outline" size="sm" onClick={handleExportCsv}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
 
           {usersQuery.isLoading ? (
             <TableSkeleton rows={10} />
           ) : usersQuery.data ? (
             <>
-              <UsersTable users={usersQuery.data.users} currentUserId={user?.id || ""} />
+              <UsersTable
+                users={usersQuery.data.users}
+                currentUserId={user?.id || ""}
+                onSelectUser={setSelectedUserId}
+              />
               {totalPages > 1 && (
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
@@ -206,6 +236,12 @@ export default function AdminPage() {
               )}
             </>
           ) : null}
+
+          <UserDetailDrawer
+            userId={selectedUserId}
+            currentUserId={user?.id || ""}
+            onClose={() => setSelectedUserId(null)}
+          />
         </TabsContent>
 
         <TabsContent value="invites" className="mt-4">
@@ -221,6 +257,38 @@ export default function AdminPage() {
               ) : null}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-6 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Feed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activityQuery.isLoading ? (
+                <TableSkeleton rows={5} />
+              ) : activityQuery.data ? (
+                <ActivityFeed items={activityQuery.data} />
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Audit Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {auditLogQuery.isLoading ? (
+                <TableSkeleton rows={5} />
+              ) : auditLogQuery.data ? (
+                <AuditLogTable items={auditLogQuery.data} />
+              ) : null}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="broadcast" className="space-y-6 mt-4">
+          <BroadcastForm />
         </TabsContent>
       </Tabs>
     </div>

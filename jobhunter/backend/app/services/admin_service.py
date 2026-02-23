@@ -1,3 +1,5 @@
+import csv
+import io
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -5,12 +7,17 @@ import structlog
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.analytics import AnalyticsEvent
+from app.models.audit import AdminAuditLog
 from app.models.candidate import Candidate
 from app.models.company import Company
 from app.models.contact import Contact
 from app.models.invite import InviteCode
 from app.models.outreach import OutreachMessage
 from app.schemas.admin import (
+    ActivityFeedItem,
+    AuditLogItem,
+    BroadcastResponse,
     InviteChainItem,
     RegistrationTrend,
     SystemOverview,
@@ -81,6 +88,7 @@ async def list_users(
             Candidate.email,
             Candidate.full_name,
             Candidate.is_admin,
+            Candidate.is_active,
             Candidate.created_at,
             func.count(func.distinct(Company.id)).label("companies_count"),
             func.count(
@@ -113,6 +121,7 @@ async def list_users(
             email=row.email,
             full_name=row.full_name,
             is_admin=row.is_admin,
+            is_active=row.is_active,
             created_at=row.created_at,
             companies_count=row.companies_count or 0,
             messages_sent_count=row.messages_sent_count or 0,
@@ -161,6 +170,7 @@ async def get_user_detail(db: AsyncSession, user_id: uuid.UUID) -> UserDetail | 
         email=candidate.email,
         full_name=candidate.full_name,
         is_admin=candidate.is_admin,
+        is_active=candidate.is_active,
         created_at=candidate.created_at,
         companies_count=companies_count,
         messages_sent_count=messages_sent_count,
@@ -262,7 +272,7 @@ async def get_top_users(
 
 
 async def toggle_user_admin(
-    db: AsyncSession, user_id: uuid.UUID, is_admin: bool
+    db: AsyncSession, user_id: uuid.UUID, is_admin: bool, admin_id: uuid.UUID | None = None
 ) -> Candidate | None:
     result = await db.execute(select(Candidate).where(Candidate.id == user_id))
     candidate = result.scalar_one_or_none()
@@ -272,15 +282,212 @@ async def toggle_user_admin(
     await db.commit()
     await db.refresh(candidate)
     logger.info("admin_toggled", user_id=str(user_id), is_admin=is_admin)
+    if admin_id:
+        await create_audit_log(db, admin_id, "toggle_admin", target_user_id=user_id, details={"is_admin": is_admin})
     return candidate
 
 
-async def delete_user(db: AsyncSession, user_id: uuid.UUID) -> bool:
+async def delete_user(
+    db: AsyncSession, user_id: uuid.UUID, admin_id: uuid.UUID | None = None
+) -> bool:
     result = await db.execute(select(Candidate).where(Candidate.id == user_id))
     candidate = result.scalar_one_or_none()
     if not candidate:
         return False
+    email = candidate.email
+    if admin_id:
+        await create_audit_log(db, admin_id, "delete_user", target_user_id=user_id, details={"email": email})
     await db.delete(candidate)
     await db.commit()
-    logger.info("user_deleted", user_id=str(user_id), email=candidate.email)
+    logger.info("user_deleted", user_id=str(user_id), email=email)
     return True
+
+
+async def toggle_user_active(
+    db: AsyncSession, user_id: uuid.UUID, is_active: bool, admin_id: uuid.UUID | None = None
+) -> Candidate | None:
+    result = await db.execute(select(Candidate).where(Candidate.id == user_id))
+    candidate = result.scalar_one_or_none()
+    if not candidate:
+        return None
+    candidate.is_active = is_active
+    await db.commit()
+    await db.refresh(candidate)
+    logger.info("user_active_toggled", user_id=str(user_id), is_active=is_active)
+    if admin_id:
+        await create_audit_log(db, admin_id, "toggle_active", target_user_id=user_id, details={"is_active": is_active})
+    return candidate
+
+
+async def get_activity_feed(db: AsyncSession, limit: int = 50) -> list[ActivityFeedItem]:
+    result = await db.execute(
+        select(
+            AnalyticsEvent.id,
+            AnalyticsEvent.event_type,
+            AnalyticsEvent.entity_type,
+            AnalyticsEvent.metadata_.label("details"),
+            AnalyticsEvent.occurred_at,
+            Candidate.email.label("user_email"),
+            Candidate.full_name.label("user_name"),
+        )
+        .join(Candidate, Candidate.id == AnalyticsEvent.candidate_id)
+        .order_by(AnalyticsEvent.occurred_at.desc())
+        .limit(limit)
+    )
+    return [
+        ActivityFeedItem(
+            id=str(row.id),
+            user_email=row.user_email,
+            user_name=row.user_name,
+            event_type=row.event_type,
+            entity_type=row.entity_type,
+            details=row.details,
+            occurred_at=row.occurred_at,
+        )
+        for row in result.all()
+    ]
+
+
+async def export_users_csv(db: AsyncSession) -> str:
+    q = (
+        select(
+            Candidate.id,
+            Candidate.email,
+            Candidate.full_name,
+            Candidate.is_admin,
+            Candidate.is_active,
+            Candidate.created_at,
+            func.count(func.distinct(Company.id)).label("companies_count"),
+            func.count(
+                func.distinct(
+                    case(
+                        (OutreachMessage.status != "draft", OutreachMessage.id),
+                    )
+                )
+            ).label("messages_sent_count"),
+        )
+        .outerjoin(Company, Company.candidate_id == Candidate.id)
+        .outerjoin(OutreachMessage, OutreachMessage.candidate_id == Candidate.id)
+        .group_by(Candidate.id)
+        .order_by(Candidate.created_at.desc())
+    )
+    rows = (await db.execute(q)).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Email", "Full Name", "Is Admin", "Is Active", "Created At", "Companies", "Messages Sent"])
+    for row in rows:
+        writer.writerow([
+            str(row.id),
+            row.email,
+            row.full_name,
+            row.is_admin,
+            row.is_active,
+            row.created_at.isoformat(),
+            row.companies_count or 0,
+            row.messages_sent_count or 0,
+        ])
+    return output.getvalue()
+
+
+async def create_audit_log(
+    db: AsyncSession,
+    admin_id: uuid.UUID,
+    action: str,
+    target_user_id: uuid.UUID | None = None,
+    details: dict | None = None,
+) -> AdminAuditLog:
+    log = AdminAuditLog(
+        id=uuid.uuid4(),
+        admin_id=admin_id,
+        action=action,
+        target_user_id=target_user_id,
+        details=details,
+    )
+    db.add(log)
+    await db.commit()
+    logger.info("audit_log_created", action=action, admin_id=str(admin_id))
+    return log
+
+
+async def get_audit_log(db: AsyncSession, limit: int = 50) -> list[AuditLogItem]:
+    admin_alias = Candidate.__table__.alias("admin_user")
+    target_alias = Candidate.__table__.alias("target_user")
+
+    result = await db.execute(
+        select(
+            AdminAuditLog.id,
+            AdminAuditLog.action,
+            AdminAuditLog.details,
+            AdminAuditLog.created_at,
+            admin_alias.c.email.label("admin_email"),
+            admin_alias.c.full_name.label("admin_name"),
+            target_alias.c.email.label("target_email"),
+            target_alias.c.full_name.label("target_name"),
+        )
+        .outerjoin(admin_alias, admin_alias.c.id == AdminAuditLog.admin_id)
+        .outerjoin(target_alias, target_alias.c.id == AdminAuditLog.target_user_id)
+        .order_by(AdminAuditLog.created_at.desc())
+        .limit(limit)
+    )
+    return [
+        AuditLogItem(
+            id=str(row.id),
+            admin_email=row.admin_email,
+            admin_name=row.admin_name,
+            action=row.action,
+            target_email=row.target_email,
+            target_name=row.target_name,
+            details=row.details,
+            created_at=row.created_at,
+        )
+        for row in result.all()
+    ]
+
+
+async def broadcast_email(
+    db: AsyncSession,
+    admin_id: uuid.UUID,
+    subject: str,
+    body: str,
+    email_client,
+) -> BroadcastResponse:
+    from app.config import settings as app_settings
+
+    # Query all active candidates who haven't opted out of email notifications
+    result = await db.execute(
+        select(Candidate).where(
+            Candidate.is_active == True,  # noqa: E712
+        )
+    )
+    candidates = result.scalars().all()
+
+    sent_count = 0
+    skipped_count = 0
+    sender = getattr(app_settings, "SENDER_EMAIL", "noreply@example.com")
+
+    for candidate in candidates:
+        # Check notification preferences — default to opted-in
+        prefs = candidate.preferences or {}
+        if prefs.get("email_notifications") is False:
+            skipped_count += 1
+            continue
+
+        try:
+            await email_client.send(
+                to=candidate.email,
+                from_email=sender,
+                subject=subject,
+                body=body,
+            )
+            sent_count += 1
+        except Exception:
+            logger.warning("broadcast_send_failed", email=candidate.email)
+            skipped_count += 1
+
+    await create_audit_log(
+        db, admin_id, "broadcast_sent",
+        details={"subject": subject, "sent_count": sent_count, "skipped_count": skipped_count},
+    )
+
+    return BroadcastResponse(sent_count=sent_count, skipped_count=skipped_count)

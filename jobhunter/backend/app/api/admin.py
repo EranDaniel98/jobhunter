@@ -2,14 +2,21 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_admin, get_db
+from app.dependencies import get_current_admin, get_db, get_email_client
+from app.infrastructure.protocols import EmailClientProtocol
 from app.models.candidate import Candidate
 from app.schemas.admin import (
+    ActivityFeedItem,
+    AuditLogItem,
+    BroadcastRequest,
+    BroadcastResponse,
     InviteChainItem,
     RegistrationTrend,
     SystemOverview,
+    ToggleActiveRequest,
     ToggleAdminRequest,
     TopUserItem,
     UserDetail,
@@ -27,6 +34,37 @@ async def get_overview(
     db: AsyncSession = Depends(get_db),
 ):
     return await admin_service.get_system_overview(db)
+
+
+@router.get("/activity", response_model=list[ActivityFeedItem])
+async def get_activity_feed(
+    limit: int = Query(50, ge=1, le=200),
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await admin_service.get_activity_feed(db, limit=limit)
+
+
+@router.get("/audit-log", response_model=list[AuditLogItem])
+async def get_audit_log(
+    limit: int = Query(50, ge=1, le=200),
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    return await admin_service.get_audit_log(db, limit=limit)
+
+
+@router.get("/users/export")
+async def export_users_csv(
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    csv_content = await admin_service.export_users_csv(db)
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=users_export.csv"},
+    )
 
 
 @router.get("/users", response_model=UserListResponse)
@@ -59,7 +97,21 @@ async def toggle_admin(
     admin: Candidate = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    candidate = await admin_service.toggle_user_admin(db, user_id, body.is_admin)
+    candidate = await admin_service.toggle_user_admin(db, user_id, body.is_admin, admin_id=admin.id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="User not found")
+    user = await admin_service.get_user_detail(db, user_id)
+    return user
+
+
+@router.patch("/users/{user_id}/active", response_model=UserDetail)
+async def toggle_active(
+    user_id: uuid.UUID,
+    body: ToggleActiveRequest,
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    candidate = await admin_service.toggle_user_active(db, user_id, body.is_active, admin_id=admin.id)
     if not candidate:
         raise HTTPException(status_code=404, detail="User not found")
     user = await admin_service.get_user_detail(db, user_id)
@@ -77,9 +129,21 @@ async def delete_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete your own account",
         )
-    deleted = await admin_service.delete_user(db, user_id)
+    deleted = await admin_service.delete_user(db, user_id, admin_id=admin.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.post("/broadcast", response_model=BroadcastResponse)
+async def broadcast_email(
+    body: BroadcastRequest,
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+    email_client: EmailClientProtocol = Depends(get_email_client),
+):
+    return await admin_service.broadcast_email(
+        db, admin.id, body.subject, body.body, email_client
+    )
 
 
 @router.get("/analytics/registrations", response_model=list[RegistrationTrend])

@@ -24,6 +24,7 @@ class Candidate(TimestampMixin, Base):
     salary_max: Mapped[int | None] = mapped_column(Integer)
     preferences: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
     resumes: Mapped[list["Resume"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")

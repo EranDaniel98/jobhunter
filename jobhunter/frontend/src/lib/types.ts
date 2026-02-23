@@ -17,6 +17,7 @@ export interface CandidateResponse {
   salary_min: number | null;
   salary_max: number | null;
   is_admin: boolean;
+  preferences: Record<string, unknown> | null;
 }
 
 export interface CandidateUpdate {
@@ -28,6 +29,7 @@ export interface CandidateUpdate {
   target_locations?: string[];
   salary_min?: number | null;
   salary_max?: number | null;
+  preferences?: Record<string, unknown>;
 }
 
 // Resume & DNA
@@ -200,4 +202,30 @@ export interface TopUserItem {
   full_name: string;
   metric_value: number;
   metric_name: string;
+}
+
+export interface ActivityFeedItem {
+  id: string;
+  user_email: string;
+  user_name: string;
+  event_type: string;
+  entity_type: string | null;
+  details: Record<string, unknown> | null;
+  occurred_at: string;
+}
+
+export interface AuditLogItem {
+  id: string;
+  admin_email: string | null;
+  admin_name: string | null;
+  action: string;
+  target_email: string | null;
+  target_name: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface BroadcastResponse {
+  sent_count: number;
+  skipped_count: number;
 }
