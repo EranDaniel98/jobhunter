@@ -36,10 +36,13 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Building2, Loader2, Search, Plus, Check, X, SlidersHorizontal } from "lucide-react";
+import { Building2, Loader2, Search, Plus, Check, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 
 export default function CompaniesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "fit_score" | "">("");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [addOpen, setAddOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterIndustries, setFilterIndustries] = useState("");
@@ -55,6 +58,35 @@ export default function CompaniesPage() {
   const rejectMutation = useRejectCompany();
 
   const companies = data?.companies || [];
+
+  const filteredCompanies = companies
+    .filter((c) =>
+      searchQuery === "" ||
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.domain && c.domain.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (c.industry && c.industry.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .sort((a, b) => {
+      if (!sortBy) return 0;
+      if (sortBy === "name") {
+        return sortDir === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      }
+      if (sortBy === "fit_score") {
+        return sortDir === "asc"
+          ? (a.fit_score || 0) - (b.fit_score || 0)
+          : (b.fit_score || 0) - (a.fit_score || 0);
+      }
+      return 0;
+    });
+
+  function toggleSort(col: "name" | "fit_score") {
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortDir(col === "fit_score" ? "desc" : "asc");
+    }
+  }
 
   function handleDiscover() {
     const filters: Record<string, unknown> = {};
@@ -160,9 +192,16 @@ export default function CompaniesPage() {
         </TabsList>
       </Tabs>
 
+      <Input
+        placeholder="Search companies..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="max-w-sm"
+      />
+
       {isLoading && <TableSkeleton />}
 
-      {!isLoading && companies.length === 0 && (
+      {!isLoading && filteredCompanies.length === 0 && (
         <EmptyState
           icon={Building2}
           title="No companies yet"
@@ -171,21 +210,25 @@ export default function CompaniesPage() {
         />
       )}
 
-      {!isLoading && companies.length > 0 && (
+      {!isLoading && filteredCompanies.length > 0 && (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Company</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
+                  <span className="flex items-center gap-1">Company <ArrowUpDown className="h-3 w-3" /></span>
+                </TableHead>
                 <TableHead className="hidden sm:table-cell">Industry</TableHead>
-                <TableHead>Fit Score</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("fit_score")}>
+                  <span className="flex items-center gap-1">Fit Score <ArrowUpDown className="h-3 w-3" /></span>
+                </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="hidden md:table-cell">Research</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {companies.map((company) => (
+              {filteredCompanies.map((company) => (
                 <TableRow
                   key={company.id}
                   className="cursor-pointer"
