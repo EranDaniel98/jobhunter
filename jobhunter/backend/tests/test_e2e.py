@@ -8,11 +8,11 @@ API = settings.API_V1_PREFIX
 
 
 @pytest.mark.asyncio
-async def test_full_e2e_flow(client: AsyncClient):
+async def test_full_e2e_flow(client: AsyncClient, invite_code: str):
     # 1. Register
     resp = await client.post(
         f"{API}/auth/register",
-        json={"email": "e2e@example.com", "password": "securepass1", "full_name": "E2E Tester"},
+        json={"email": "e2e@example.com", "password": "securepass1", "full_name": "E2E Tester", "invite_code": invite_code},
     )
     assert resp.status_code == 201
 

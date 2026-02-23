@@ -25,6 +25,8 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
         id=str(candidate.id),
         email=candidate.email,
         full_name=candidate.full_name,
+        is_admin=candidate.is_admin,
+        preferences=candidate.preferences,
     )
 
 
@@ -59,6 +61,8 @@ async def get_me(candidate: Candidate = Depends(get_current_candidate)):
         target_locations=candidate.target_locations,
         salary_min=candidate.salary_min,
         salary_max=candidate.salary_max,
+        is_admin=candidate.is_admin,
+        preferences=candidate.preferences,
     )
 
 
@@ -85,4 +89,6 @@ async def update_me(
         target_locations=candidate.target_locations,
         salary_min=candidate.salary_min,
         salary_max=candidate.salary_max,
+        is_admin=candidate.is_admin,
+        preferences=candidate.preferences,
     )

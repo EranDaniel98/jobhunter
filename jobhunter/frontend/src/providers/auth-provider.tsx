@@ -10,7 +10,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, fullName: string) => Promise<void>;
+  register: (email: string, password: string, fullName: string, inviteCode: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: CandidateUpdate) => Promise<void>;
 }
@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (email: string, password: string, fullName: string) => {
-      await authApi.register(email, password, fullName);
+    async (email: string, password: string, fullName: string, inviteCode: string) => {
+      await authApi.register(email, password, fullName, inviteCode);
       // Auto-login after register
       await login(email, password);
     },

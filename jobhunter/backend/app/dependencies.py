@@ -107,3 +107,14 @@ async def get_current_candidate(
         )
 
     return candidate
+
+
+async def get_current_admin(
+    candidate: Candidate = Depends(get_current_candidate),
+) -> Candidate:
+    if not candidate.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return candidate

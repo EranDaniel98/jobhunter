@@ -4,13 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/providers/auth-provider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  inviteCode: string;
+  invitedByName?: string | null;
+}
+
+export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
   const { register } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -25,7 +30,7 @@ export function RegisterForm() {
     }
     setLoading(true);
     try {
-      await register(email, password, fullName);
+      await register(email, password, fullName, inviteCode);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
@@ -40,6 +45,9 @@ export function RegisterForm() {
     <Card>
       <CardHeader>
         <CardTitle>Create account</CardTitle>
+        {invitedByName && (
+          <CardDescription>Invited by {invitedByName}</CardDescription>
+        )}
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">

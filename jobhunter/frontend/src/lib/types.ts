@@ -16,6 +16,8 @@ export interface CandidateResponse {
   target_locations: string[] | null;
   salary_min: number | null;
   salary_max: number | null;
+  is_admin: boolean;
+  preferences: Record<string, unknown> | null;
 }
 
 export interface CandidateUpdate {
@@ -27,6 +29,7 @@ export interface CandidateUpdate {
   target_locations?: string[];
   salary_min?: number | null;
   salary_max?: number | null;
+  preferences?: Record<string, unknown>;
 }
 
 // Resume & DNA
@@ -145,4 +148,84 @@ export interface PipelineStatsResponse {
   rejected: number;
   researched: number;
   contacted: number;
+}
+
+// Admin
+export interface SystemOverview {
+  total_users: number;
+  total_companies: number;
+  total_messages_sent: number;
+  total_contacts: number;
+  total_invites_used: number;
+  active_users_7d: number;
+  active_users_30d: number;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name: string;
+  is_admin: boolean;
+  created_at: string;
+  companies_count: number;
+  messages_sent_count: number;
+  is_active: boolean;
+}
+
+export interface AdminUserList {
+  users: AdminUser[];
+  total: number;
+}
+
+export interface AdminUserDetail extends AdminUser {
+  invited_by_email: string | null;
+  invite_code_used: string | null;
+  recent_activity: Record<string, unknown>[];
+}
+
+export interface RegistrationTrend {
+  date: string;
+  count: number;
+}
+
+export interface InviteChainItem {
+  inviter_email: string;
+  inviter_name: string;
+  invitee_email: string | null;
+  invitee_name: string | null;
+  code: string;
+  used_at: string | null;
+}
+
+export interface TopUserItem {
+  email: string;
+  full_name: string;
+  metric_value: number;
+  metric_name: string;
+}
+
+export interface ActivityFeedItem {
+  id: string;
+  user_email: string;
+  user_name: string;
+  event_type: string;
+  entity_type: string | null;
+  details: Record<string, unknown> | null;
+  occurred_at: string;
+}
+
+export interface AuditLogItem {
+  id: string;
+  admin_email: string | null;
+  admin_name: string | null;
+  action: string;
+  target_email: string | null;
+  target_name: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface BroadcastResponse {
+  sent_count: number;
+  skipped_count: number;
 }

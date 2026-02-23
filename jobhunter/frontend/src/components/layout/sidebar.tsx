@@ -22,6 +22,7 @@ import {
   Settings,
   LogOut,
   Briefcase,
+  Shield,
 } from "lucide-react";
 
 const navItems = [
@@ -32,6 +33,8 @@ const navItems = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+const adminNavItem = { href: "/admin", label: "Admin", icon: Shield };
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -54,7 +57,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map((item) => {
+        {[...navItems, ...(user?.is_admin ? [adminNavItem] : [])].map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
