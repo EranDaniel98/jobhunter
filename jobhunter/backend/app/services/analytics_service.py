@@ -95,6 +95,39 @@ async def get_outreach_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     }
 
 
+async def get_variant_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
+    """Get outreach stats grouped by variant for A/B analysis."""
+    sent_statuses = ("sent", "delivered", "opened", "replied")
+    opened_statuses = ("opened", "replied")
+
+    result = await db.execute(
+        select(
+            OutreachMessage.variant,
+            func.count(case((OutreachMessage.status.in_(sent_statuses), 1))).label("sent"),
+            func.count(case((OutreachMessage.status.in_(opened_statuses), 1))).label("opened"),
+            func.count(case((OutreachMessage.status == "replied", 1))).label("replied"),
+        )
+        .where(
+            OutreachMessage.candidate_id == candidate_id,
+            OutreachMessage.variant.isnot(None),
+        )
+        .group_by(OutreachMessage.variant)
+    )
+    rows = result.all()
+
+    by_variant = {}
+    for r in rows:
+        sent = r.sent or 0
+        by_variant[r.variant] = {
+            "sent": sent,
+            "opened": r.opened or 0,
+            "replied": r.replied or 0,
+            "open_rate": (r.opened or 0) / sent if sent > 0 else 0.0,
+            "reply_rate": (r.replied or 0) / sent if sent > 0 else 0.0,
+        }
+    return by_variant
+
+
 async def get_pipeline_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     """Get company pipeline statistics (2 queries instead of 3)."""
     # Combined query: status counts + researched count in one pass

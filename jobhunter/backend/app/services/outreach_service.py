@@ -67,6 +67,11 @@ MESSAGE_TYPE_INSTRUCTIONS = {
     "breakup": "Final message. Very short. Let them know this is the last email. Leave the door open with grace.",
 }
 
+VARIANT_INSTRUCTIONS = {
+    "professional": "Use a formal, polished tone. Lead with credentials and mutual value. Structured and concise.",
+    "conversational": "Use a warm, casual tone. Lead with genuine curiosity about the company. Friendly and authentic.",
+}
+
 LINKEDIN_PROMPT = """Draft a short LinkedIn message (max 300 characters for connection request, or ~100 words for InMail) from a job candidate to a contact.
 
 CANDIDATE: {candidate_summary}
@@ -80,7 +85,8 @@ Return JSON with subject (for InMail, null for connection) and body."""
 
 
 async def draft_message(
-    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID, language: str = "en"
+    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID,
+    language: str = "en", variant: str | None = None
 ) -> OutreachMessage:
     """Draft a personalized outreach email."""
     # Load all context
@@ -103,6 +109,10 @@ async def draft_message(
     language_name = LANGUAGE_NAMES.get(language, "English")
 
     client = get_openai()
+    variant_instruction = ""
+    if variant and variant in VARIANT_INSTRUCTIONS:
+        variant_instruction = f"\n- TONE: {VARIANT_INSTRUCTIONS[variant]}"
+
     prompt = OUTREACH_PROMPT.format(
         message_type=message_type,
         candidate_summary=dna.experience_summary if dna else "No candidate profile",
@@ -116,7 +126,7 @@ async def draft_message(
         contact_name=contact.full_name,
         contact_title=contact.title or "Unknown",
         contact_role=contact.role_type or "Unknown",
-        message_type_instructions=MESSAGE_TYPE_INSTRUCTIONS.get(message_type, ""),
+        message_type_instructions=MESSAGE_TYPE_INSTRUCTIONS.get(message_type, "") + variant_instruction,
         language_name=language_name,
     )
 
@@ -131,6 +141,7 @@ async def draft_message(
         subject=result["subject"],
         body=result["body"],
         personalization_data={"points": result.get("personalization_points", [])},
+        variant=variant,
         status="draft",
     )
     db.add(message)
@@ -189,6 +200,17 @@ async def draft_linkedin_message(
     await db.refresh(message)
     logger.info("linkedin_message_drafted", message_id=str(message.id))
     return message
+
+
+async def draft_variants(
+    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID, language: str = "en"
+) -> list[OutreachMessage]:
+    """Draft two message variants (professional + conversational) for A/B comparison."""
+    variants = []
+    for tone in ("professional", "conversational"):
+        msg = await draft_message(db, candidate_id, contact_id, language=language, variant=tone)
+        variants.append(msg)
+    return variants
 
 
 def _next_message_type(existing_messages: list[OutreachMessage]) -> str:

@@ -27,6 +27,7 @@ class OutreachMessageResponse(BaseModel):
     subject: str | None = None
     body: str
     personalization_data: dict | None = None
+    variant: str | None = None
     status: str
     sent_at: datetime | None = None
     opened_at: datetime | None = None
