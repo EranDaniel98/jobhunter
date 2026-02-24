@@ -47,13 +47,29 @@ class OpenAIStub:
                 ]
             }
 
+        # Skills extraction schema (has "skills" key with items containing category/proficiency)
+        skills_props = response_schema.get("properties", {}).get("skills", {})
+        items_props = skills_props.get("items", {}).get("properties", {})
+        if "skills" in schema_keys and "category" in items_props and "proficiency" in items_props:
+            return {
+                "skills": [
+                    {"name": "Python", "category": "explicit", "proficiency": "expert",
+                     "years_experience": 5.0, "evidence": "5 years professional Python development"},
+                    {"name": "FastAPI", "category": "explicit", "proficiency": "advanced",
+                     "years_experience": 3.0, "evidence": "Built REST APIs with FastAPI"},
+                    {"name": "Leadership", "category": "transferable", "proficiency": "intermediate",
+                     "years_experience": 2.0, "evidence": "Led team of 5 engineers"},
+                ]
+            }
+
         # Return a response that satisfies both resume parsing and outreach drafting schemas
         return {
             "name": "Test User",
             "headline": "Software Engineer",
-            "experiences": [{"company": "TestCo", "title": "Engineer"}],
+            "experiences": [{"company": "TestCo", "title": "Engineer", "dates": "2020-2024",
+                            "description": "Backend development", "achievements": ["Built API"]}],
             "skills": ["Python", "FastAPI"],
-            "education": [{"institution": "MIT", "degree": "BS CS"}],
+            "education": [{"institution": "MIT", "degree": "BS CS", "year": "2020"}],
             "certifications": [],
             "summary": "Experienced engineer.",
             "strengths": ["Python", "APIs", "Databases", "Testing", "Architecture"],
@@ -73,6 +89,8 @@ class OpenAIStub:
             "compensation_data": {"range": "150k-250k", "equity": "0.1%", "benefits": ["health"]},
             "key_people": [{"name": "Jane Doe", "title": "CTO"}],
             "why_hire_me": "Strong backend experience aligns with team needs.",
+            "resume_bullets": ["Highlight Python backend experience", "Emphasize API design skills"],
+            "fit_score_tips": ["Learn Kubernetes basics", "Emphasize cloud experience"],
             "recent_news": [{"title": "Series B", "date": "2025-01-01"}],
         }
 
@@ -195,17 +213,14 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     async def override_get_session():
         yield db_session
 
-    from app.infrastructure.openai_client import OpenAIClient
-    from app.infrastructure.hunter_client import HunterClient
-
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_db] = override_get_session
-    # Use real OpenAI and Hunter clients; only stub email sending
+    # Use stubs for all external API clients — no real API calls in tests
     app.dependency_overrides[get_email_client] = lambda: ResendStub()
 
-    # Inject real clients into singletons for code that calls get_*() directly
-    _deps._openai_client = OpenAIClient()
-    _deps._hunter_client = HunterClient()
+    # Inject stubs into singletons for code that calls get_*() directly
+    _deps._openai_client = OpenAIStub()
+    _deps._hunter_client = HunterStub()
     _deps._email_client = ResendStub()
 
     # Use in-memory storage stub for tests
