@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # Unsubscribe link signing
     UNSUBSCRIBE_SECRET: str = ""
 
+    # API cost limits (daily per user)
+    DAILY_OPENAI_CALL_LIMIT: int = 100
+    DAILY_HUNTER_CALL_LIMIT: int = 50
+    DAILY_DISCOVERY_LIMIT: int = 10
+    DAILY_RESEARCH_LIMIT: int = 5
+
     # Email
     DAILY_EMAIL_LIMIT: int = 50
     SENDER_EMAIL: str = "outreach@eran-jobs.com"
@@ -44,6 +50,11 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "INFO"
+
+    # Sentry (leave empty to disable)
+    SENTRY_DSN: str = ""
+    SENTRY_ENVIRONMENT: str = "development"
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
 
     # Database pool
     DB_POOL_SIZE: int = 10

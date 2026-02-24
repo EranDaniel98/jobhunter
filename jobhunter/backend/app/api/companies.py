@@ -18,6 +18,7 @@ from app.schemas.company import (
 )
 from app.schemas.contact import ContactResponse
 from app.services import company_service
+from app.services.quota_service import check_and_increment
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 logger = structlog.get_logger()
@@ -41,13 +42,14 @@ def _company_to_response(c: Company) -> CompanyResponse:
 
 
 @router.post("/discover", response_model=CompanyListResponse)
-@limiter.limit("1000/hour")  # TODO: restore to 3/hour after debugging
+@limiter.limit("3/hour")
 async def discover_companies(
     request: Request,
     data: CompanyDiscoverRequest | None = None,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
+    await check_and_increment(str(candidate.id), "discovery")
     companies = await company_service.discover_companies(
         db,
         candidate.id,
@@ -69,14 +71,13 @@ async def add_company(
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
+    await check_and_increment(str(candidate.id), "hunter")
     try:
         company = await company_service.add_company_manual(db, candidate.id, data.domain)
 
         # Research in background
         background_tasks.add_task(_research_background, company.id)
         return _company_to_response(company)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -238,6 +239,13 @@ async def _research_background(company_id):
 
     async with async_session_factory() as db:
         try:
+            # Check research + openai quotas before calling external APIs
+            result = await db.execute(select(Company).where(Company.id == company_id))
+            company_for_quota = result.scalar_one_or_none()
+            if company_for_quota:
+                cid = str(company_for_quota.candidate_id)
+                await check_and_increment(cid, "research")
+                await check_and_increment(cid, "openai")
             await company_service.research_company(db, company_id)
             # Notify via WebSocket
             result = await db.execute(select(Company).where(Company.id == company_id))

@@ -34,6 +34,17 @@ async def health_check(
         checks["redis"] = f"unhealthy: {e}"
         logger.error("health_check_redis_failed", error=str(e))
 
+    # Migration version check (informational — does not affect healthy/unhealthy)
+    try:
+        result = await db.execute(text(
+            "SELECT version_num FROM alembic_version LIMIT 1"
+        ))
+        row = result.first()
+        current = row[0] if row else "none"
+        checks["migration_version"] = current
+    except Exception:
+        checks["migration_version"] = "unknown"
+
     all_healthy = all(v == "healthy" for v in checks.values())
     status_code = 200 if all_healthy else 503
 

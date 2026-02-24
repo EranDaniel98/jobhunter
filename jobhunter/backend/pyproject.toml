@@ -28,6 +28,7 @@ dependencies = [
     "pypdf>=5.0.0",
     "python-docx>=1.1.0",
     "boto3>=1.35.0",
+    "sentry-sdk[fastapi]>=2.0.0",
     "arq>=0.26.0",
     "langgraph>=0.4.0",
     "langgraph-checkpoint-postgres>=2.0.0",

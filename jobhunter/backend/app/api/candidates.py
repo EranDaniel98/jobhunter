@@ -8,6 +8,7 @@ from app.rate_limit import limiter
 from app.models.candidate import Candidate, CandidateDNA, Resume, Skill
 from app.schemas.candidate import CandidateDNAResponse, ResumeUploadResponse, SkillResponse
 from app.services import resume_service
+from app.services.quota_service import get_usage
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 logger = structlog.get_logger()
@@ -90,6 +91,13 @@ async def _run_async_background(resume_id, candidate_id):
                     await db.commit()
             except Exception:
                 pass
+
+
+@router.get("/me/usage")
+async def get_my_usage(
+    candidate: Candidate = Depends(get_current_candidate),
+):
+    return await get_usage(str(candidate.id))
 
 
 @router.get("/me/dna", response_model=CandidateDNAResponse)
