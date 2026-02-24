@@ -92,6 +92,7 @@ export interface CompanyDossierResponse {
   key_people: Record<string, unknown>[] | null;
   why_hire_me: string | null;
   resume_bullets: string[] | null;
+  fit_score_tips: string[] | null;
   recent_news: Record<string, unknown>[] | null;
 }
 

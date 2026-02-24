@@ -49,6 +49,7 @@ class CompanyDossierResponse(BaseModel):
     key_people: list[dict] | None = None
     why_hire_me: str | None = None
     resume_bullets: list[str] | None = None
+    fit_score_tips: list[str] | None = None
     recent_news: list[dict] | None = None
 
     model_config = {"from_attributes": True}

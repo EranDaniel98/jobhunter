@@ -2,7 +2,7 @@ import type { CompanyDossierResponse } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CardSkeleton } from "@/components/shared/loading-skeleton";
-import { Loader2, AlertTriangle, Briefcase, MessageSquare, DollarSign, Users, Newspaper, Lightbulb } from "lucide-react";
+import { Loader2, AlertTriangle, Briefcase, MessageSquare, DollarSign, Users, Newspaper, Lightbulb, TrendingUp } from "lucide-react";
 
 interface DossierViewProps {
   dossier: CompanyDossierResponse | null;
@@ -89,6 +89,27 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">{dossier.why_hire_me}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {dossier.fit_score_tips && dossier.fit_score_tips.length > 0 && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4" />
+              How to Raise Your Match Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {dossier.fit_score_tips.map((tip, i) => (
+                <li key={i} className="flex gap-2 text-sm text-muted-foreground">
+                  <span className="shrink-0 text-primary">•</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}
