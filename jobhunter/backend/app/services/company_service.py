@@ -148,6 +148,49 @@ DISCOVERY_SCHEMA = {
 }
 
 
+async def recalculate_fit_scores(db: AsyncSession, candidate_id: uuid.UUID) -> int:
+    """Recalculate fit scores for all pending/approved companies after a new resume upload."""
+    # Get the new DNA embedding
+    dna_result = await db.execute(
+        select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id)
+    )
+    dna = dna_result.scalar_one_or_none()
+    if not dna or dna.embedding is None:
+        logger.warning("recalculate_fit_scores_skipped", candidate_id=str(candidate_id), reason="no_dna")
+        return 0
+
+    candidate_embedding = [float(x) for x in dna.embedding]
+
+    # Get all companies with existing embeddings that are suggested or approved
+    result = await db.execute(
+        select(Company).where(
+            Company.candidate_id == candidate_id,
+            Company.status.in_(["suggested", "approved"]),
+            Company.embedding.isnot(None),
+        )
+    )
+    companies = result.scalars().all()
+
+    updated = 0
+    for company in companies:
+        company_embedding = [float(x) for x in company.embedding]
+        new_score = cosine_similarity(candidate_embedding, company_embedding)
+        if company.fit_score != new_score:
+            company.fit_score = new_score
+            updated += 1
+
+    if updated > 0:
+        await db.commit()
+
+    logger.info(
+        "fit_scores_recalculated",
+        candidate_id=str(candidate_id),
+        total=len(companies),
+        updated=updated,
+    )
+    return updated
+
+
 async def discover_companies(
     db: AsyncSession,
     candidate_id: uuid.UUID,

@@ -63,11 +63,15 @@ async def _run_async_background(resume_id, candidate_id):
             if resume:
                 resume.parse_status = "completed"
                 await db.commit()
+            # Recalculate fit scores for existing companies with new DNA
+            from app.services.company_service import recalculate_fit_scores
+            updated = await recalculate_fit_scores(db, candidate_id)
+            logger.info("fit_scores_updated_after_resume", candidate_id=str(candidate_id), updated=updated)
             # Notify via WebSocket
             from app.infrastructure.websocket_manager import ws_manager
             await ws_manager.broadcast(
                 str(candidate_id), "resume_parsed",
-                {"resume_id": str(resume_id), "status": "completed"},
+                {"resume_id": str(resume_id), "status": "completed", "fit_scores_updated": updated},
             )
             logger.info("background_resume_processing_complete", resume_id=str(resume_id))
         except Exception as e:
