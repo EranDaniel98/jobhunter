@@ -91,6 +91,7 @@ export interface CompanyDossierResponse {
   compensation_data: Record<string, unknown> | null;
   key_people: Record<string, unknown>[] | null;
   why_hire_me: string | null;
+  resume_bullets: string[] | null;
   recent_news: Record<string, unknown>[] | null;
 }
 
