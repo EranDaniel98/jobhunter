@@ -2,7 +2,7 @@
 
 import { useAdminUser, useToggleAdmin, useToggleActive, useDeleteUser } from "@/lib/hooks/use-admin";
 import { useState } from "react";
-import type { AdminUser } from "@/lib/types";
+
 import {
   Sheet,
   SheetContent,

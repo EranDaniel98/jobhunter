@@ -8,7 +8,7 @@ import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Footer } from "@/components/layout/footer";
 import { CommandMenu } from "@/components/layout/command-menu";
-import { NotificationCenter } from "@/components/layout/notification-center";
+
 import { useWebSocket } from "@/lib/hooks/use-websocket";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

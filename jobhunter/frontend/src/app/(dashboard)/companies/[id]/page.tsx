@@ -9,7 +9,7 @@ import {
   useApproveCompany,
   useRejectCompany,
 } from "@/lib/hooks/use-companies";
-import { PageHeader } from "@/components/shared/page-header";
+
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FitScore } from "@/components/shared/fit-score";
 import { DossierView } from "@/components/companies/dossier-view";
