@@ -1,11 +1,12 @@
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
 from app.models.candidate import Candidate
 from app.schemas.auth import (
     CandidateResponse,
+    ChangePasswordRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
@@ -13,6 +14,7 @@ from app.schemas.auth import (
 )
 from app.schemas.candidate import CandidateUpdate
 from app.services import auth_service
+from app.utils.security import hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = structlog.get_logger()
@@ -92,3 +94,16 @@ async def update_me(
         is_admin=candidate.is_admin,
         preferences=candidate.preferences,
     )
+
+
+@router.post("/me/password", status_code=204)
+async def change_password(
+    data: ChangePasswordRequest,
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(data.current_password, candidate.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    candidate.password_hash = hash_password(data.new_password)
+    await db.commit()
+    logger.info("password_changed", candidate_id=str(candidate.id))

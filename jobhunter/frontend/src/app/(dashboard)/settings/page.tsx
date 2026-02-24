@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { toastError } from "@/lib/api/error-utils";
+import { ChangePasswordCard } from "@/components/settings/change-password-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Copy, Loader2, Plus, X } from "lucide-react";
 
@@ -120,6 +121,8 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ChangePasswordCard />
 
       <Card>
         <CardHeader>

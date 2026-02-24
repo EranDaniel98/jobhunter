@@ -41,3 +41,10 @@ export async function updateMe(updates: CandidateUpdate): Promise<CandidateRespo
   const { data } = await api.patch<CandidateResponse>("/auth/me", updates);
   return data;
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await api.post("/auth/me/password", {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+}
