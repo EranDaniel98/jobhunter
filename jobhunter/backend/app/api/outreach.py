@@ -32,6 +32,7 @@ def _message_to_response(m: OutreachMessage) -> OutreachMessageResponse:
         subject=m.subject,
         body=m.body,
         personalization_data=m.personalization_data,
+        variant=m.variant,
         status=m.status,
         sent_at=m.sent_at,
         opened_at=m.opened_at,
@@ -83,6 +84,25 @@ async def draft_linkedin(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return _message_to_response(message)
+
+
+@router.post("/{contact_id}/draft-variants", response_model=list[OutreachMessageResponse], status_code=201)
+@limiter.limit("10/hour")
+async def draft_message_variants(
+    request: Request,
+    contact_id: str,
+    language: str = Query(default="en"),
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    """Draft two message variants for A/B comparison."""
+    try:
+        variants = await outreach_service.draft_variants(
+            db, candidate.id, _uuid.UUID(contact_id), language=language
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return [_message_to_response(m) for m in variants]
 
 
 @router.get("", response_model=list[OutreachMessageResponse])

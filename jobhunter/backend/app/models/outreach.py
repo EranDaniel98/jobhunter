@@ -22,6 +22,7 @@ class OutreachMessage(TimestampMixin, Base):
     subject: Mapped[str | None] = mapped_column(String(500))
     body: Mapped[str] = mapped_column(Text, nullable=False)
     personalization_data: Mapped[dict | None] = mapped_column(JSONB)
+    variant: Mapped[str | None] = mapped_column(String(50))  # professional, conversational
     external_message_id: Mapped[str | None] = mapped_column(String(255), index=True)
     status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
     # status: draft, approved, sent, delivered, opened, replied, bounced, failed
