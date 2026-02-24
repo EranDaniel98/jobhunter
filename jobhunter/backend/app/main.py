@@ -24,6 +24,16 @@ _JWT_DEFAULT = "change-me-to-a-random-secret-in-production"
 async def lifespan(app: FastAPI):
     setup_logging()
 
+    if settings.SENTRY_DSN:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.SENTRY_ENVIRONMENT,
+            traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+            send_default_pii=False,
+        )
+        logger.info("sentry_initialized", environment=settings.SENTRY_ENVIRONMENT)
+
     if settings.JWT_SECRET == _JWT_DEFAULT:
         logger.critical(
             "jwt_secret_not_configured",

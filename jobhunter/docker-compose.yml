@@ -38,6 +38,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://jobhunter:jobhunter@postgres:5432/jobhunter
       REDIS_URL: redis://redis:6379/0
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
     volumes:
       - ./backend:/app
       - upload_data:/app/data/uploads
@@ -57,6 +59,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://jobhunter:jobhunter@postgres:5432/jobhunter
       REDIS_URL: redis://redis:6379/0
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
     volumes:
       - ./backend:/app
       - upload_data:/app/data/uploads

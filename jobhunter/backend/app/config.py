@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Sentry (leave empty to disable)
+    SENTRY_DSN: str = ""
+    SENTRY_ENVIRONMENT: str = "development"
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
+
     # Database pool
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
