@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.dependencies import get_email_client
 from app.infrastructure.redis_client import get_redis
 from app.models.candidate import Candidate
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenPair
@@ -14,6 +15,7 @@ from app.services import invite_service
 from app.utils.security import (
     create_access_token,
     create_refresh_token,
+    create_verification_token,
     decode_token,
     hash_password,
     verify_password,
@@ -42,6 +44,7 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
         password_hash=hash_password(data.password),
         full_name=data.full_name,
         preferences=data.preferences.model_dump() if data.preferences else None,
+        email_verified=False,
     )
     db.add(candidate)
     await db.flush()
@@ -52,6 +55,22 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
     await db.commit()
     await db.refresh(candidate)
     logger.info("candidate_registered", candidate_id=str(candidate.id), invite_code=data.invite_code)
+
+    # Send verification email (best-effort, don't block registration)
+    try:
+        token = create_verification_token(str(candidate.id))
+        verify_url = f"{settings.FRONTEND_URL}/login?verify={token}"
+        email_client = get_email_client()
+        await email_client.send(
+            to=candidate.email,
+            from_email=settings.SENDER_EMAIL,
+            subject=f"Verify your {settings.APP_NAME} account",
+            body=f"Hi {candidate.full_name},\n\nPlease verify your email by clicking: {verify_url}\n\nThis link expires in 24 hours.",
+        )
+        logger.info("verification_email_sent", candidate_id=str(candidate.id))
+    except Exception as e:
+        logger.warning("verification_email_failed", candidate_id=str(candidate.id), error=str(e))
+
     return candidate
 
 

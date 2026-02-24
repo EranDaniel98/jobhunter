@@ -65,6 +65,7 @@ class CandidateResponse(BaseModel):
     salary_min: int | None = None
     salary_max: int | None = None
     is_admin: bool = False
+    email_verified: bool = True
     preferences: dict | None = None
 
     model_config = {"from_attributes": True}
