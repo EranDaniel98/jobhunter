@@ -50,33 +50,38 @@ async def upload_resume(
 
 
 async def _run_async_background(resume_id, candidate_id):
-    """Wrapper to run async resume processing."""
-    from app.infrastructure.database import async_session_factory
+    """Run the LangGraph resume processing pipeline."""
+    from app.graphs.resume_pipeline import get_resume_pipeline
 
-    async with async_session_factory() as db:
-        try:
-            await resume_service.parse_resume(db, resume_id)
-            await resume_service.generate_candidate_dna(db, candidate_id)
-            # Mark as completed
-            result = await db.execute(select(Resume).where(Resume.id == resume_id))
-            resume = result.scalar_one_or_none()
-            if resume:
-                resume.parse_status = "completed"
-                await db.commit()
-            # Recalculate fit scores for existing companies with new DNA
-            from app.services.company_service import recalculate_fit_scores
-            updated = await recalculate_fit_scores(db, candidate_id)
-            logger.info("fit_scores_updated_after_resume", candidate_id=str(candidate_id), updated=updated)
-            # Notify via WebSocket
-            from app.infrastructure.websocket_manager import ws_manager
-            await ws_manager.broadcast(
-                str(candidate_id), "resume_parsed",
-                {"resume_id": str(resume_id), "status": "completed", "fit_scores_updated": updated},
-            )
-            logger.info("background_resume_processing_complete", resume_id=str(resume_id))
-        except Exception as e:
-            logger.error("background_resume_processing_failed", error=str(e), resume_id=str(resume_id))
-            # Mark as failed
+    graph = get_resume_pipeline()
+    config = {"configurable": {"thread_id": f"resume:{resume_id}"}}
+
+    try:
+        result = await graph.ainvoke(
+            {
+                "resume_id": str(resume_id),
+                "candidate_id": str(candidate_id),
+                "parsed_data": None,
+                "raw_text": None,
+                "skills_data": None,
+                "dna_data": None,
+                "embedding": None,
+                "skills_vector": None,
+                "fit_scores_updated": 0,
+                "status": "pending",
+                "error": None,
+            },
+            config,
+        )
+        if result.get("status") == "failed":
+            logger.error("resume_pipeline_failed", resume_id=str(resume_id), error=result.get("error"))
+        else:
+            logger.info("resume_pipeline_completed", resume_id=str(resume_id))
+    except Exception as e:
+        logger.error("resume_pipeline_exception", resume_id=str(resume_id), error=str(e))
+        # Fallback: mark resume as failed
+        from app.infrastructure.database import async_session_factory
+        async with async_session_factory() as db:
             try:
                 result = await db.execute(select(Resume).where(Resume.id == resume_id))
                 resume = result.scalar_one_or_none()

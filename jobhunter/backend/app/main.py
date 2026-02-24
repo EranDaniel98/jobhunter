@@ -34,8 +34,11 @@ async def lifespan(app: FastAPI):
 
     logger.info("starting_up", app=settings.APP_NAME)
     await init_redis()
+    from app.graphs.resume_pipeline import init_checkpointer, close_checkpointer
+    await init_checkpointer(settings.DATABASE_URL)
     yield
     logger.info("shutting_down", app=settings.APP_NAME)
+    await close_checkpointer()
     await close_redis()
     await engine.dispose()
 
