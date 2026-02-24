@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { formatPercent } from "@/lib/utils";
 import {
   Building2,
@@ -91,9 +92,14 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Companies
-              </CardTitle>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle className="text-sm font-medium text-muted-foreground cursor-help">
+                    Companies
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent>Total companies in your pipeline</TooltipContent>
+              </Tooltip>
               <Building2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -110,9 +116,14 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Emails Sent
-              </CardTitle>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle className="text-sm font-medium text-muted-foreground cursor-help">
+                    Emails Sent
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent>Total outreach emails you&apos;ve sent</TooltipContent>
+              </Tooltip>
               <Mail className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -122,9 +133,14 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Open Rate
-              </CardTitle>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle className="text-sm font-medium text-muted-foreground cursor-help">
+                    Open Rate
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent>Percentage of sent emails that were opened</TooltipContent>
+              </Tooltip>
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -136,9 +152,14 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Reply Rate
-              </CardTitle>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle className="text-sm font-medium text-muted-foreground cursor-help">
+                    Reply Rate
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent>Percentage of sent emails that got a reply</TooltipContent>
+              </Tooltip>
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -159,15 +180,20 @@ export default function DashboardPage() {
           <CardContent>
             <div className="flex gap-6 text-center">
               {[
-                { label: "Suggested", value: pipeline.suggested, color: "text-blue-600" },
-                { label: "Approved", value: pipeline.approved, color: "text-green-600" },
-                { label: "Researched", value: pipeline.researched, color: "text-purple-600" },
-                { label: "Contacted", value: pipeline.contacted, color: "text-yellow-600" },
+                { label: "Suggested", value: pipeline.suggested, color: "text-blue-600", tip: "AI-recommended companies based on your DNA profile" },
+                { label: "Approved", value: pipeline.approved, color: "text-green-600", tip: "Companies you've approved for outreach" },
+                { label: "Researched", value: pipeline.researched, color: "text-purple-600", tip: "Companies with completed research dossiers" },
+                { label: "Contacted", value: pipeline.contacted, color: "text-yellow-600", tip: "Companies where outreach has been sent" },
               ].map((item) => (
-                <div key={item.label}>
-                  <div className={`text-xl font-bold ${item.color}`}>{item.value}</div>
-                  <div className="text-xs text-muted-foreground">{item.label}</div>
-                </div>
+                <Tooltip key={item.label}>
+                  <TooltipTrigger asChild>
+                    <div className="cursor-help">
+                      <div className={`text-xl font-bold ${item.color}`}>{item.value}</div>
+                      <div className="text-xs text-muted-foreground">{item.label}</div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{item.tip}</TooltipContent>
+                </Tooltip>
               ))}
             </div>
           </CardContent>
