@@ -17,6 +17,7 @@ export interface CandidateResponse {
   salary_min: number | null;
   salary_max: number | null;
   is_admin: boolean;
+  email_verified: boolean;
   preferences: Record<string, unknown> | null;
 }
 

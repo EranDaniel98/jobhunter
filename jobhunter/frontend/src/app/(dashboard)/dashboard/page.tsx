@@ -8,6 +8,7 @@ import { usePipelineStats, useFunnel, useOutreachStats } from "@/lib/hooks/use-a
 import { useCompanies } from "@/lib/hooks/use-companies";
 import * as candidatesApi from "@/lib/api/candidates";
 import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
+import { EmailVerificationBanner } from "@/components/dashboard/email-verification-banner";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FitScore } from "@/components/shared/fit-score";
@@ -72,6 +73,9 @@ export default function DashboardPage() {
           Add Company
         </Button>
       </div>
+
+      {/* Email verification banner */}
+      {user && !user.email_verified && <EmailVerificationBanner />}
 
       {/* Onboarding checklist */}
       <OnboardingChecklist
