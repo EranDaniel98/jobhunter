@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # Unsubscribe link signing
     UNSUBSCRIBE_SECRET: str = ""
 
+    # API cost limits (daily per user)
+    DAILY_OPENAI_CALL_LIMIT: int = 100
+    DAILY_HUNTER_CALL_LIMIT: int = 50
+    DAILY_DISCOVERY_LIMIT: int = 10
+    DAILY_RESEARCH_LIMIT: int = 5
+
     # Email
     DAILY_EMAIL_LIMIT: int = 50
     SENDER_EMAIL: str = "outreach@eran-jobs.com"
