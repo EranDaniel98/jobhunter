@@ -36,7 +36,8 @@ Generate a JSON dossier with:
 - compensation_data: object with range, equity, benefits
 - key_people: array of {{name, title}} for leadership
 - why_hire_me: 2-3 sentences explaining why THIS candidate would be valuable to THIS company
-- recent_news: array of {{title, date}} for notable events"""
+- recent_news: array of {{title, date}} for notable events
+- resume_bullets: array of 3-5 specific bullet points the candidate should add or emphasize on their resume to be a stronger match for THIS company. Reference specific skills, technologies, or experiences that align with the company's needs. Each bullet should be actionable (e.g. "Highlight your experience with distributed systems — their tech stack relies heavily on microservices")."""
 
 DOSSIER_SCHEMA = {
     "type": "object",
@@ -69,6 +70,10 @@ DOSSIER_SCHEMA = {
             },
         },
         "why_hire_me": {"type": "string"},
+        "resume_bullets": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
         "recent_news": {
             "type": "array",
             "items": {
@@ -82,7 +87,7 @@ DOSSIER_SCHEMA = {
             },
         },
     },
-    "required": ["culture_summary", "culture_score", "red_flags", "interview_format", "interview_questions", "compensation_data", "key_people", "why_hire_me", "recent_news"],
+    "required": ["culture_summary", "culture_score", "red_flags", "interview_format", "interview_questions", "compensation_data", "key_people", "why_hire_me", "resume_bullets", "recent_news"],
     "additionalProperties": False,
 }
 
@@ -371,6 +376,7 @@ async def research_company(db: AsyncSession, company_id: uuid.UUID) -> CompanyDo
         dossier.compensation_data = dossier_data.get("compensation_data")
         dossier.key_people = dossier_data.get("key_people")
         dossier.why_hire_me = dossier_data.get("why_hire_me")
+        dossier.resume_bullets = dossier_data.get("resume_bullets")
         dossier.recent_news = dossier_data.get("recent_news")
 
         # Create contacts from Hunter data

@@ -52,6 +52,7 @@ class CompanyDossier(TimestampMixin, Base):
     key_people: Mapped[dict | None] = mapped_column(JSONB)
     why_hire_me: Mapped[str | None] = mapped_column(Text)
     recent_news: Mapped[dict | None] = mapped_column(JSONB)
+    resume_bullets: Mapped[list[str] | None] = mapped_column(ARRAY(String(500)))
 
     # Relationships
     company: Mapped["Company"] = relationship(back_populates="dossier")
