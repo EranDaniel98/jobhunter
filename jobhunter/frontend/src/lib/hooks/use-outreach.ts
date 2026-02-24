@@ -85,6 +85,17 @@ export function useMarkReplied() {
   });
 }
 
+export function useDraftVariants() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contactId, language }: { contactId: string; language?: string }) =>
+      outreachApi.draftVariants(contactId, language),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages"] });
+    },
+  });
+}
+
 export function useDeleteMessage() {
   const qc = useQueryClient();
   return useMutation({

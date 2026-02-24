@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { ContactResponse } from "@/lib/types";
+import type { ContactResponse, OutreachMessageResponse } from "@/lib/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as contactsApi from "@/lib/api/contacts";
-import { useDraftMessage, useDraftLinkedIn } from "@/lib/hooks/use-outreach";
+import { useDraftMessage, useDraftLinkedIn, useDraftVariants } from "@/lib/hooks/use-outreach";
+import { VariantPicker } from "@/components/companies/variant-picker";
+import { toastError } from "@/lib/api/error-utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -42,6 +44,7 @@ import {
   Linkedin,
   Users,
   Star,
+  FlaskConical,
 } from "lucide-react";
 
 interface ContactsListProps {
@@ -85,6 +88,9 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
 
   const draftEmailMutation = useDraftMessage();
   const draftLinkedInMutation = useDraftLinkedIn();
+  const variantsMutation = useDraftVariants();
+  const [abVariants, setAbVariants] = useState<OutreachMessageResponse[]>([]);
+  const [showPicker, setShowPicker] = useState(false);
 
   if (isLoading) return <TableSkeleton />;
 
@@ -202,6 +208,29 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                       variant="ghost"
                       className="h-8 w-8"
                       onClick={() =>
+                        variantsMutation.mutate(
+                          { contactId: contact.id, language },
+                          {
+                            onSuccess: (variants) => { setAbVariants(variants); setShowPicker(true); },
+                            onError: (err) => toastError(err, "Failed to draft variants"),
+                          }
+                        )
+                      }
+                      disabled={variantsMutation.isPending}
+                      title="A/B Draft"
+                      aria-label={`A/B draft for ${contact.full_name}`}
+                    >
+                      {variantsMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <FlaskConical className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={() =>
                         draftLinkedInMutation.mutate(
                           { contactId: contact.id, language },
                           {
@@ -222,6 +251,13 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
           </TableBody>
         </Table>
       </div>
+
+      <VariantPicker
+        variants={abVariants}
+        open={showPicker}
+        onOpenChange={setShowPicker}
+        onPicked={() => setAbVariants([])}
+      />
 
       <Dialog open={findOpen} onOpenChange={setFindOpen}>
         <DialogContent>

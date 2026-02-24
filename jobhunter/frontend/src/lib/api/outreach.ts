@@ -62,6 +62,18 @@ export async function markReplied(id: string): Promise<OutreachMessageResponse> 
   return data;
 }
 
+export async function draftVariants(
+  contactId: string,
+  language = "en"
+): Promise<OutreachMessageResponse[]> {
+  const { data } = await api.post<OutreachMessageResponse[]>(
+    `/outreach/${contactId}/draft-variants`,
+    null,
+    { params: { language } }
+  );
+  return data;
+}
+
 export async function deleteMessage(id: string): Promise<void> {
   await api.delete(`/outreach/${id}`);
 }

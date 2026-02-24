@@ -118,6 +118,7 @@ export interface OutreachMessageResponse {
   subject: string | null;
   body: string;
   personalization_data: Record<string, unknown> | null;
+  variant: string | null;
   status: string;
   sent_at: string | null;
   opened_at: string | null;
