@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { NotificationCenter } from "@/components/layout/notification-center";
 import { useApprovalCount } from "@/lib/hooks/use-approvals";
 import {
   LayoutDashboard,
@@ -39,7 +40,11 @@ const navItems = [
 
 const adminNavItem = { href: "/admin", label: "Admin", icon: Shield };
 
-export function Sidebar() {
+interface SidebarProps {
+  lastEvent?: { type: string; data: Record<string, unknown> } | null;
+}
+
+export function Sidebar({ lastEvent = null }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { data: approvalCount } = useApprovalCount();
@@ -84,6 +89,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t p-3 flex items-center gap-2">
+        <NotificationCenter lastEvent={lastEvent} />
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
