@@ -8,13 +8,14 @@ import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Footer } from "@/components/layout/footer";
 import { CommandMenu } from "@/components/layout/command-menu";
+import { NotificationCenter } from "@/components/layout/notification-center";
 import { useWebSocket } from "@/lib/hooks/use-websocket";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  useWebSocket(); // Global WebSocket connection for real-time events
+  const { lastEvent } = useWebSocket();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -34,11 +35,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar lastEvent={lastEvent} />
       <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
       <CommandMenu />
       <div className="lg:pl-64">
-        <Header onMenuClick={() => setMobileNavOpen(true)} />
+        <Header onMenuClick={() => setMobileNavOpen(true)} lastEvent={lastEvent} />
         <main className="p-4 md:p-6 lg:p-8">{children}</main>
         <Footer />
       </div>
