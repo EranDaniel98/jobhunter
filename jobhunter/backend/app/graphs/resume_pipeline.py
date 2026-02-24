@@ -70,12 +70,16 @@ async def parse_resume_node(state: ResumeProcessingState) -> dict:
             await db.commit()
             return {"status": "failed", "error": f"Resume {resume_id} has no extracted text"}
 
-        client = get_openai()
-        parsed = await client.parse_structured(
-            RESUME_PARSE_PROMPT, resume.raw_text, RESUME_PARSE_SCHEMA
-        )
-        resume.parsed_data = parsed
-        await db.commit()
+        try:
+            client = get_openai()
+            parsed = await client.parse_structured(
+                RESUME_PARSE_PROMPT, resume.raw_text, RESUME_PARSE_SCHEMA
+            )
+            resume.parsed_data = parsed
+            await db.commit()
+        except Exception as e:
+            logger.error("graph_parse_resume_failed", resume_id=str(resume_id), error=str(e))
+            return {"status": "failed", "error": f"Resume parsing failed: {e}"}
 
         logger.info("graph_parse_resume_done", resume_id=str(resume_id))
         return {"parsed_data": parsed, "raw_text": resume.raw_text}
@@ -84,10 +88,16 @@ async def parse_resume_node(state: ResumeProcessingState) -> dict:
 async def extract_skills_node(state: ResumeProcessingState) -> dict:
     """Extract categorized skills from resume text via OpenAI."""
     raw_text = state["raw_text"]
-    client = get_openai()
-    skills_data = await client.parse_structured(
-        SKILLS_EXTRACTION_PROMPT, raw_text, SKILLS_SCHEMA
-    )
+    if not raw_text:
+        return {"status": "failed", "error": "No raw_text available for skills extraction"}
+    try:
+        client = get_openai()
+        skills_data = await client.parse_structured(
+            SKILLS_EXTRACTION_PROMPT, raw_text, SKILLS_SCHEMA
+        )
+    except Exception as e:
+        logger.error("graph_extract_skills_failed", error=str(e))
+        return {"status": "failed", "error": f"Skills extraction failed: {e}"}
     logger.info("graph_extract_skills_done", skill_count=len(skills_data.get("skills", [])))
     return {"skills_data": skills_data}
 
@@ -99,20 +109,27 @@ async def generate_dna_node(state: ResumeProcessingState) -> dict:
     skills_data = state["skills_data"]
     raw_text = state["raw_text"]
 
-    client = get_openai()
-    resume_text = raw_text or json.dumps(parsed_data)
+    if not parsed_data or not skills_data:
+        return {"status": "failed", "error": "Missing parsed_data or skills_data for DNA generation"}
 
-    # Generate embeddings
-    embedding = await embed_text(resume_text)
+    try:
+        client = get_openai()
+        resume_text = raw_text or json.dumps(parsed_data)
 
-    # Generate DNA summary
-    dna_data = await client.parse_structured(
-        DNA_SUMMARY_PROMPT, json.dumps(parsed_data), DNA_SCHEMA
-    )
+        # Generate embeddings
+        embedding = await embed_text(resume_text)
 
-    # Generate skills vector
-    skill_names = [s["name"] for s in skills_data.get("skills", [])]
-    skills_vector = await embed_text(" ".join(skill_names)) if skill_names else embedding
+        # Generate DNA summary
+        dna_data = await client.parse_structured(
+            DNA_SUMMARY_PROMPT, json.dumps(parsed_data), DNA_SCHEMA
+        )
+
+        # Generate skills vector
+        skill_names = [s["name"] for s in skills_data.get("skills", [])]
+        skills_vector = await embed_text(" ".join(skill_names)) if skill_names else embedding
+    except Exception as e:
+        logger.error("graph_generate_dna_failed", candidate_id=str(candidate_id), error=str(e))
+        return {"status": "failed", "error": f"DNA generation failed: {e}"}
 
     async with _db_mod.async_session_factory() as db:
         # Delete existing DNA and skills
@@ -299,7 +316,8 @@ async def close_checkpointer() -> None:
     """Call at app shutdown to clean up checkpointer connections."""
     global _checkpointer
     if _checkpointer is not None:
-        # AsyncPostgresSaver manages its own connection pool
+        if hasattr(_checkpointer, "conn") and _checkpointer.conn:
+            await _checkpointer.conn.close()
         _checkpointer = None
 
 

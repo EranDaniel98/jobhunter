@@ -66,9 +66,10 @@ class OpenAIStub:
         return {
             "name": "Test User",
             "headline": "Software Engineer",
-            "experiences": [{"company": "TestCo", "title": "Engineer"}],
+            "experiences": [{"company": "TestCo", "title": "Engineer", "dates": "2020-2024",
+                            "description": "Backend development", "achievements": ["Built API"]}],
             "skills": ["Python", "FastAPI"],
-            "education": [{"institution": "MIT", "degree": "BS CS"}],
+            "education": [{"institution": "MIT", "degree": "BS CS", "year": "2020"}],
             "certifications": [],
             "summary": "Experienced engineer.",
             "strengths": ["Python", "APIs", "Databases", "Testing", "Architecture"],
@@ -212,17 +213,14 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     async def override_get_session():
         yield db_session
 
-    from app.infrastructure.openai_client import OpenAIClient
-    from app.infrastructure.hunter_client import HunterClient
-
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_db] = override_get_session
-    # Use real OpenAI and Hunter clients; only stub email sending
+    # Use stubs for all external API clients — no real API calls in tests
     app.dependency_overrides[get_email_client] = lambda: ResendStub()
 
-    # Inject real clients into singletons for code that calls get_*() directly
-    _deps._openai_client = OpenAIClient()
-    _deps._hunter_client = HunterClient()
+    # Inject stubs into singletons for code that calls get_*() directly
+    _deps._openai_client = OpenAIStub()
+    _deps._hunter_client = HunterStub()
     _deps._email_client = ResendStub()
 
     # Use in-memory storage stub for tests
