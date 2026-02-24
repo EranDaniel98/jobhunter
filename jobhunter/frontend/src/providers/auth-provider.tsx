@@ -23,19 +23,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-    authApi
-      .getMe()
-      .then(setUser)
-      .catch(() => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-      })
-      .finally(() => setIsLoading(false));
+    let cancelled = false;
+    (async () => {
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        try {
+          const me = await authApi.getMe();
+          if (!cancelled) setUser(me);
+        } catch {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+        }
+      }
+      if (!cancelled) setIsLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const login = useCallback(

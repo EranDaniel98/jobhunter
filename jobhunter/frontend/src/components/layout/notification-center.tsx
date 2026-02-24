@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useReducer, useEffect, useCallback, useState } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,6 +12,30 @@ interface Notification {
   message: string;
   timestamp: Date;
   read: boolean;
+}
+
+type NotificationAction =
+  | { type: "add"; event: { type: string; data: Record<string, unknown> } }
+  | { type: "markAllRead" }
+  | { type: "clear" };
+
+function notificationsReducer(state: Notification[], action: NotificationAction): Notification[] {
+  switch (action.type) {
+    case "add": {
+      const n: Notification = {
+        id: `${Date.now()}-${Math.random()}`,
+        type: action.event.type,
+        message: eventToMessage(action.event.type, action.event.data),
+        timestamp: new Date(),
+        read: false,
+      };
+      return [n, ...state].slice(0, 50);
+    }
+    case "markAllRead":
+      return state.map((n) => ({ ...n, read: true }));
+    case "clear":
+      return [];
+  }
 }
 
 function eventToMessage(type: string, data: Record<string, unknown>): string {
@@ -28,25 +52,18 @@ function eventToMessage(type: string, data: Record<string, unknown>): string {
 }
 
 export function NotificationCenter({ lastEvent }: { lastEvent: { type: string; data: Record<string, unknown> } | null }) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, dispatch] = useReducer(notificationsReducer, []);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!lastEvent) return;
-    const notification: Notification = {
-      id: `${Date.now()}-${Math.random()}`,
-      type: lastEvent.type,
-      message: eventToMessage(lastEvent.type, lastEvent.data),
-      timestamp: new Date(),
-      read: false,
-    };
-    setNotifications((prev) => [notification, ...prev].slice(0, 50));
+    dispatch({ type: "add", event: lastEvent });
   }, [lastEvent]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    dispatch({ type: "markAllRead" });
   }, []);
 
   return (
@@ -65,7 +82,7 @@ export function NotificationCenter({ lastEvent }: { lastEvent: { type: string; d
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h4 className="text-sm font-semibold">Notifications</h4>
           {notifications.length > 0 && (
-            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setNotifications([])}>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => dispatch({ type: "clear" })}>
               Clear all
             </Button>
           )}

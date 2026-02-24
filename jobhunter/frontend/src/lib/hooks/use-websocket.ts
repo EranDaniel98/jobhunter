@@ -18,6 +18,7 @@ export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelay = useRef(1000);
+  const connectRef = useRef<(() => void) | undefined>(undefined);
   const qc = useQueryClient();
 
   const connect = useCallback(() => {
@@ -77,7 +78,7 @@ export function useWebSocket() {
         // Reconnect with exponential backoff (max 30s)
         reconnectTimer.current = setTimeout(() => {
           reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30_000);
-          connect();
+          connectRef.current?.();
         }, reconnectDelay.current);
       };
 
@@ -88,6 +89,10 @@ export function useWebSocket() {
       // Connection failed, will retry via onclose
     }
   }, [qc]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     connect();

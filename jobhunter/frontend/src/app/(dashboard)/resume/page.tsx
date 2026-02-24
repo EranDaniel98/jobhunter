@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as candidatesApi from "@/lib/api/candidates";
 import { PageHeader } from "@/components/shared/page-header";
@@ -33,13 +33,6 @@ export default function ResumePage() {
 
   const hasDna = !!dnaQuery.data;
   const isLoading = dnaQuery.isLoading;
-
-  // Stop polling once DNA arrives
-  useEffect(() => {
-    if (hasDna && uploadedRecently) {
-      setUploadedRecently(false);
-    }
-  }, [hasDna, uploadedRecently]);
 
   return (
     <div className="space-y-6">
