@@ -54,7 +54,10 @@ async def test_get_company_not_found(client: AsyncClient, auth_headers: dict):
 
 
 @pytest.mark.asyncio
-async def test_company_approve_reject_flow(client: AsyncClient, auth_headers: dict):
+async def test_company_approve_reject_flow(client: AsyncClient, auth_headers: dict, db_session):
+    # Seed DNA for the test user (needed for discovery)
+    from tests.conftest import seed_candidate_dna
+    await seed_candidate_dna(db_session, client, auth_headers)
     # Discover
     resp = await client.post(f"{API}/companies/discover", headers=auth_headers)
     assert resp.status_code == 200
@@ -89,15 +92,11 @@ async def test_company_approve_reject_flow(client: AsyncClient, auth_headers: di
 
 
 @pytest.mark.asyncio
-async def test_discover_enriches_industry_size_tech(client: AsyncClient, auth_headers: dict):
+async def test_discover_enriches_industry_size_tech(client: AsyncClient, auth_headers: dict, db_session):
     """Test: discovered companies get industry/size/tech_stack from OpenAI when Hunter.io returns none."""
-    # First upload a resume to create DNA (needed for discovery)
-    import io
-    resp = await client.post(
-        f"{API}/resume/upload",
-        headers=auth_headers,
-        files={"file": ("resume.pdf", io.BytesIO(b"%PDF-1.4 test"), "application/pdf")},
-    )
+    # Seed DNA for the test user (needed for discovery)
+    from tests.conftest import seed_candidate_dna
+    await seed_candidate_dna(db_session, client, auth_headers)
     # Discovery
     resp = await client.post(f"{API}/companies/discover", headers=auth_headers)
     assert resp.status_code == 200

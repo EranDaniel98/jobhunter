@@ -152,11 +152,12 @@ async def test_delete_sent_message_fails(client: AsyncClient, auth_headers: dict
     assert resp.status_code == 201
     message_id = resp.json()["id"]
 
-    # Send the message
+    # Send the message (auto_approve to bypass approval gateway)
     resp = await client.post(
-        f"{API}/outreach/{message_id}/send", headers=auth_headers
+        f"{API}/outreach/{message_id}/send?auto_approve=true", headers=auth_headers
     )
     assert resp.status_code == 200
+    assert resp.json()["status"] == "sent"
 
     # Attempt to delete sent message — should fail
     resp = await client.delete(
