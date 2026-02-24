@@ -48,3 +48,15 @@ export async function changePassword(currentPassword: string, newPassword: strin
     new_password: newPassword,
   });
 }
+
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>("/auth/verify", null, {
+    params: { token },
+  });
+  return data;
+}
+
+export async function resendVerification(): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>("/auth/resend-verification");
+  return data;
+}

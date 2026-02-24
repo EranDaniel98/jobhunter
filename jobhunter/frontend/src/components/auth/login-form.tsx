@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
+import { verifyEmail } from "@/lib/api/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,9 +13,20 @@ import { Loader2 } from "lucide-react";
 
 export function LoginForm() {
   const { login } = useAuth();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const verifyAttempted = useRef(false);
+
+  useEffect(() => {
+    const token = searchParams.get("verify");
+    if (!token || verifyAttempted.current) return;
+    verifyAttempted.current = true;
+    verifyEmail(token)
+      .then(() => toast.success("Email verified successfully! You can now sign in."))
+      .catch(() => toast.error("Invalid or expired verification link"));
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
