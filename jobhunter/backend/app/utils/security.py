@@ -43,6 +43,16 @@ def create_refresh_token(candidate_id: str) -> tuple[str, str]:
     return token, jti
 
 
+def create_verification_token(candidate_id: str) -> str:
+    """Create a short-lived JWT for email verification (24h)."""
+    payload = {
+        "sub": candidate_id,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=24),
+        "type": "verify",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT token. Raises jwt.PyJWTError on failure."""
     return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
