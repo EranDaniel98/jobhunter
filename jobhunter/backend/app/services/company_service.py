@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 import structlog
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -156,6 +157,12 @@ async def discover_companies(
 
     dna_result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
     dna = dna_result.scalar_one_or_none()
+
+    if not dna:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Upload and process a resume before discovering companies",
+        )
 
     hunter = get_hunter()
 
@@ -395,8 +402,9 @@ async def _create_company_from_hunter(
     dna: CandidateDNA | None,
 ) -> Company:
     """Create a Company record from Hunter.io data."""
-    description = hunter_data.get("description", "")
-    company_text = f"{hunter_data.get('organization', domain)} {description}"
+    description = hunter_data.get("description") or ""
+    org_name = hunter_data.get("organization") or domain
+    company_text = f"{org_name} {description}"
 
     # Compute fit score if DNA exists
     fit_score = None
@@ -408,7 +416,7 @@ async def _create_company_from_hunter(
     company = Company(
         id=uuid.uuid4(),
         candidate_id=candidate_id,
-        name=hunter_data.get("organization", domain),
+        name=org_name,
         domain=domain,
         industry=hunter_data.get("industry"),
         size_range=hunter_data.get("size"),

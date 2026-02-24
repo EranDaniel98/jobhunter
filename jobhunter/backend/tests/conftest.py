@@ -15,6 +15,7 @@ from app.dependencies import get_db, get_openai, get_hunter, get_email_client
 from app.infrastructure.database import get_session
 from app.infrastructure.redis_client import init_redis, close_redis, get_redis
 from app.models.base import Base
+from app.models.candidate import CandidateDNA
 from app.models.invite import InviteCode
 from app.main import app
 
@@ -277,3 +278,28 @@ async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict:
     )
     tokens = resp.json()
     return {"Authorization": f"Bearer {tokens['access_token']}"}
+
+
+async def seed_candidate_dna(
+    db_session: AsyncSession,
+    client: AsyncClient,
+    auth_headers: dict,
+) -> None:
+    """Seed CandidateDNA for the authenticated test user (needed by discover)."""
+    from sqlalchemy import select
+    from app.models.candidate import Candidate
+
+    # Get the candidate_id from /auth/me
+    resp = await client.get(f"{settings.API_V1_PREFIX}/auth/me", headers=auth_headers)
+    candidate_id = uuid.UUID(resp.json()["id"])
+
+    dna = CandidateDNA(
+        id=uuid.uuid4(),
+        candidate_id=candidate_id,
+        experience_summary="Experienced software engineer with 5 years in Python and cloud.",
+        strengths=["Python", "Cloud Architecture"],
+        gaps=[],
+        career_stage="mid",
+    )
+    db_session.add(dna)
+    await db_session.commit()
