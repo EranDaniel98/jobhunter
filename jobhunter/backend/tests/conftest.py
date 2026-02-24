@@ -47,6 +47,21 @@ class OpenAIStub:
                 ]
             }
 
+        # Skills extraction schema (has "skills" key with items containing category/proficiency)
+        skills_props = response_schema.get("properties", {}).get("skills", {})
+        items_props = skills_props.get("items", {}).get("properties", {})
+        if "skills" in schema_keys and "category" in items_props and "proficiency" in items_props:
+            return {
+                "skills": [
+                    {"name": "Python", "category": "explicit", "proficiency": "expert",
+                     "years_experience": 5.0, "evidence": "5 years professional Python development"},
+                    {"name": "FastAPI", "category": "explicit", "proficiency": "advanced",
+                     "years_experience": 3.0, "evidence": "Built REST APIs with FastAPI"},
+                    {"name": "Leadership", "category": "transferable", "proficiency": "intermediate",
+                     "years_experience": 2.0, "evidence": "Led team of 5 engineers"},
+                ]
+            }
+
         # Return a response that satisfies both resume parsing and outreach drafting schemas
         return {
             "name": "Test User",
@@ -73,6 +88,8 @@ class OpenAIStub:
             "compensation_data": {"range": "150k-250k", "equity": "0.1%", "benefits": ["health"]},
             "key_people": [{"name": "Jane Doe", "title": "CTO"}],
             "why_hire_me": "Strong backend experience aligns with team needs.",
+            "resume_bullets": ["Highlight Python backend experience", "Emphasize API design skills"],
+            "fit_score_tips": ["Learn Kubernetes basics", "Emphasize cloud experience"],
             "recent_news": [{"title": "Series B", "date": "2025-01-01"}],
         }
 
