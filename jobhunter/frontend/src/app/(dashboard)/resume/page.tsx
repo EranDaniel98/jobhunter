@@ -28,7 +28,7 @@ export default function ResumePage() {
     queryFn: candidatesApi.getSkills,
     retry: 1,
     refetchInterval: (query) =>
-      !query.state.data && uploadedRecently ? 3000 : false,
+      !query.state.data?.length && uploadedRecently ? 3000 : false,
   });
 
   const hasDna = !!dnaQuery.data;
@@ -72,7 +72,7 @@ export default function ResumePage() {
       {hasDna && dnaQuery.data && (
         <>
           <DnaProfile dna={dnaQuery.data} />
-          <SkillsGrid skills={skillsQuery.data || dnaQuery.data.skills} />
+          <SkillsGrid skills={skillsQuery.data?.length ? skillsQuery.data : dnaQuery.data.skills} />
         </>
       )}
     </div>
