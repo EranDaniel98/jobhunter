@@ -45,7 +45,9 @@ async def health_check(
     except Exception:
         checks["migration_version"] = "unknown"
 
-    all_healthy = all(v == "healthy" for v in checks.values())
+    all_healthy = all(
+        checks.get(k) == "healthy" for k in ("database", "redis")
+    )
     status_code = 200 if all_healthy else 503
 
     return JSONResponse(
