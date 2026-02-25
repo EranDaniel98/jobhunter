@@ -237,41 +237,69 @@ async def _get_candidate_company(
 async def _research_background(company_id):
     from app.infrastructure.database import async_session_factory
 
+    # Phase 1: Check quotas before running the graph
     async with async_session_factory() as db:
         try:
-            # Check research + openai quotas before calling external APIs
-            result = await db.execute(select(Company).where(Company.id == company_id))
-            company_for_quota = result.scalar_one_or_none()
-            if company_for_quota:
-                cid = str(company_for_quota.candidate_id)
-                # Fetch candidate to get plan_tier
-                from app.models.candidate import Candidate as _Candidate
-                cand_result = await db.execute(
-                    select(_Candidate).where(_Candidate.id == company_for_quota.candidate_id)
-                )
-                cand = cand_result.scalar_one_or_none()
-                tier = cand.plan_tier if cand else "free"
-                await check_and_increment(cid, "research", tier)
-                await check_and_increment(cid, "openai", tier)
-            await company_service.research_company(db, company_id)
-            # Notify via WebSocket
             result = await db.execute(select(Company).where(Company.id == company_id))
             company = result.scalar_one_or_none()
-            if company:
-                from app.infrastructure.websocket_manager import ws_manager
-                await ws_manager.broadcast(
-                    str(company.candidate_id), "research_completed",
-                    {"company_id": str(company_id), "company_name": company.name},
-                )
+            if not company:
+                logger.error("background_research_company_not_found", company_id=str(company_id))
+                return
+
+            candidate_id = str(company.candidate_id)
+            from app.models.candidate import Candidate as _Candidate
+            cand_result = await db.execute(
+                select(_Candidate).where(_Candidate.id == company.candidate_id)
+            )
+            cand = cand_result.scalar_one_or_none()
+            tier = cand.plan_tier if cand else "free"
+
+            await check_and_increment(candidate_id, "research", tier)
+            await check_and_increment(candidate_id, "openai", tier)
         except Exception as e:
-            logger.error("background_research_failed", error=str(e), company_id=str(company_id))
-            # Mark as failed
+            logger.error("background_research_quota_failed", error=str(e), company_id=str(company_id))
             try:
-                result = await db.execute(
-                    select(Company).where(Company.id == company_id)
-                )
+                result = await db.execute(select(Company).where(Company.id == company_id))
+                c = result.scalar_one_or_none()
+                if c:
+                    c.research_status = "failed"
+                    await db.commit()
+            except Exception:
+                pass
+            return
+
+    # Phase 2: Run the LangGraph company research pipeline
+    try:
+        from app.graphs.company_research import (
+            CompanyResearchState,
+            get_company_research_pipeline,
+        )
+
+        pipeline = get_company_research_pipeline()
+        initial_state: CompanyResearchState = {
+            "company_id": str(company_id),
+            "candidate_id": candidate_id,
+            "plan_tier": tier,
+            "hunter_data": None,
+            "web_context": None,
+            "dossier_data": None,
+            "contacts_created": 0,
+            "embedding_set": False,
+            "status": "pending",
+            "error": None,
+        }
+
+        await pipeline.ainvoke(
+            initial_state,
+            config={"configurable": {"thread_id": f"company-research-{company_id}"}},
+        )
+    except Exception as e:
+        logger.error("background_research_graph_failed", error=str(e), company_id=str(company_id))
+        async with async_session_factory() as db:
+            try:
+                result = await db.execute(select(Company).where(Company.id == company_id))
                 company = result.scalar_one_or_none()
-                if company:
+                if company and company.research_status != "failed":
                     company.research_status = "failed"
                     await db.commit()
             except Exception:
