@@ -30,6 +30,7 @@ dependencies = [
     "boto3>=1.35.0",
     "sentry-sdk[fastapi]>=2.0.0",
     "arq>=0.26.0",
+    "duckduckgo-search>=7.0.0",
     "langgraph>=0.4.0",
     "langgraph-checkpoint-postgres>=2.0.0",
     "psycopg[binary,pool]>=3.1.0",
