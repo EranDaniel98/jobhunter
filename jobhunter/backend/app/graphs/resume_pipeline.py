@@ -299,25 +299,27 @@ _builder = build_resume_pipeline()
 # ---------------------------------------------------------------------------
 
 _checkpointer = None
+_checkpointer_cm = None
 
 
 async def init_checkpointer(db_url: str) -> None:
     """Call once at app startup to initialize PostgreSQL checkpointing."""
-    global _checkpointer
+    global _checkpointer, _checkpointer_cm
     # langgraph-checkpoint-postgres uses psycopg (sync driver), not asyncpg
     raw_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-    _checkpointer = AsyncPostgresSaver.from_conn_string(raw_url)
+    _checkpointer_cm = AsyncPostgresSaver.from_conn_string(raw_url)
+    _checkpointer = await _checkpointer_cm.__aenter__()
     await _checkpointer.setup()
     logger.info("langgraph_checkpointer_initialized")
 
 
 async def close_checkpointer() -> None:
     """Call at app shutdown to clean up checkpointer connections."""
-    global _checkpointer
-    if _checkpointer is not None:
-        if hasattr(_checkpointer, "conn") and _checkpointer.conn:
-            await _checkpointer.conn.close()
+    global _checkpointer, _checkpointer_cm
+    if _checkpointer_cm is not None:
+        await _checkpointer_cm.__aexit__(None, None, None)
+        _checkpointer_cm = None
         _checkpointer = None
 
 
