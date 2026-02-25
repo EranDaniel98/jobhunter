@@ -103,42 +103,50 @@ async def check_followup_due(ctx):
                     if newer_check.scalar_one_or_none():
                         continue  # Skip — newer message exists
 
-                    # Draft the follow-up
-                    from app.services.outreach_service import draft_message
+                    # Launch the outreach graph for follow-up drafting
+                    # Graph handles: context → draft → quality check → approval → interrupt
+                    from app.graphs.outreach import get_outreach_pipeline
 
-                    followup = await draft_message(db, msg.candidate_id, msg.contact_id)
-
-                    # Create PendingAction
-                    from app.services.approval_service import create_pending_action
-
-                    await create_pending_action(
-                        db,
-                        msg.candidate_id,
-                        action_type="send_followup",
-                        entity_id=followup.id,
-                        ai_reasoning=f"Auto-drafted {next_type} after {days_threshold} days with no reply",
-                        metadata={"prev_message_id": str(msg.id), "followup_type": next_type},
+                    # Look up candidate plan_tier
+                    from app.models.candidate import Candidate
+                    cand_result = await db.execute(
+                        select(Candidate).where(Candidate.id == msg.candidate_id)
                     )
+                    cand = cand_result.scalar_one_or_none()
+                    plan_tier = cand.plan_tier if cand else "free"
 
-                    # Notify via WebSocket
-                    from app.infrastructure.websocket_manager import ws_manager
+                    thread_id = f"outreach-followup-{uuid.uuid4()}"
+                    state = {
+                        "candidate_id": str(msg.candidate_id),
+                        "contact_id": str(msg.contact_id),
+                        "plan_tier": plan_tier,
+                        "language": "en",
+                        "variant": None,
+                        "attach_resume": True,
+                        "context": None,
+                        "message_type": None,
+                        "outreach_message_id": None,
+                        "draft_data": None,
+                        "action_id": None,
+                        "approval_decision": None,
+                        "external_message_id": None,
+                        "status": "pending",
+                        "error": None,
+                    }
 
-                    await ws_manager.broadcast(
-                        str(msg.candidate_id),
-                        "followup_drafted",
-                        {
-                            "message_id": str(followup.id),
-                            "contact_id": str(msg.contact_id),
-                            "followup_type": next_type,
-                        },
+                    graph = get_outreach_pipeline()
+                    await graph.ainvoke(
+                        state,
+                        config={"configurable": {"thread_id": thread_id}},
                     )
 
                     drafted_count += 1
                     logger.info(
-                        "followup_drafted",
+                        "followup_graph_launched",
                         prev_message_id=str(msg.id),
                         followup_type=next_type,
                         candidate_id=str(msg.candidate_id),
+                        thread_id=thread_id,
                     )
                 except Exception as e:
                     logger.error(

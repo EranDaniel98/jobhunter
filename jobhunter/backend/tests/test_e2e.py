@@ -1,4 +1,6 @@
 """End-to-end flow test: register → resume → discover → outreach → analytics."""
+import uuid
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -91,17 +93,15 @@ async def test_full_e2e_flow(client: AsyncClient, invite_code: str, db_session: 
     assert resp.status_code == 200
     assert "email_verified" in resp.json()  # Real API may return False for test contacts
 
-    # 10. Draft outreach
-    resp = await client.post(
-        f"{API}/outreach/draft",
-        headers=headers,
-        json={"contact_id": contact_id},
-    )
-    assert resp.status_code == 201
-    draft = resp.json()
-    assert draft["status"] == "draft"
-    assert draft["body"]
-    message_id = draft["id"]
+    # 10. Draft outreach (now async — create via service for deterministic e2e flow)
+    me_resp = await client.get(f"{API}/auth/me", headers=headers)
+    candidate_id = uuid.UUID(me_resp.json()["id"])
+
+    from app.services.outreach_service import draft_message
+    draft_msg = await draft_message(db_session, candidate_id, uuid.UUID(contact_id))
+    assert draft_msg.status == "draft"
+    assert draft_msg.body
+    message_id = str(draft_msg.id)
 
     # 11. Edit draft
     resp = await client.patch(

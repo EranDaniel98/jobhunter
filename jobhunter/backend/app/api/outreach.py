@@ -2,7 +2,7 @@ import uuid as _uuid
 from datetime import datetime, timezone
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from app.dependencies import get_current_candidate, get_db
 from app.rate_limit import limiter
 from app.models.candidate import Candidate
 from app.models.outreach import OutreachMessage
+from app.models.pending_action import PendingAction
 from app.schemas.outreach import (
     OutreachDraftRequest,
     OutreachEditRequest,
@@ -40,21 +41,57 @@ def _message_to_response(m: OutreachMessage) -> OutreachMessageResponse:
     )
 
 
-@router.post("/draft", response_model=OutreachMessageResponse, status_code=201)
+async def _run_outreach_graph(state: dict) -> None:
+    """Background task: run the outreach graph (gather → draft → quality → approval → interrupt)."""
+    from app.graphs.outreach import get_outreach_pipeline
+    thread_id = state.pop("_thread_id")
+    graph = get_outreach_pipeline()
+    try:
+        await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
+    except Exception as e:
+        logger.error("outreach_graph_background_failed", error=str(e), thread_id=thread_id)
+
+
+@router.post("/draft", status_code=202)
 @limiter.limit("20/hour")
 async def draft_message(
     request: Request,
     data: OutreachDraftRequest,
+    background_tasks: BackgroundTasks,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
+    # Check openai quota before launching graph
+    from app.services.quota_service import check_and_increment
     try:
-        message = await outreach_service.draft_message(
-            db, candidate.id, _uuid.UUID(data.contact_id), language=data.language
-        )
-    except ValueError as e:
+        await check_and_increment(str(candidate.id), "openai", candidate.plan_tier)
+    except Exception as e:
+        from fastapi import HTTPException as _HTTPException
+        if isinstance(e, _HTTPException):
+            raise
         raise HTTPException(status_code=400, detail=str(e))
-    return _message_to_response(message)
+
+    thread_id = f"outreach-{_uuid.uuid4()}"
+    state = {
+        "candidate_id": str(candidate.id),
+        "contact_id": data.contact_id,
+        "plan_tier": candidate.plan_tier,
+        "language": data.language,
+        "variant": None,
+        "attach_resume": True,
+        "context": None,
+        "message_type": None,
+        "outreach_message_id": None,
+        "draft_data": None,
+        "action_id": None,
+        "approval_decision": None,
+        "external_message_id": None,
+        "status": "pending",
+        "error": None,
+        "_thread_id": thread_id,
+    }
+    background_tasks.add_task(_run_outreach_graph, state)
+    return {"status": "drafting", "thread_id": thread_id}
 
 
 @router.post("/{message_id}/draft-followup", response_model=OutreachMessageResponse, status_code=201)
@@ -163,6 +200,7 @@ async def send_message(
     message_id: str,
     attach_resume: bool = Query(default=True),
     auto_approve: bool = Query(default=False),
+    background_tasks: BackgroundTasks = None,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
@@ -170,11 +208,36 @@ async def send_message(
     if msg.status not in ("draft", "approved"):
         raise HTTPException(status_code=400, detail=f"Cannot send message with status '{msg.status}'")
 
-    # If already approved (via approvals page), send immediately
+    # Check if this message has a graph thread_id via its PendingAction
+    action_result = await db.execute(
+        select(PendingAction).where(
+            PendingAction.entity_id == msg.id,
+            PendingAction.action_type.in_(["send_email", "send_followup"]),
+        ).order_by(PendingAction.created_at.desc()).limit(1)
+    )
+    action = action_result.scalar_one_or_none()
+    graph_thread_id = (action.metadata_ or {}).get("thread_id") if action else None
+
+    # If graph-based message: resume the graph
+    if graph_thread_id and (msg.status == "approved" or auto_approve):
+        from app.graphs.outreach import get_outreach_pipeline
+        from langgraph.types import Command
+        graph = get_outreach_pipeline()
+        try:
+            await graph.ainvoke(
+                Command(resume={"approved": True, "attach_resume": attach_resume}),
+                config={"configurable": {"thread_id": graph_thread_id}},
+            )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        # Refresh message from DB
+        await db.refresh(msg)
+        return _message_to_response(msg)
+
+    # Legacy path: no graph thread
     if msg.status == "approved" or auto_approve:
         from app.services.email_service import send_outreach
         try:
-            # If auto_approve, also create approved PendingAction for audit trail
             if auto_approve and msg.status == "draft":
                 from app.services.approval_service import create_pending_action
                 action = await create_pending_action(
