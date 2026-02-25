@@ -19,6 +19,7 @@ export interface CandidateResponse {
   is_admin: boolean;
   email_verified: boolean;
   preferences: Record<string, unknown> | null;
+  plan_tier: PlanTier;
 }
 
 export interface CandidateUpdate {
@@ -232,6 +233,36 @@ export interface AuditLogItem {
 export interface BroadcastResponse {
   sent_count: number;
   skipped_count: number;
+}
+
+// Plans
+export type PlanTier = "free" | "explorer" | "hunter";
+
+export interface PlanDefinition {
+  tier: PlanTier;
+  display_name: string;
+  price_monthly_cents: number;
+  description: string;
+  limits: Record<string, number>;
+}
+
+// Usage / Quota
+export interface QuotaItem {
+  used: number;
+  limit: number;
+}
+
+export interface UsageResponse {
+  plan_tier: PlanTier;
+  quotas: Record<string, QuotaItem>;
+}
+
+export interface QuotaExceededDetail {
+  message: string;
+  quota_type: string;
+  limit: number;
+  plan_tier: PlanTier;
+  resets_at: string;
 }
 
 // Approvals

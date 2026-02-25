@@ -15,6 +15,7 @@ import {
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { useApprovalCount } from "@/lib/hooks/use-approvals";
+import type { PlanTier } from "@/lib/types";
 import {
   LayoutDashboard,
   FileText,
@@ -26,6 +27,7 @@ import {
   LogOut,
   Briefcase,
   Shield,
+  Sparkles,
 } from "lucide-react";
 
 const navItems = [
@@ -87,6 +89,17 @@ export function Sidebar({ lastEvent = null }: SidebarProps) {
           );
         })}
       </nav>
+
+      {user && (user.plan_tier as PlanTier) !== "hunter" && (
+        <div className="px-3 pb-2">
+          <Link href="/plans">
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-muted-foreground hover:text-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+              {(user.plan_tier as PlanTier) === "free" ? "Free Plan" : "Explorer"} &mdash; Upgrade
+            </Button>
+          </Link>
+        </div>
+      )}
 
       <div className="border-t p-3 flex items-center gap-2">
         <NotificationCenter lastEvent={lastEvent} />

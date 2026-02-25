@@ -49,7 +49,7 @@ async def discover_companies(
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    await check_and_increment(str(candidate.id), "discovery")
+    await check_and_increment(str(candidate.id), "discovery", candidate.plan_tier)
     companies = await company_service.discover_companies(
         db,
         candidate.id,
@@ -71,7 +71,7 @@ async def add_company(
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    await check_and_increment(str(candidate.id), "hunter")
+    await check_and_increment(str(candidate.id), "hunter", candidate.plan_tier)
     try:
         company = await company_service.add_company_manual(db, candidate.id, data.domain)
 
@@ -244,8 +244,15 @@ async def _research_background(company_id):
             company_for_quota = result.scalar_one_or_none()
             if company_for_quota:
                 cid = str(company_for_quota.candidate_id)
-                await check_and_increment(cid, "research")
-                await check_and_increment(cid, "openai")
+                # Fetch candidate to get plan_tier
+                from app.models.candidate import Candidate as _Candidate
+                cand_result = await db.execute(
+                    select(_Candidate).where(_Candidate.id == company_for_quota.candidate_id)
+                )
+                cand = cand_result.scalar_one_or_none()
+                tier = cand.plan_tier if cand else "free"
+                await check_and_increment(cid, "research", tier)
+                await check_and_increment(cid, "openai", tier)
             await company_service.research_company(db, company_id)
             # Notify via WebSocket
             result = await db.execute(select(Company).where(Company.id == company_id))

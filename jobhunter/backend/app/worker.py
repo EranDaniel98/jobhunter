@@ -157,7 +157,23 @@ async def send_approved_message(ctx, outreach_id: str):
 
     async with async_session_factory() as db:
         try:
-            msg = await send_outreach(db, uuid.UUID(outreach_id))
+            # Look up candidate plan_tier for quota enforcement
+            from sqlalchemy import select
+            from app.models.outreach import OutreachMessage
+            from app.models.candidate import Candidate
+            result = await db.execute(
+                select(OutreachMessage).where(OutreachMessage.id == uuid.UUID(outreach_id))
+            )
+            outreach_msg = result.scalar_one_or_none()
+            plan_tier = "free"
+            if outreach_msg:
+                cand_result = await db.execute(
+                    select(Candidate).where(Candidate.id == outreach_msg.candidate_id)
+                )
+                cand = cand_result.scalar_one_or_none()
+                if cand:
+                    plan_tier = cand.plan_tier
+            msg = await send_outreach(db, uuid.UUID(outreach_id), plan_tier=plan_tier)
             logger.info("approved_message_sent", message_id=outreach_id)
         except Exception as e:
             logger.error("approved_message_send_failed", message_id=outreach_id, error=str(e))

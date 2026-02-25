@@ -67,5 +67,6 @@ class CandidateResponse(BaseModel):
     is_admin: bool = False
     email_verified: bool = True
     preferences: dict | None = None
+    plan_tier: str = "free"
 
     model_config = {"from_attributes": True}

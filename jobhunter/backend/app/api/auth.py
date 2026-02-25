@@ -36,6 +36,7 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
         is_admin=candidate.is_admin,
         email_verified=candidate.email_verified,
         preferences=candidate.preferences,
+        plan_tier=candidate.plan_tier,
     )
 
 
@@ -73,6 +74,7 @@ async def get_me(candidate: Candidate = Depends(get_current_candidate)):
         is_admin=candidate.is_admin,
         email_verified=candidate.email_verified,
         preferences=candidate.preferences,
+        plan_tier=candidate.plan_tier,
     )
 
 
@@ -102,6 +104,7 @@ async def update_me(
         is_admin=candidate.is_admin,
         email_verified=candidate.email_verified,
         preferences=candidate.preferences,
+        plan_tier=candidate.plan_tier,
     )
 
 

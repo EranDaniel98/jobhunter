@@ -63,7 +63,7 @@ async def approve(
     # If this is a send action, trigger the actual send
     if action.action_type in ("send_email", "send_followup") and action.status == "approved":
         try:
-            await send_outreach(db, action.entity_id)
+            await send_outreach(db, action.entity_id, plan_tier=candidate.plan_tier)
         except ValueError as e:
             logger.warning("approved_send_failed", action_id=action_id, error=str(e))
 

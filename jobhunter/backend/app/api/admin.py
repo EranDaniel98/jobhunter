@@ -22,6 +22,7 @@ from app.schemas.admin import (
     UserDetail,
     UserListResponse,
 )
+from app.schemas.billing import UpdatePlanRequest
 from app.services import admin_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -144,6 +145,49 @@ async def broadcast_email(
     return await admin_service.broadcast_email(
         db, admin.id, body.subject, body.body, email_client
     )
+
+
+@router.patch("/users/{user_id}/plan", response_model=UserDetail)
+async def update_user_plan(
+    user_id: uuid.UUID,
+    body: UpdatePlanRequest,
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin endpoint to change a user's plan tier."""
+    from app.plans import PlanTier
+    from app.models.audit import AdminAuditLog
+
+    # Validate tier
+    try:
+        PlanTier(body.plan_tier)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid plan tier: {body.plan_tier}")
+
+    # Find user
+    from sqlalchemy import select
+    result = await db.execute(select(Candidate).where(Candidate.id == user_id))
+    candidate = result.scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    old_tier = candidate.plan_tier
+    candidate.plan_tier = body.plan_tier
+
+    # Audit log
+    audit = AdminAuditLog(
+        id=uuid.uuid4(),
+        admin_id=admin.id,
+        action="change_plan",
+        target_user_id=user_id,
+        details={"old_tier": old_tier, "new_tier": body.plan_tier},
+    )
+    db.add(audit)
+    await db.commit()
+
+    logger.info("plan_changed", user_id=str(user_id), old_tier=old_tier, new_tier=body.plan_tier, admin_id=str(admin.id))
+    user = await admin_service.get_user_detail(db, user_id)
+    return user
 
 
 @router.get("/analytics/registrations", response_model=list[RegistrationTrend])

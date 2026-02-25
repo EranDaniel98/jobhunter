@@ -184,7 +184,7 @@ async def send_message(
                 from app.services.approval_service import approve_action
                 await approve_action(db, action.id, candidate.id)
 
-            msg = await send_outreach(db, msg.id, attach_resume=attach_resume)
+            msg = await send_outreach(db, msg.id, attach_resume=attach_resume, plan_tier=candidate.plan_tier)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         return _message_to_response(msg)

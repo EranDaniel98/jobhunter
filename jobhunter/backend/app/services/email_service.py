@@ -18,10 +18,7 @@ from app.models.suppression import EmailSuppression
 
 logger = structlog.get_logger()
 
-DAILY_LIMIT_KEY = "email_limit:{candidate_id}:{date}"
-
-
-async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume: bool = False) -> OutreachMessage:
+async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume: bool = False, plan_tier: str = "free") -> OutreachMessage:
     """Send an outreach email with full compliance checks."""
     result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == outreach_id))
     message = result.scalar_one_or_none()
@@ -64,16 +61,18 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
     if suppressed.scalar_one_or_none():
         raise ValueError(f"Email {contact.email} is on the suppression list")
 
-    # 2. Check daily limit (atomic Redis INCR to avoid race conditions)
-    redis = get_redis()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    daily_key = DAILY_LIMIT_KEY.format(candidate_id=message.candidate_id, date=today)
-    daily_count = await redis.incr(daily_key)
-    if daily_count == 1:
-        await redis.expire(daily_key, 86400)
-    if daily_count > settings.DAILY_EMAIL_LIMIT:
-        await redis.decr(daily_key)  # Roll back the increment
-        raise ValueError(f"Daily email limit ({settings.DAILY_EMAIL_LIMIT}) reached")
+    # 2. Check daily email limit via unified quota service
+    from app.services.quota_service import check_and_increment
+    try:
+        await check_and_increment(str(message.candidate_id), "email", plan_tier)
+    except Exception as e:
+        # Convert HTTPException from quota service to ValueError for email service callers
+        from fastapi import HTTPException as _HTTPException
+        if isinstance(e, _HTTPException) and e.status_code == 429:
+            detail = e.detail
+            msg_text = detail.get("message", str(detail)) if isinstance(detail, dict) else str(detail)
+            raise ValueError(msg_text)
+        raise
 
     # 3. Warn if unverified (but don't block)
     if not contact.email_verified:
