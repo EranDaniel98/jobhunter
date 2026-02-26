@@ -95,6 +95,62 @@ class OpenAIStub:
                 ]
             }
 
+        # Interview prep: company_qa schema
+        if "questions" in schema_keys and "tips" in schema_keys:
+            return {
+                "questions": [
+                    {"question": "Tell me about your experience with Python", "suggested_answer": "I have 5 years of professional Python development...", "category": "technical"},
+                    {"question": "Why do you want to work here?", "suggested_answer": "I'm drawn to the company's innovative culture...", "category": "culture-fit"},
+                ],
+                "tips": ["Research the company culture", "Prepare STAR stories"],
+            }
+
+        # Interview prep: behavioral schema
+        if "stories" in schema_keys:
+            return {
+                "stories": [
+                    {"question": "Tell me about a challenge you overcame", "situation": "At TestCo, we faced a critical production outage.",
+                     "task": "I needed to identify the root cause and restore service.",
+                     "action": "I led the incident response, identified a memory leak, and deployed a fix.",
+                     "result": "Service restored in 30 minutes, implemented monitoring to prevent recurrence."},
+                ],
+            }
+
+        # Interview prep: technical schema
+        if "topics" in schema_keys:
+            return {
+                "topics": [
+                    {"name": "System Design", "questions": [
+                        {"question": "Design a URL shortener", "answer": "I would use a hash-based approach with a NoSQL store...", "difficulty": "medium"},
+                    ]},
+                ],
+            }
+
+        # Interview prep: culture_fit schema
+        if "values" in schema_keys and "alignment_tips" in schema_keys:
+            return {
+                "values": ["Innovation", "Collaboration"],
+                "alignment_tips": ["Show passion for continuous learning"],
+                "questions": [{"question": "How do you handle disagreements?", "suggested_answer": "I approach conflicts with empathy and data..."}],
+            }
+
+        # Interview prep: salary_negotiation schema
+        if "range" in schema_keys and "talking_points" in schema_keys:
+            return {
+                "range": {"min": "120k", "max": "180k", "median": "150k"},
+                "talking_points": ["Market data supports this range"],
+                "counter_strategies": ["Emphasize total compensation package"],
+            }
+
+        # Mock interview feedback schema
+        if "overall_score" in schema_keys and "strengths" in schema_keys and "improvements" in schema_keys:
+            return {
+                "overall_score": 7.5,
+                "strengths": ["Clear communication", "Good technical depth"],
+                "improvements": ["Provide more specific examples", "Ask clarifying questions"],
+                "summary": "Good performance overall. Strong technical answers with room for improvement in behavioral responses.",
+            }
+
         # Return a response that satisfies both resume parsing and outreach drafting schemas
         return {
             "name": "Test User",
