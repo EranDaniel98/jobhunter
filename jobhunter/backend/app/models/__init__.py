@@ -11,6 +11,7 @@ from app.models.pending_action import PendingAction
 from app.models.signal import CompanySignal
 from app.models.interview import InterviewPrepSession, MockInterviewMessage
 from app.models.job_posting import JobPosting
+from app.models.insight import AnalyticsInsight
 
 __all__ = [
     "Base",
@@ -32,4 +33,5 @@ __all__ = [
     "InterviewPrepSession",
     "MockInterviewMessage",
     "JobPosting",
+    "AnalyticsInsight",
 ]
