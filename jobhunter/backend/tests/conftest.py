@@ -151,6 +151,31 @@ class OpenAIStub:
                 "summary": "Good performance overall. Strong technical answers with room for improvement in behavioral responses.",
             }
 
+        # Apply: job parsing schema
+        if "required_skills" in schema_keys and "ats_keywords" in schema_keys:
+            return {
+                "required_skills": ["Python", "FastAPI", "PostgreSQL"],
+                "preferred_skills": ["Docker", "Kubernetes"],
+                "experience_years": 3,
+                "education": "BS Computer Science",
+                "responsibilities": ["Build APIs", "Write tests"],
+                "ats_keywords": ["Python", "REST API", "microservices", "PostgreSQL"],
+            }
+
+        # Apply: resume tips schema
+        if "tips" in schema_keys and "readiness_score" in schema_keys:
+            return {
+                "tips": [
+                    {"section": "Skills", "tip": "Add PostgreSQL to your skills section", "priority": "high"},
+                    {"section": "Experience", "tip": "Highlight API development projects", "priority": "medium"},
+                ],
+                "readiness_score": 72.5,
+            }
+
+        # Apply: cover letter schema
+        if "cover_letter" in schema_keys and len(schema_keys) == 1:
+            return {"cover_letter": "Dear Hiring Manager,\n\nI am excited to apply for this position. My experience in Python and FastAPI aligns well with your requirements.\n\nBest regards,\nTest User"}
+
         # Return a response that satisfies both resume parsing and outreach drafting schemas
         return {
             "name": "Test User",
