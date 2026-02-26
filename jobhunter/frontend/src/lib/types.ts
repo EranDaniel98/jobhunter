@@ -294,3 +294,86 @@ export interface PendingActionListResponse {
 export interface PendingCountResponse {
   count: number;
 }
+
+// Analytics Insights
+export interface AnalyticsInsightResponse {
+  id: string;
+  insight_type: string;
+  title: string;
+  body: string;
+  severity: string;
+  data: Record<string, unknown> | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface AnalyticsInsightListResponse {
+  insights: AnalyticsInsightResponse[];
+  total: number;
+}
+
+export interface AnalyticsDashboardResponse {
+  funnel: FunnelResponse;
+  outreach: OutreachStatsResponse;
+  pipeline: PipelineStatsResponse;
+  insights: AnalyticsInsightResponse[];
+}
+
+// Interview Prep
+export interface MockMessageResponse {
+  id: string;
+  role: string;
+  content: string;
+  turn_number: number;
+  feedback: Record<string, unknown> | null;
+}
+
+export interface InterviewPrepSessionResponse {
+  id: string;
+  company_id: string;
+  prep_type: string;
+  content: Record<string, unknown> | null;
+  status: string;
+  error: string | null;
+  messages: MockMessageResponse[];
+}
+
+export interface InterviewPrepListResponse {
+  sessions: InterviewPrepSessionResponse[];
+  total: number;
+}
+
+// Apply
+export interface JobPostingResponse {
+  id: string;
+  title: string;
+  company_name: string | null;
+  company_id: string | null;
+  url: string | null;
+  status: string;
+  ats_keywords: string[] | null;
+  parsed_requirements: Record<string, unknown> | null;
+}
+
+export interface JobPostingListResponse {
+  postings: JobPostingResponse[];
+  total: number;
+}
+
+export interface ResumeTipItem {
+  section: string;
+  tip: string;
+  priority: string;
+}
+
+export interface ApplyAnalysisResponse {
+  id: string;
+  job_posting_id: string;
+  readiness_score: number;
+  resume_tips: ResumeTipItem[];
+  cover_letter: string;
+  ats_keywords: string[];
+  missing_skills: string[];
+  matching_skills: string[];
+  status: string;
+}

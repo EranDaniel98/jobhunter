@@ -248,12 +248,57 @@ async def expire_stale_actions(ctx):
             logger.info("stale_actions_expired_by_cron", count=count)
 
 
+async def run_weekly_analytics(ctx):
+    """Generate weekly analytics insights for all active candidates."""
+    from app.infrastructure.database import async_session_factory
+    from app.models.candidate import Candidate, CandidateDNA
+
+    logger.info("weekly_analytics_started")
+
+    async with async_session_factory() as db:
+        result = await db.execute(
+            select(Candidate).where(
+                Candidate.is_active == True,
+                exists(
+                    select(CandidateDNA.id).where(
+                        CandidateDNA.candidate_id == Candidate.id
+                    )
+                ),
+            )
+        )
+        candidates = result.scalars().all()
+
+    for cand in candidates:
+        try:
+            from app.graphs.analytics_pipeline import get_analytics_pipeline
+
+            thread_id = f"analytics-weekly-{uuid.uuid4()}"
+            graph = get_analytics_pipeline()
+            await graph.ainvoke(
+                {
+                    "candidate_id": str(cand.id),
+                    "include_email": True,
+                    "raw_data": None,
+                    "insights": None,
+                    "insights_saved": 0,
+                    "status": "pending",
+                    "error": None,
+                },
+                config={"configurable": {"thread_id": thread_id}},
+            )
+        except Exception as e:
+            logger.error("weekly_analytics_failed", candidate_id=str(cand.id), error=str(e))
+
+    logger.info("weekly_analytics_completed")
+
+
 class WorkerSettings:
     functions = [send_approved_message]
     cron_jobs = [
         cron(check_followup_due, minute={0, 15, 30, 45}),
         cron(expire_stale_actions, hour={3}, minute={0}),  # Daily at 3 AM
         cron(run_daily_scout, hour={9}, minute={0}),  # Daily at 9 AM UTC
+        cron(run_weekly_analytics, weekday={0}, hour={8}, minute={0}),  # Mondays 8 AM UTC
     ]
     on_startup = startup
     on_shutdown = shutdown

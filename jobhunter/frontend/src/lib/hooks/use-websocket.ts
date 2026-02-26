@@ -66,6 +66,20 @@ export function useWebSocket() {
                 `Research completed for ${(parsed.data as { company_name?: string }).company_name || "company"}`
               );
               break;
+            case "analytics_completed":
+            case "analytics_failed":
+              qc.invalidateQueries({ queryKey: ["analytics-dashboard"] });
+              qc.invalidateQueries({ queryKey: ["analytics-insights"] });
+              break;
+            case "apply_analysis_completed":
+            case "apply_analysis_failed":
+              qc.invalidateQueries({ queryKey: ["job-postings"] });
+              qc.invalidateQueries({ queryKey: ["apply-analysis"] });
+              break;
+            case "interview_prep_completed":
+            case "interview_prep_failed":
+              qc.invalidateQueries({ queryKey: ["interview-sessions"] });
+              break;
           }
         } catch {
           // Ignore malformed messages
