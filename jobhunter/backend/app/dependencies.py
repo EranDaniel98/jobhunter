@@ -12,6 +12,7 @@ from app.infrastructure.database import get_session
 from app.infrastructure.protocols import (
     EmailClientProtocol,
     HunterClientProtocol,
+    NewsAPIClientProtocol,
     OpenAIClientProtocol,
 )
 from app.infrastructure.redis_client import get_redis, redis_safe_get
@@ -28,6 +29,7 @@ TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 _openai_client: OpenAIClientProtocol | None = None
 _hunter_client: HunterClientProtocol | None = None
 _email_client: EmailClientProtocol | None = None
+_newsapi_client: NewsAPIClientProtocol | None = None
 
 
 async def get_db() -> AsyncSession:  # type: ignore[misc]
@@ -49,6 +51,14 @@ def get_hunter() -> HunterClientProtocol:
         from app.infrastructure.hunter_client import HunterClient
         _hunter_client = HunterClient()
     return _hunter_client
+
+
+def get_newsapi() -> NewsAPIClientProtocol:
+    global _newsapi_client
+    if _newsapi_client is None:
+        from app.infrastructure.newsapi_client import NewsAPIClient
+        _newsapi_client = NewsAPIClient()
+    return _newsapi_client
 
 
 def get_email_client() -> EmailClientProtocol:

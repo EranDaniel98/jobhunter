@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     HUNTER_API_KEY: str = ""
     RESEND_API_KEY: str = ""
+    NEWSAPI_KEY: str = ""
 
     # Resend webhook
     RESEND_WEBHOOK_SECRET: str = ""

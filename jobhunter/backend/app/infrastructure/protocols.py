@@ -66,6 +66,20 @@ class EmailClientProtocol(Protocol):
 
 
 @runtime_checkable
+class NewsAPIClientProtocol(Protocol):
+    async def search_articles(
+        self,
+        query: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        page_size: int = 100,
+        language: str = "en",
+    ) -> list[dict]:
+        """Search for news articles. Returns list of article dicts."""
+        ...
+
+
+@runtime_checkable
 class StorageProtocol(Protocol):
     async def upload(self, key: str, data: bytes, content_type: str = "") -> str:
         """Upload data and return the storage key."""

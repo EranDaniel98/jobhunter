@@ -183,6 +183,60 @@ async def send_approved_message(ctx, outreach_id: str):
             logger.error("approved_message_send_failed", message_id=outreach_id, error=str(e))
 
 
+async def run_daily_scout(ctx):
+    """Run the scout agent for all active candidates with CandidateDNA."""
+    from app.infrastructure.database import async_session_factory
+    from app.models.candidate import Candidate, CandidateDNA
+
+    logger.info("daily_scout_started")
+    processed = 0
+    failed = 0
+
+    async with async_session_factory() as db:
+        # Find all active candidates that have DNA
+        result = await db.execute(
+            select(Candidate).where(
+                Candidate.is_active == True,
+                exists(
+                    select(CandidateDNA.id).where(
+                        CandidateDNA.candidate_id == Candidate.id
+                    )
+                ),
+            )
+        )
+        candidates = result.scalars().all()
+
+    for cand in candidates:
+        try:
+            from app.graphs.scout_pipeline import get_scout_pipeline
+
+            thread_id = f"scout-cron-{uuid.uuid4()}"
+            state = {
+                "candidate_id": str(cand.id),
+                "plan_tier": cand.plan_tier,
+                "search_queries": None,
+                "raw_articles": None,
+                "parsed_companies": None,
+                "scored_companies": None,
+                "companies_created": 0,
+                "status": "pending",
+                "error": None,
+            }
+
+            graph = get_scout_pipeline()
+            await graph.ainvoke(
+                state,
+                config={"configurable": {"thread_id": thread_id}},
+            )
+            processed += 1
+            logger.info("daily_scout_candidate_done", candidate_id=str(cand.id), thread_id=thread_id)
+        except Exception as e:
+            failed += 1
+            logger.error("daily_scout_candidate_failed", candidate_id=str(cand.id), error=str(e))
+
+    logger.info("daily_scout_completed", processed=processed, failed=failed)
+
+
 async def expire_stale_actions(ctx):
     """Expire pending actions older than 30 days."""
     from app.infrastructure.database import async_session_factory
@@ -199,6 +253,7 @@ class WorkerSettings:
     cron_jobs = [
         cron(check_followup_due, minute={0, 15, 30, 45}),
         cron(expire_stale_actions, hour={3}, minute={0}),  # Daily at 3 AM
+        cron(run_daily_scout, hour={9}, minute={0}),  # Daily at 9 AM UTC
     ]
     on_startup = startup
     on_shutdown = shutdown
