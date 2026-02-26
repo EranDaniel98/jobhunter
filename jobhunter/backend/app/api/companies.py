@@ -135,6 +135,10 @@ async def approve_company(
 
     # Research in background
     background_tasks.add_task(_research_background, company.id)
+    # Auto-trigger interview prep for key types
+    background_tasks.add_task(
+        _auto_interview_prep, str(company.candidate_id), str(company.id)
+    )
     return _company_to_response(company)
 
 
@@ -232,6 +236,32 @@ async def _get_candidate_company(
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     return company
+
+
+async def _auto_interview_prep(candidate_id: str, company_id: str):
+    """Auto-generate interview prep (company_qa, behavioral, technical) on company approval."""
+    import uuid as _uuid
+    from app.graphs.interview_prep import get_interview_prep_pipeline
+
+    for prep_type in ("company_qa", "behavioral", "technical"):
+        try:
+            thread_id = f"interview-auto-{_uuid.uuid4()}"
+            graph = get_interview_prep_pipeline()
+            await graph.ainvoke(
+                {
+                    "candidate_id": candidate_id,
+                    "company_id": company_id,
+                    "prep_type": prep_type,
+                    "session_id": None,
+                    "context": None,
+                    "content": None,
+                    "status": "pending",
+                    "error": None,
+                },
+                config={"configurable": {"thread_id": thread_id}},
+            )
+        except Exception as e:
+            logger.warning("auto_interview_prep_failed", prep_type=prep_type, error=str(e))
 
 
 async def _research_background(company_id):
