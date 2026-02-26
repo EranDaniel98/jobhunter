@@ -9,6 +9,7 @@ from app.models.invite import InviteCode
 from app.models.audit import AdminAuditLog
 from app.models.pending_action import PendingAction
 from app.models.signal import CompanySignal
+from app.models.interview import InterviewPrepSession, MockInterviewMessage
 
 __all__ = [
     "Base",
@@ -27,4 +28,6 @@ __all__ = [
     "AdminAuditLog",
     "PendingAction",
     "CompanySignal",
+    "InterviewPrepSession",
+    "MockInterviewMessage",
 ]
