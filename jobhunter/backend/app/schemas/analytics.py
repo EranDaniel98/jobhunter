@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class FunnelResponse(BaseModel):
@@ -36,6 +36,11 @@ class AnalyticsInsightResponse(BaseModel):
     data: dict | None = None
     is_read: bool = False
     created_at: str
+
+    @field_validator("id", "created_at", mode="before")
+    @classmethod
+    def coerce_to_str(cls, v):
+        return str(v) if v is not None else v
 
     model_config = {"from_attributes": True}
 

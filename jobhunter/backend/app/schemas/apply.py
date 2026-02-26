@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class JobPostingCreateRequest(BaseModel):
@@ -36,6 +36,11 @@ class JobPostingResponse(BaseModel):
     status: str
     ats_keywords: list[str] | None = None
     parsed_requirements: dict | None = None
+
+    @field_validator("id", "company_id", mode="before")
+    @classmethod
+    def coerce_uuid(cls, v):
+        return str(v) if v is not None else v
 
     model_config = {"from_attributes": True}
 
