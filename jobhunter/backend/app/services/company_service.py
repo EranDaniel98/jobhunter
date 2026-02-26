@@ -1,6 +1,5 @@
 import json
 import uuid
-from datetime import datetime, timezone
 
 import structlog
 from fastapi import HTTPException, status
@@ -9,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_hunter, get_openai
 from app.models.candidate import CandidateDNA
-from app.models.company import Company, CompanyDossier
+from app.models.company import Company
 from app.models.contact import Contact
 from app.services.embedding_service import cosine_similarity, embed_text
 
@@ -366,87 +365,6 @@ async def reject_company(
     await db.refresh(company)
     logger.info("company_rejected", company_id=str(company_id), reason=reason)
     return company
-
-
-async def research_company(db: AsyncSession, company_id: uuid.UUID) -> CompanyDossier:
-    """Generate full research dossier for a company."""
-    result = await db.execute(select(Company).where(Company.id == company_id))
-    company = result.scalar_one_or_none()
-    if not company:
-        raise ValueError("Company not found")
-
-    company.research_status = "in_progress"
-    await db.commit()
-
-    try:
-        # Get candidate DNA for personalized dossier
-        dna_result = await db.execute(
-            select(CandidateDNA).where(CandidateDNA.candidate_id == company.candidate_id)
-        )
-        dna = dna_result.scalar_one_or_none()
-        candidate_summary = dna.experience_summary if dna else "No candidate DNA available"
-
-        # Enrich company data via Hunter
-        hunter = get_hunter()
-        hunter_data = await hunter.domain_search(company.domain)
-
-        # Generate dossier via GPT-4o
-        client = get_openai()
-        prompt_filled = DOSSIER_PROMPT.format(
-            company_name=company.name,
-            domain=company.domain,
-            industry=company.industry or "Unknown",
-            size=company.size_range or "Unknown",
-            location=company.location_hq or "Unknown",
-            description=company.description or "No description available",
-            tech_stack=", ".join(company.tech_stack or []),
-            candidate_summary=candidate_summary,
-        )
-
-        dossier_data = await client.parse_structured(
-            prompt_filled, json.dumps(hunter_data), DOSSIER_SCHEMA
-        )
-
-        # Create or update dossier
-        existing = await db.execute(
-            select(CompanyDossier).where(CompanyDossier.company_id == company_id)
-        )
-        dossier = existing.scalar_one_or_none()
-        if not dossier:
-            dossier = CompanyDossier(id=uuid.uuid4(), company_id=company_id)
-            db.add(dossier)
-
-        dossier.culture_summary = dossier_data.get("culture_summary")
-        dossier.culture_score = dossier_data.get("culture_score")
-        dossier.red_flags = dossier_data.get("red_flags")
-        dossier.interview_format = dossier_data.get("interview_format")
-        dossier.interview_questions = dossier_data.get("interview_questions")
-        dossier.compensation_data = dossier_data.get("compensation_data")
-        dossier.key_people = dossier_data.get("key_people")
-        dossier.why_hire_me = dossier_data.get("why_hire_me")
-        dossier.resume_bullets = dossier_data.get("resume_bullets")
-        dossier.fit_score_tips = dossier_data.get("fit_score_tips")
-        dossier.recent_news = dossier_data.get("recent_news")
-
-        # Create contacts from Hunter data
-        await _create_contacts_from_hunter(db, company.candidate_id, company_id, hunter_data)
-
-        # Embed company for vector search
-        embed_text_content = f"{company.name} {company.description or ''} {company.industry or ''}"
-        company.embedding = await embed_text(embed_text_content)
-        company.research_status = "completed"
-        company.last_enriched = datetime.now(timezone.utc)
-
-        await db.commit()
-        await db.refresh(dossier)
-        logger.info("company_research_completed", company_id=str(company_id))
-        return dossier
-
-    except Exception as e:
-        company.research_status = "failed"
-        await db.commit()
-        logger.error("company_research_failed", company_id=str(company_id), error=str(e))
-        raise
 
 
 async def _create_company_from_hunter(

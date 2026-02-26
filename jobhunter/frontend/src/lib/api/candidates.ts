@@ -1,5 +1,5 @@
 import api from "./client";
-import type { CandidateDNAResponse, ResumeUploadResponse, SkillResponse } from "../types";
+import type { CandidateDNAResponse, PlanDefinition, ResumeUploadResponse, SkillResponse, UsageResponse } from "../types";
 
 export async function uploadResume(file: File): Promise<ResumeUploadResponse> {
   const formData = new FormData();
@@ -17,5 +17,15 @@ export async function getDNA(): Promise<CandidateDNAResponse> {
 
 export async function getSkills(): Promise<SkillResponse[]> {
   const { data } = await api.get<SkillResponse[]>("/candidates/me/skills");
+  return data;
+}
+
+export async function getUsage(): Promise<UsageResponse> {
+  const { data } = await api.get<UsageResponse>("/candidates/me/usage");
+  return data;
+}
+
+export async function getPlans(): Promise<PlanDefinition[]> {
+  const { data } = await api.get<PlanDefinition[]>("/plans");
   return data;
 }

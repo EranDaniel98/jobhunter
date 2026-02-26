@@ -97,7 +97,7 @@ async def _run_async_background(resume_id, candidate_id):
 async def get_my_usage(
     candidate: Candidate = Depends(get_current_candidate),
 ):
-    return await get_usage(str(candidate.id))
+    return await get_usage(str(candidate.id), candidate.plan_tier)
 
 
 @router.get("/me/dna", response_model=CandidateDNAResponse)

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useApprovalCount } from "@/lib/hooks/use-approvals";
+import type { PlanTier } from "@/lib/types";
 import {
   LayoutDashboard,
   FileText,
@@ -18,6 +19,7 @@ import {
   LogOut,
   Briefcase,
   Shield,
+  Sparkles,
 } from "lucide-react";
 
 const navItems = [
@@ -76,6 +78,17 @@ export function MobileNav({ open, onOpenChange }: MobileNavProps) {
             );
           })}
         </nav>
+
+        {user && (user.plan_tier as PlanTier) !== "hunter" && (
+          <div className="px-3 pb-2">
+            <Link href="/plans" onClick={() => onOpenChange(false)}>
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-muted-foreground hover:text-foreground">
+                <Sparkles className="h-3.5 w-3.5" />
+                {(user.plan_tier as PlanTier) === "free" ? "Free Plan" : "Explorer"} &mdash; Upgrade
+              </Button>
+            </Link>
+          </div>
+        )}
 
         <div className="border-t p-3">
           <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => logout()}>

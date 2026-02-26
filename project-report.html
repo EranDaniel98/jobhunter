@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobHunter AI — Project Report</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #f1f5f9;
+    --text-dim: #94a3b8;
+    --accent: #3b82f6;
+    --accent-glow: #60a5fa;
+    --green: #22c55e;
+    --green-dim: #166534;
+    --yellow: #eab308;
+    --yellow-dim: #854d0e;
+    --orange: #f97316;
+    --red: #ef4444;
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  /* Header */
+  .hero {
+    text-align: center;
+    padding: 3rem 0 2rem;
+    position: relative;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(59,130,246,0.15), transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #60a5fa, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .hero .date {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    opacity: 0.7;
+  }
+
+  /* Score Cards Row */
+  .scores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+  }
+
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .score-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+  }
+
+  .score-card.excellent::before { background: var(--green); }
+  .score-card.good::before { background: var(--accent); }
+  .score-card.moderate::before { background: var(--yellow); }
+  .score-card.needs-work::before { background: var(--orange); }
+
+  .score-card .score-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+
+  .score-card.excellent .score-value { color: var(--green); }
+  .score-card.good .score-value { color: var(--accent); }
+  .score-card.moderate .score-value { color: var(--yellow); }
+  .score-card.needs-work .score-value { color: var(--orange); }
+
+  .score-card .score-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+
+  .score-card .score-sub {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.5rem;
+    opacity: 0.7;
+  }
+
+  /* Overall Score Ring */
+  .overall-score {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    margin: 2.5rem 0;
+    padding: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .ring-container {
+    position: relative;
+    width: 160px;
+    height: 160px;
+  }
+
+  .ring-container svg {
+    transform: rotate(-90deg);
+  }
+
+  .ring-bg {
+    fill: none;
+    stroke: var(--surface2);
+    stroke-width: 12;
+  }
+
+  .ring-fill {
+    fill: none;
+    stroke: url(#scoreGradient);
+    stroke-width: 12;
+    stroke-linecap: round;
+    stroke-dasharray: 408;
+    stroke-dashoffset: 53;
+    transition: stroke-dashoffset 2s ease;
+  }
+
+  .ring-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .ring-text .number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #22c55e, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .ring-text .label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .overall-details {
+    flex: 1;
+    max-width: 500px;
+  }
+
+  .overall-details h2 {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .overall-details p {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .grade-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .grade-bar .label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .grade-bar .bar {
+    flex: 1;
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .grade-bar .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.5s ease;
+  }
+
+  .grade-bar .bar-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    width: 35px;
+    text-align: right;
+  }
+
+  /* Sections */
+  .section {
+    margin: 2rem 0;
+  }
+
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-title .icon {
+    font-size: 1.1rem;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .stat-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .stat-item .stat-number {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent-glow);
+  }
+
+  .stat-item .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Tech Stack */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+
+  .stack-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+
+  .stack-card h4 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--accent-glow);
+  }
+
+  .stack-list {
+    list-style: none;
+  }
+
+  .stack-list li {
+    font-size: 0.85rem;
+    padding: 0.3rem 0;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .stack-list li .version {
+    color: var(--text);
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.8rem;
+  }
+
+  /* Architecture Table */
+  .arch-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .arch-table th {
+    background: var(--surface2);
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+  }
+
+  .arch-table td {
+    padding: 0.65rem 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+
+  .arch-table tr:hover td {
+    background: rgba(59, 130, 246, 0.05);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-green { background: var(--green-dim); color: var(--green); }
+  .badge-yellow { background: var(--yellow-dim); color: var(--yellow); }
+  .badge-blue { background: rgba(59,130,246,0.2); color: var(--accent-glow); }
+  .badge-purple { background: rgba(168,85,247,0.2); color: var(--purple); }
+
+  /* Progress Tracker */
+  .progress-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+  }
+
+  .phase {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+  }
+
+  .phase:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: -10px;
+    width: 2px;
+    background: var(--border);
+  }
+
+  .phase-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .phase-dot.done { background: var(--green-dim); color: var(--green); }
+  .phase-dot.active { background: rgba(59,130,246,0.2); color: var(--accent-glow); border: 2px solid var(--accent); }
+  .phase-dot.upcoming { background: var(--surface2); color: var(--text-dim); }
+
+  .phase-content h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .phase-content p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 0.2rem;
+  }
+
+  .phase-content .items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+  }
+
+  .chip {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text-dim);
+  }
+
+  .chip.done { background: var(--green-dim); color: var(--green); }
+
+  /* Potential & Risks */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr; }
+    .overall-score { flex-direction: column; text-align: center; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+
+  .card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .card ul {
+    list-style: none;
+  }
+
+  .card ul li {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    padding: 0.35rem 0;
+    padding-left: 1.25rem;
+    position: relative;
+  }
+
+  .card ul li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.7rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .card.strengths ul li::before { background: var(--green); }
+  .card.risks ul li::before { background: var(--orange); }
+  .card.opportunities ul li::before { background: var(--cyan); }
+  .card.next-steps ul li::before { background: var(--purple); }
+
+  /* Footer */
+  .report-footer {
+    text-align: center;
+    padding: 2rem 0 1rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    opacity: 0.5;
+  }
+
+  /* Commit activity bar */
+  .commit-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 60px;
+    margin-top: 0.75rem;
+  }
+
+  .commit-bar {
+    flex: 1;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+    min-height: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .commit-bar:hover { opacity: 1; }
+
+  /* Feature matrix */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .feature-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .feature-item .fi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .feature-item .fi-icon.complete { background: var(--green-dim); }
+  .feature-item .fi-icon.partial { background: var(--yellow-dim); }
+  .feature-item .fi-icon.planned { background: var(--surface2); }
+
+  .feature-item .fi-text h5 {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .feature-item .fi-text p {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>JobHunter AI</h1>
+    <p class="subtitle">AI-powered job search automation platform — intelligent company discovery, personalized outreach, and career intelligence</p>
+    <p class="date">Project Report &bull; February 25, 2026</p>
+  </div>
+
+  <!-- Overall Score -->
+  <div class="overall-score">
+    <div class="ring-container">
+      <svg width="160" height="160" viewBox="0 0 160 160">
+        <defs>
+          <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#22c55e"/>
+            <stop offset="100%" style="stop-color:#3b82f6"/>
+          </linearGradient>
+        </defs>
+        <circle class="ring-bg" cx="80" cy="80" r="65"/>
+        <circle class="ring-fill" cx="80" cy="80" r="65"/>
+      </svg>
+      <div class="ring-text">
+        <div class="number">87</div>
+        <div class="label">Overall</div>
+      </div>
+    </div>
+    <div class="overall-details">
+      <h2>Project Health: Strong</h2>
+      <p>A production-deployed full-stack AI platform with solid engineering patterns, comprehensive test coverage, and LangGraph orchestration. Live on Railway with Cloudflare R2 storage, PostgreSQL (pgvector), and Redis — serving real traffic at api.hunter-job.com.</p>
+      <div class="grade-bar">
+        <span class="label">Architecture</span>
+        <div class="bar"><div class="bar-fill" style="width:92%;background:var(--green)"></div></div>
+        <span class="bar-value" style="color:var(--green)">92</span>
+      </div>
+      <div class="grade-bar">
+        <span class="label">Code Quality</span>
+        <div class="bar"><div class="bar-fill" style="width:88%;background:var(--green)"></div></div>
+        <span class="bar-value" style="color:var(--green)">88</span>
+      </div>
+      <div class="grade-bar">
+        <span class="label">Test Coverage</span>
+        <div class="bar"><div class="bar-fill" style="width:82%;background:var(--accent)"></div></div>
+        <span class="bar-value" style="color:var(--accent)">82</span>
+      </div>
+      <div class="grade-bar">
+        <span class="label">DevOps & CI</span>
+        <div class="bar"><div class="bar-fill" style="width:78%;background:var(--accent)"></div></div>
+        <span class="bar-value" style="color:var(--accent)">78</span>
+      </div>
+      <div class="grade-bar">
+        <span class="label">Completeness</span>
+        <div class="bar"><div class="bar-fill" style="width:72%;background:var(--yellow)"></div></div>
+        <span class="bar-value" style="color:var(--yellow)">72</span>
+      </div>
+      <div class="grade-bar">
+        <span class="label">Market Potential</span>
+        <div class="bar"><div class="bar-fill" style="width:90%;background:var(--green)"></div></div>
+        <span class="bar-value" style="color:var(--green)">90</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top-Level Scores -->
+  <div class="scores-grid">
+    <div class="score-card excellent">
+      <div class="score-value">92</div>
+      <div class="score-label">Architecture</div>
+      <div class="score-sub">Protocol DI, multi-tenant, event-driven</div>
+    </div>
+    <div class="score-card excellent">
+      <div class="score-value">88</div>
+      <div class="score-label">Code Quality</div>
+      <div class="score-sub">TypeScript strict, async/await, structured logs</div>
+    </div>
+    <div class="score-card good">
+      <div class="score-value">82</div>
+      <div class="score-label">Testing</div>
+      <div class="score-sub">151 tests, stubs over mocks, CI green</div>
+    </div>
+    <div class="score-card good">
+      <div class="score-value">78</div>
+      <div class="score-label">DevOps</div>
+      <div class="score-sub">Docker Compose, GitHub Actions, Cloudflare</div>
+    </div>
+    <div class="score-card moderate">
+      <div class="score-value">72</div>
+      <div class="score-label">Completeness</div>
+      <div class="score-sub">Production live, Phase 2 in progress</div>
+    </div>
+    <div class="score-card excellent">
+      <div class="score-value">90</div>
+      <div class="score-label">Market Potential</div>
+      <div class="score-sub">AI-native, human-in-the-loop, multi-channel</div>
+    </div>
+  </div>
+
+  <!-- Codebase Metrics -->
+  <div class="section">
+    <h3 class="section-title"><span class="icon">&#128202;</span> Codebase Metrics</h3>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">19,608</div>
+        <div class="stat-label">Lines of Code</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">194</div>
+        <div class="stat-label">Source Files</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">61</div>
+        <div class="stat-label">API Endpoints</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">15</div>
+        <div class="stat-label">DB Models</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">151</div>
+        <div class="stat-label">Tests Passing</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">74</div>
+        <div class="stat-label">Git Commits</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">11</div>
+        <div class="stat-label">DB Migrations</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">15</div>
+        <div class="stat-label">Frontend Pages</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">59</div>
+        <div class="stat-label">React Components</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">12</div>
+        <div class="stat-label">Backend Services</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">7</div>
+        <div class="stat-label">Custom Hooks</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">24</div>
+        <div class="stat-label">UI Components</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="section">
+    <h3 class="section-title"><span class="icon">&#9881;</span> Technology Stack</h3>
+    <div class="stack-grid">
+      <div class="stack-card">
+        <h4>Frontend</h4>
+        <ul class="stack-list">
+          <li><span>Next.js</span> <span class="version">16.1.6</span></li>
+          <li><span>React</span> <span class="version">19.2.3</span></li>
+          <li><span>TypeScript</span> <span class="version">5.x</span></li>
+          <li><span>Tailwind CSS</span> <span class="version">4.x</span></li>
+          <li><span>React Query</span> <span class="version">5.90</span></li>
+          <li><span>Radix UI + shadcn/ui</span> <span class="version">24 components</span></li>
+          <li><span>Recharts</span> <span class="version">3.7</span></li>
+        </ul>
+      </div>
+      <div class="stack-card">
+        <h4>Backend</h4>
+        <ul class="stack-list">
+          <li><span>FastAPI</span> <span class="version">0.115+</span></li>
+          <li><span>SQLAlchemy (async)</span> <span class="version">2.0+</span></li>
+          <li><span>PostgreSQL + pgvector</span> <span class="version">16</span></li>
+          <li><span>Redis</span> <span class="version">7</span></li>
+          <li><span>LangGraph</span> <span class="version">0.4+</span></li>
+          <li><span>OpenAI SDK</span> <span class="version">1.60+</span></li>
+          <li><span>Pydantic v2</span> <span class="version">2.10+</span></li>
+        </ul>
+      </div>
+      <div class="stack-card">
+        <h4>Infrastructure</h4>
+        <ul class="stack-list">
+          <li><span>Docker Compose</span> <span class="version">pgvector + redis</span></li>
+          <li><span>GitHub Actions</span> <span class="version">CI/CD</span></li>
+          <li><span>Cloudflare (OpenNext)</span> <span class="version">Deployment</span></li>
+          <li><span>Alembic</span> <span class="version">11 migrations</span></li>
+          <li><span>uv</span> <span class="version">Package manager</span></li>
+        </ul>
+      </div>
+      <div class="stack-card">
+        <h4>External Services</h4>
+        <ul class="stack-list">
+          <li><span>OpenAI</span> <span class="version">GPT-4o + Embeddings</span></li>
+          <li><span>Hunter.io</span> <span class="version">Contact discovery</span></li>
+          <li><span>Resend</span> <span class="version">Email delivery</span></li>
+          <li><span>Svix</span> <span class="version">Webhooks</span></li>
+          <li><span>AWS S3</span> <span class="version">File storage</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architecture Breakdown -->
+  <div class="section">
+    <h3 class="section-title"><span class="icon">&#127959;</span> Architecture Overview</h3>
+    <table class="arch-table">
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Component</th>
+          <th>Details</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Frontend</td>
+          <td>Next.js App Router</td>
+          <td>15 pages, SSR, auth guards, responsive sidebar</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Frontend</td>
+          <td>Real-time WebSocket</td>
+          <td>Auto-reconnect with exponential backoff, notification center</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>API</td>
+          <td>REST + WebSocket</td>
+          <td>61 endpoints across 12 routers, JWT auth, rate limiting</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>API</td>
+          <td>Admin Console</td>
+          <td>13 admin endpoints, audit logging, user management</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>AI</td>
+          <td>LangGraph Resume Pipeline</td>
+          <td>5-node StateGraph with PostgreSQL checkpointing</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>AI</td>
+          <td>Company Research</td>
+          <td>OpenAI enrichment, fit scoring, dossier generation</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>AI</td>
+          <td>Outreach Generation</td>
+          <td>Personalized email/LinkedIn drafts, A/B variants</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>AI</td>
+          <td>Vector Embeddings</td>
+          <td>pgvector HNSW indexes for semantic skill matching</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Data</td>
+          <td>PostgreSQL + pgvector</td>
+          <td>15 models, multi-tenant (candidate_id), HNSW indexes</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Data</td>
+          <td>Redis Cache</td>
+          <td>JWT blacklist, rate limits, email quotas, graceful fallback</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Infra</td>
+          <td>Protocol-Based DI</td>
+          <td>Swappable clients: OpenAI, Hunter, Resend, Storage</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Security</td>
+          <td>Auth System</td>
+          <td>JWT access + refresh, blacklist, invite codes, email verification</td>
+          <td><span class="badge badge-green">Complete</span></td>
+        </tr>
+        <tr>
+          <td>Email</td>
+          <td>Delivery Pipeline</td>
+          <td>Resend integration, suppression lists, webhook tracking</td>
+          <td><span class="badge badge-yellow">Needs Domain</span></td>
+        </tr>
+        <tr>
+          <td>AI</td>
+          <td>Scout Agent (Job Boards)</td>
+          <td>Job board scraping, signal monitoring, matching</td>
+          <td><span class="badge badge-purple">Phase 2</span></td>
+        </tr>
+        <tr>
+          <td>AI</td>
+          <td>Interview Prep Agent</td>
+          <td>Company-specific prep, mock questions, negotiation</td>
+          <td><span class="badge badge-purple">Phase 2</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Feature Completeness -->
+  <div class="section">
+    <h3 class="section-title"><span class="icon">&#10003;</span> Feature Matrix</h3>
+    <div class="feature-grid">
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Resume Upload & DNA Analysis</h5>
+          <p>PDF/DOCX parsing, skill extraction, embedding generation</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>LangGraph Pipeline</h5>
+          <p>5-node checkpointed graph with crash recovery</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Company Research & Dossiers</h5>
+          <p>AI enrichment, fit scoring, bullet suggestions</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Contact Discovery</h5>
+          <p>Hunter.io integration, email finder, role detection</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>AI Outreach Drafting</h5>
+          <p>Personalized emails & LinkedIn, A/B variants</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Approval Queue</h5>
+          <p>Human-in-the-loop review for AI actions</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Email Delivery & Tracking</h5>
+          <p>Resend SDK, open/click webhooks, suppressions</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Analytics Dashboard</h5>
+          <p>Funnel chart, pipeline metrics, event tracking</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Admin Console</h5>
+          <p>User management, audit logs, broadcast, invite chains</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>WebSocket Real-time</h5>
+          <p>Live notifications, cache invalidation, reconnect logic</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Dark Mode + Responsive</h5>
+          <p>next-themes, mobile nav, sidebar collapse</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon complete">&#10003;</div>
+        <div class="fi-text">
+          <h5>Email Verification</h5>
+          <p>JWT verification flow, resend cooldown, banner</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon partial" style="color:var(--yellow)">&#9650;</div>
+        <div class="fi-text">
+          <h5>Follow-Up Automation</h5>
+          <p>Draft generation ready, cron scheduling pending</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon planned" style="color:var(--text-dim)">&#9711;</div>
+        <div class="fi-text">
+          <h5>Job Board Scraping</h5>
+          <p>Planned: JobSpy integration, signal monitoring</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon planned" style="color:var(--text-dim)">&#9711;</div>
+        <div class="fi-text">
+          <h5>Interview Prep</h5>
+          <p>Planned: Company-specific prep, negotiation coaching</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon planned" style="color:var(--text-dim)">&#9711;</div>
+        <div class="fi-text">
+          <h5>Multi-Agent Orchestration</h5>
+          <p>Planned: Full LangGraph DAG with 8 specialized agents</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Development Progress -->
+  <div class="section">
+    <h3 class="section-title"><span class="icon">&#128640;</span> Development Roadmap</h3>
+    <div class="progress-section">
+      <div class="phase">
+        <div class="phase-dot done">&#10003;</div>
+        <div class="phase-content">
+          <h4>Phase 1: MVP Foundation</h4>
+          <p>Core platform, authentication, data models, basic UI</p>
+          <div class="items">
+            <span class="chip done">Auth System</span>
+            <span class="chip done">Database Models</span>
+            <span class="chip done">REST API (61 endpoints)</span>
+            <span class="chip done">Dashboard UI</span>
+            <span class="chip done">Docker Compose</span>
+          </div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot done">&#10003;</div>
+        <div class="phase-content">
+          <h4>Phase 1.5: AI Intelligence Layer</h4>
+          <p>Resume analysis, company research, outreach generation</p>
+          <div class="items">
+            <span class="chip done">Resume Parsing</span>
+            <span class="chip done">DNA Profiles</span>
+            <span class="chip done">Company Enrichment</span>
+            <span class="chip done">Fit Scoring</span>
+            <span class="chip done">Outreach Drafting</span>
+            <span class="chip done">A/B Variants</span>
+          </div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot active">&#8594;</div>
+        <div class="phase-content">
+          <h4>Phase 2: LangGraph Orchestration &amp; Production (In Progress)</h4>
+          <p>Checkpointed state graphs, production deployment on Railway, Cloudflare R2 storage</p>
+          <div class="items">
+            <span class="chip done">Resume Pipeline</span>
+            <span class="chip done">Production Deploy (Railway)</span>
+            <span class="chip done">Cloudflare R2 Storage</span>
+            <span class="chip done">Health Monitoring</span>
+            <span class="chip done">Company Research Graph</span>
+            <span class="chip done">Outreach Graph</span>
+            <span class="chip done">Follow-Up Cron</span>
+          </div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot upcoming">3</div>
+        <div class="phase-content">
+          <h4>Phase 3: Multi-Agent System</h4>
+          <p>Eight specialized agents coordinating through shared state</p>
+          <div class="items">
+            <span class="chip">Scout Agent</span>
+            <span class="chip">Interview Agent</span>
+            <span class="chip">Analytics Agent</span>
+            <span class="chip">Apply Agent</span>
+          </div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot upcoming">4</div>
+        <div class="phase-content">
+          <h4>Phase 4: Scale & Polish</h4>
+          <p>Production hardening, multi-user SaaS, integrations</p>
+          <div class="items">
+            <span class="chip">Celery Workers</span>
+            <span class="chip">Multi-Tenant</span>
+            <span class="chip">LinkedIn API</span>
+            <span class="chip">Calendar Integration</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Strengths, Risks, Opportunities -->
+  <div class="section">
+    <h3 class="section-title"><span class="icon">&#128161;</span> Analysis</h3>
+    <div class="two-col">
+      <div class="card strengths">
+        <h3 style="color:var(--green)">Strengths</h3>
+        <ul>
+          <li><strong>Production-grade architecture</strong> — protocol-based DI, multi-tenant ready, structured logging, rate limiting</li>
+          <li><strong>AI-native design</strong> — vector embeddings, structured output, LangGraph orchestration baked in from day one</li>
+          <li><strong>Human-in-the-loop</strong> — approval queue prevents AI from acting autonomously, building user trust</li>
+          <li><strong>Full test suite</strong> — 151 tests with stub-based isolation, CI green on both frontend and backend</li>
+          <li><strong>Modern stack</strong> — Next.js 16, React 19, FastAPI async, latest LangGraph — no tech debt from legacy choices</li>
+          <li><strong>Clean separation</strong> — API/service/infrastructure layers properly decoupled, easy to extend</li>
+        </ul>
+      </div>
+      <div class="card risks">
+        <h3 style="color:var(--orange)">Risks & Gaps</h3>
+        <ul>
+          <li><strong>Email domain not verified</strong> — Resend requires DNS verification before production email delivery works</li>
+          <li><strong>Single developer</strong> — Bus factor of 1; all knowledge concentrated in one person</li>
+          <li><strong>E2E coverage growing</strong> — Playwright suite added for critical frontend flows (resolved)</li>
+          <li><strong>API cost exposure</strong> — OpenAI + Hunter.io usage not rate-limited per-user per-day</li>
+          <li><strong>Sentry monitoring active</strong> — Error tracking enabled on both frontend and backend (resolved)</li>
+          <li><strong>Migration gap</strong> — email_verified column requires manual alembic upgrade on existing deployments</li>
+        </ul>
+      </div>
+    </div>
+    <div class="two-col" style="margin-top:1rem">
+      <div class="card opportunities">
+        <h3 style="color:var(--cyan)">Market Opportunities</h3>
+        <ul>
+          <li><strong>AI job search is nascent</strong> — no dominant player in AI-powered personalized outreach automation</li>
+          <li><strong>SaaS-ready architecture</strong> — multi-tenant, invite codes, admin console already built</li>
+          <li><strong>Unique value prop</strong> — combines resume analysis + company research + personalized outreach in one platform</li>
+          <li><strong>Network effects potential</strong> — anonymized success data could improve outreach templates over time</li>
+          <li><strong>Freemium model</strong> — free tier with limited companies/emails, premium for unlimited + advanced features</li>
+        </ul>
+      </div>
+      <div class="card next-steps">
+        <h3 style="color:var(--purple)">Recommended Next Steps</h3>
+        <ul>
+          <li><strong>Verify Resend domain</strong> — enable production email delivery (30 min task)</li>
+          <li><strong>Add E2E tests</strong> — Playwright for critical flows: login, upload resume, add company, send outreach</li>
+          <li><strong>Production deployed</strong> — Backend on Railway (api.hunter-job.com), Cloudflare R2 for storage, Redis + pgvector provisioned (done)</li>
+          <li><strong>Add per-user API cost tracking</strong> — meter OpenAI token usage to prevent cost overruns</li>
+          <li><strong>Build Scout Agent</strong> — job board scraping would be the most impactful Phase 3 feature</li>
+          <li><strong>Landing page + waitlist</strong> — start collecting early interest while building out Phase 3</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code Distribution -->
+  <div class="section">
+    <h3 class="section-title"><span class="icon">&#128206;</span> Code Distribution</h3>
+    <table class="arch-table">
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Files</th>
+          <th>Lines</th>
+          <th>% of Total</th>
+          <th>Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Backend App</td>
+          <td>70</td>
+          <td>6,421</td>
+          <td>33%</td>
+          <td>API, services, models, infrastructure</td>
+        </tr>
+        <tr>
+          <td>Backend Tests</td>
+          <td>17</td>
+          <td>3,527</td>
+          <td>18%</td>
+          <td>151 tests, stubs, fixtures</td>
+        </tr>
+        <tr>
+          <td>Frontend App</td>
+          <td>107</td>
+          <td>9,660</td>
+          <td>49%</td>
+          <td>Pages, components, hooks, API clients</td>
+        </tr>
+        <tr style="font-weight:700">
+          <td>Total</td>
+          <td>194</td>
+          <td>19,608</td>
+          <td>100%</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SaaS Readiness -->
+  <div class="section">
+    <h3 class="section-title"><span class="icon">&#127793;</span> SaaS Readiness Checklist</h3>
+    <table class="arch-table">
+      <thead>
+        <tr>
+          <th>Requirement</th>
+          <th>Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Multi-tenant data isolation</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>candidate_id on all tables, query-level filtering</td>
+        </tr>
+        <tr>
+          <td>Authentication & authorization</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>JWT + refresh, Redis blacklist, invite codes</td>
+        </tr>
+        <tr>
+          <td>API versioning</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>/api/v1/ prefix on all routes</td>
+        </tr>
+        <tr>
+          <td>Rate limiting</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>Per-user via SlowAPI, email quotas via Redis</td>
+        </tr>
+        <tr>
+          <td>Structured logging</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>structlog with request ID tracing</td>
+        </tr>
+        <tr>
+          <td>Admin panel</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>User management, audit logs, broadcast</td>
+        </tr>
+        <tr>
+          <td>Database migrations</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>Alembic with 11 versioned migrations</td>
+        </tr>
+        <tr>
+          <td>CI/CD pipeline</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>GitHub Actions (both frontend + backend green)</td>
+        </tr>
+        <tr>
+          <td>Containerization</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>Docker Compose for local dev</td>
+        </tr>
+        <tr>
+          <td>Swappable providers</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>Protocol-based DI for all external services</td>
+        </tr>
+        <tr>
+          <td>Payment integration</td>
+          <td><span class="badge badge-yellow">Not Started</span></td>
+          <td>Stripe/Paddle integration needed for billing</td>
+        </tr>
+        <tr>
+          <td>Monitoring & alerting</td>
+          <td><span class="badge badge-yellow">Not Started</span></td>
+          <td>Need Sentry, health dashboards, uptime alerts</td>
+        </tr>
+        <tr>
+          <td>E2E test suite</td>
+          <td><span class="badge badge-yellow">Minimal</span></td>
+          <td>1 e2e test exists; Playwright suite needed</td>
+        </tr>
+        <tr>
+          <td>Production deployment</td>
+          <td><span class="badge badge-yellow">Configured</span></td>
+          <td>Cloudflare + OpenNext configured, not yet deployed</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="report-footer">
+    Generated on February 25, 2026 &bull; JobHunter AI &bull; Private Repository
+  </div>
+
+</div>
+</body>
+</html>

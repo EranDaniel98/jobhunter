@@ -58,6 +58,10 @@ async def check_followup_due(ctx):
 
             # Find sent/delivered messages of this type that are old enough
             # and have no newer message for the same contact+candidate+channel
+            # Find sent/delivered messages of this type that are old enough.
+            # Per-message dedup (newer message check, pending action check)
+            # happens in the loop below — kept out of the query to avoid
+            # a broken self-join that compared columns to themselves.
             query = (
                 select(OutreachMessage)
                 .where(
@@ -65,24 +69,6 @@ async def check_followup_due(ctx):
                     OutreachMessage.channel == "email",
                     OutreachMessage.message_type == prev_type,
                     OutreachMessage.sent_at <= cutoff,
-                    # No newer message exists for this contact+candidate+channel
-                    ~exists(
-                        select(OutreachMessage.id).where(
-                            OutreachMessage.contact_id == OutreachMessage.contact_id,
-                            OutreachMessage.candidate_id == OutreachMessage.candidate_id,
-                            OutreachMessage.channel == OutreachMessage.channel,
-                            OutreachMessage.created_at > OutreachMessage.created_at,
-                        )
-                    ),
-                    # No pending action already exists for this entity
-                    ~exists(
-                        select(PendingAction.id).where(
-                            and_(
-                                PendingAction.entity_id == OutreachMessage.id,
-                                PendingAction.status == "pending",
-                            )
-                        )
-                    ),
                 )
             )
 
@@ -103,42 +89,60 @@ async def check_followup_due(ctx):
                     if newer_check.scalar_one_or_none():
                         continue  # Skip — newer message exists
 
-                    # Draft the follow-up
-                    from app.services.outreach_service import draft_message
-
-                    followup = await draft_message(db, msg.candidate_id, msg.contact_id)
-
-                    # Create PendingAction
-                    from app.services.approval_service import create_pending_action
-
-                    await create_pending_action(
-                        db,
-                        msg.candidate_id,
-                        action_type="send_followup",
-                        entity_id=followup.id,
-                        ai_reasoning=f"Auto-drafted {next_type} after {days_threshold} days with no reply",
-                        metadata={"prev_message_id": str(msg.id), "followup_type": next_type},
+                    # Skip if a pending action already exists for this message
+                    pending_check = await db.execute(
+                        select(PendingAction.id).where(
+                            PendingAction.entity_id == msg.id,
+                            PendingAction.status == "pending",
+                        ).limit(1)
                     )
+                    if pending_check.scalar_one_or_none():
+                        continue  # Skip — pending action already exists
 
-                    # Notify via WebSocket
-                    from app.infrastructure.websocket_manager import ws_manager
+                    # Launch the outreach graph for follow-up drafting
+                    # Graph handles: context → draft → quality check → approval → interrupt
+                    from app.graphs.outreach import get_outreach_pipeline
 
-                    await ws_manager.broadcast(
-                        str(msg.candidate_id),
-                        "followup_drafted",
-                        {
-                            "message_id": str(followup.id),
-                            "contact_id": str(msg.contact_id),
-                            "followup_type": next_type,
-                        },
+                    # Look up candidate plan_tier
+                    from app.models.candidate import Candidate
+                    cand_result = await db.execute(
+                        select(Candidate).where(Candidate.id == msg.candidate_id)
+                    )
+                    cand = cand_result.scalar_one_or_none()
+                    plan_tier = cand.plan_tier if cand else "free"
+
+                    thread_id = f"outreach-followup-{uuid.uuid4()}"
+                    state = {
+                        "candidate_id": str(msg.candidate_id),
+                        "contact_id": str(msg.contact_id),
+                        "plan_tier": plan_tier,
+                        "language": "en",
+                        "variant": None,
+                        "attach_resume": True,
+                        "context": None,
+                        "message_type": None,
+                        "outreach_message_id": None,
+                        "draft_data": None,
+                        "action_id": None,
+                        "approval_decision": None,
+                        "external_message_id": None,
+                        "status": "pending",
+                        "error": None,
+                    }
+
+                    graph = get_outreach_pipeline()
+                    await graph.ainvoke(
+                        state,
+                        config={"configurable": {"thread_id": thread_id}},
                     )
 
                     drafted_count += 1
                     logger.info(
-                        "followup_drafted",
+                        "followup_graph_launched",
                         prev_message_id=str(msg.id),
                         followup_type=next_type,
                         candidate_id=str(msg.candidate_id),
+                        thread_id=thread_id,
                     )
                 except Exception as e:
                     logger.error(
@@ -157,7 +161,23 @@ async def send_approved_message(ctx, outreach_id: str):
 
     async with async_session_factory() as db:
         try:
-            msg = await send_outreach(db, uuid.UUID(outreach_id))
+            # Look up candidate plan_tier for quota enforcement
+            from sqlalchemy import select
+            from app.models.outreach import OutreachMessage
+            from app.models.candidate import Candidate
+            result = await db.execute(
+                select(OutreachMessage).where(OutreachMessage.id == uuid.UUID(outreach_id))
+            )
+            outreach_msg = result.scalar_one_or_none()
+            plan_tier = "free"
+            if outreach_msg:
+                cand_result = await db.execute(
+                    select(Candidate).where(Candidate.id == outreach_msg.candidate_id)
+                )
+                cand = cand_result.scalar_one_or_none()
+                if cand:
+                    plan_tier = cand.plan_tier
+            msg = await send_outreach(db, uuid.UUID(outreach_id), plan_tier=plan_tier)
             logger.info("approved_message_sent", message_id=outreach_id)
         except Exception as e:
             logger.error("approved_message_send_failed", message_id=outreach_id, error=str(e))

@@ -12,11 +12,13 @@ async def test_usage_endpoint_returns_all_quotas(client: AsyncClient, auth_heade
     resp = await client.get(f"{API}/candidates/me/usage", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
-    for key in ("openai", "hunter", "discovery", "research"):
-        assert key in data
-        assert "used" in data[key]
-        assert "limit" in data[key]
-        assert data[key]["used"] == 0
+    assert "plan_tier" in data
+    assert "quotas" in data
+    for key in ("hunter", "discovery", "research", "email"):
+        assert key in data["quotas"]
+        assert "used" in data["quotas"][key]
+        assert "limit" in data["quotas"][key]
+        assert data["quotas"][key]["used"] == 0
 
 
 @pytest.mark.asyncio
@@ -29,12 +31,12 @@ async def test_quota_enforced_returns_429(client: AsyncClient, auth_headers: dic
     resp = await client.get(f"{API}/auth/me", headers=auth_headers)
     candidate_id = resp.json()["id"]
 
-    # Set the discovery counter to the limit
+    # Set the discovery counter to the free plan limit (3)
     from datetime import datetime, timezone
     redis = get_redis()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     key = f"quota:{candidate_id}:discovery:{today}"
-    await redis.set(key, str(settings.DAILY_DISCOVERY_LIMIT))
+    await redis.set(key, "3")
 
     # Next discover call should be rejected (429 from either quota or rate limiter)
     resp = await client.post(f"{API}/companies/discover", headers=auth_headers)

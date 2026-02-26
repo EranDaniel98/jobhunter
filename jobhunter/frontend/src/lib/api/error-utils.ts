@@ -3,9 +3,26 @@ import { toast } from "sonner";
 interface ApiError {
   response?: {
     status?: number;
-    data?: { detail?: string | Array<{ msg: string; loc: string[] }> };
+    data?: { detail?: string | Record<string, unknown> | Array<{ msg: string; loc: string[] }> };
   };
   message?: string;
+}
+
+const QUOTA_LABELS: Record<string, string> = {
+  discovery: "company discovery",
+  research: "company research",
+  hunter: "contact lookup",
+  email: "email",
+  openai: "AI call",
+};
+
+function isQuotaDetail(detail: unknown): detail is { quota_type: string; limit: number; message: string } {
+  return (
+    typeof detail === "object" &&
+    detail !== null &&
+    "quota_type" in detail &&
+    "limit" in detail
+  );
 }
 
 export function getErrorMessage(err: unknown, fallback = "Something went wrong"): string {
@@ -22,6 +39,12 @@ export function getErrorMessage(err: unknown, fallback = "Something went wrong")
     return detail.map((d) => d.msg).join(". ");
   }
 
+  // Structured quota exceeded response
+  if (status === 429 && isQuotaDetail(detail)) {
+    const label = QUOTA_LABELS[detail.quota_type] || detail.quota_type;
+    return `Daily ${label} limit (${detail.limit}) reached. Upgrade for more.`;
+  }
+
   if (typeof detail === "string") return detail;
 
   if (status === 401) return "Session expired — please log in again";
@@ -36,4 +59,20 @@ export function getErrorMessage(err: unknown, fallback = "Something went wrong")
 
 export function toastError(err: unknown, fallback?: string) {
   toast.error(getErrorMessage(err, fallback));
+}
+
+/**
+ * Extract structured quota detail from a 429 error, if present.
+ */
+export function getQuotaDetail(err: unknown): { quota_type: string; limit: number; plan_tier: string } | null {
+  const apiErr = err as ApiError;
+  const detail = apiErr?.response?.data?.detail;
+  if (apiErr?.response?.status === 429 && isQuotaDetail(detail)) {
+    return {
+      quota_type: detail.quota_type,
+      limit: detail.limit,
+      plan_tier: (detail as Record<string, unknown>).plan_tier as string || "free",
+    };
+  }
+  return null;
 }

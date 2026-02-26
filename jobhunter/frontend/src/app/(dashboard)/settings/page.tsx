@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { toastError } from "@/lib/api/error-utils";
 import { ChangePasswordCard } from "@/components/settings/change-password-card";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { PlanTier } from "@/lib/types";
 import { Copy, Loader2, Plus, X } from "lucide-react";
 
 export default function SettingsPage() {
@@ -123,6 +124,8 @@ export default function SettingsPage() {
       </Card>
 
       <ChangePasswordCard />
+
+      <PlanBillingCard tier={user?.plan_tier || "free"} />
 
       <Card>
         <CardHeader>
@@ -285,6 +288,44 @@ function TagInput({
         </div>
       )}
     </div>
+  );
+}
+
+const PLAN_DISPLAY: Record<PlanTier, { name: string; className: string }> = {
+  free: { name: "Free Plan", className: "" },
+  explorer: { name: "Explorer", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+  hunter: { name: "Hunter", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+};
+
+function PlanBillingCard({ tier }: { tier: PlanTier }) {
+  const plan = PLAN_DISPLAY[tier] || PLAN_DISPLAY.free;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Plan & Billing</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Current plan:</span>
+          {plan.className ? (
+            <Badge className={plan.className}>{plan.name}</Badge>
+          ) : (
+            <Badge variant="secondary">{plan.name}</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <a href="/plans">
+            <Button variant="outline" size="sm">
+              View Plans
+            </Button>
+          </a>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Paid plans coming soon
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
