@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.contact import Contact
 from app.models.company import Company
@@ -199,3 +199,69 @@ async def test_breakup_is_final(db_session: AsyncSession, scheduler_data):
     # breakup is not in FOLLOWUP_THRESHOLDS, so it won't be queried
     from app.worker import FOLLOWUP_THRESHOLDS
     assert "breakup" not in FOLLOWUP_THRESHOLDS
+
+
+@pytest.mark.asyncio
+async def test_check_followup_due_launches_graph(
+    db_session: AsyncSession, test_engine, scheduler_data, redis
+):
+    """Call check_followup_due() end-to-end and verify graph creates draft + PendingAction."""
+    from app.worker import check_followup_due
+
+    data = scheduler_data
+
+    # Create a sent initial message from 4 days ago
+    msg = _create_message(
+        data["candidate"].id, data["contact"].id,
+        message_type="initial", status="sent",
+        sent_at=datetime.now(timezone.utc) - timedelta(days=4),
+    )
+    db_session.add(msg)
+    await db_session.commit()
+
+    # Monkeypatch DB session factory so graph nodes use the test DB
+    graph_session_factory = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False
+    )
+    import app.infrastructure.database as db_mod
+    original_factory = db_mod.async_session_factory
+    db_mod.async_session_factory = graph_session_factory
+
+    # Monkeypatch OpenAI + email stubs
+    import app.dependencies as deps
+    from tests.conftest import OpenAIStub, ResendStub
+    deps._openai_client = OpenAIStub()
+    deps._email_client = ResendStub()
+
+    try:
+        # Run the cron function — graph will pause at interrupt()
+        await check_followup_due(ctx={})
+    finally:
+        db_mod.async_session_factory = original_factory
+        deps._openai_client = None
+        deps._email_client = None
+
+    # Verify: a new followup_1 draft was created
+    async with graph_session_factory() as check_db:
+        result = await check_db.execute(
+            select(OutreachMessage).where(
+                OutreachMessage.candidate_id == data["candidate"].id,
+                OutreachMessage.contact_id == data["contact"].id,
+                OutreachMessage.message_type == "followup_1",
+            )
+        )
+        followup = result.scalar_one_or_none()
+        assert followup is not None, "Expected a followup_1 message to be created"
+        assert followup.status == "draft"
+
+        # Verify: PendingAction with thread_id was created
+        action_result = await check_db.execute(
+            select(PendingAction).where(
+                PendingAction.candidate_id == data["candidate"].id,
+                PendingAction.entity_id == followup.id,
+            )
+        )
+        action = action_result.scalar_one_or_none()
+        assert action is not None, "Expected a PendingAction for the followup"
+        assert action.action_type == "send_email"
+        assert "thread_id" in (action.metadata_ or {})

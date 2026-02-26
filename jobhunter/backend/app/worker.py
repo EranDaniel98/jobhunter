@@ -58,6 +58,10 @@ async def check_followup_due(ctx):
 
             # Find sent/delivered messages of this type that are old enough
             # and have no newer message for the same contact+candidate+channel
+            # Find sent/delivered messages of this type that are old enough.
+            # Per-message dedup (newer message check, pending action check)
+            # happens in the loop below — kept out of the query to avoid
+            # a broken self-join that compared columns to themselves.
             query = (
                 select(OutreachMessage)
                 .where(
@@ -65,24 +69,6 @@ async def check_followup_due(ctx):
                     OutreachMessage.channel == "email",
                     OutreachMessage.message_type == prev_type,
                     OutreachMessage.sent_at <= cutoff,
-                    # No newer message exists for this contact+candidate+channel
-                    ~exists(
-                        select(OutreachMessage.id).where(
-                            OutreachMessage.contact_id == OutreachMessage.contact_id,
-                            OutreachMessage.candidate_id == OutreachMessage.candidate_id,
-                            OutreachMessage.channel == OutreachMessage.channel,
-                            OutreachMessage.created_at > OutreachMessage.created_at,
-                        )
-                    ),
-                    # No pending action already exists for this entity
-                    ~exists(
-                        select(PendingAction.id).where(
-                            and_(
-                                PendingAction.entity_id == OutreachMessage.id,
-                                PendingAction.status == "pending",
-                            )
-                        )
-                    ),
                 )
             )
 
@@ -102,6 +88,16 @@ async def check_followup_due(ctx):
                     )
                     if newer_check.scalar_one_or_none():
                         continue  # Skip — newer message exists
+
+                    # Skip if a pending action already exists for this message
+                    pending_check = await db.execute(
+                        select(PendingAction.id).where(
+                            PendingAction.entity_id == msg.id,
+                            PendingAction.status == "pending",
+                        ).limit(1)
+                    )
+                    if pending_check.scalar_one_or_none():
+                        continue  # Skip — pending action already exists
 
                     # Launch the outreach graph for follow-up drafting
                     # Graph handles: context → draft → quality check → approval → interrupt
