@@ -25,6 +25,7 @@ from app.dependencies import get_openai, get_email_client
 from app.config import settings
 from app.models.candidate import CandidateDNA, Resume
 from app.models.company import Company, CompanyDossier
+from app.models.signal import CompanySignal
 from app.models.contact import Contact
 from app.models.outreach import MessageEvent, OutreachMessage
 from app.models.analytics import AnalyticsEvent
@@ -115,6 +116,21 @@ async def gather_context_node(state: OutreachGraphState) -> dict:
         existing_messages = existing.scalars().all()
         message_type = _next_message_type(existing_messages)
 
+        # Build recent_news, injecting funding context for scout-sourced companies
+        recent_news = json.dumps(dossier.recent_news) if dossier and dossier.recent_news else "None"
+        if company.source == "scout_funding":
+            signal_result = await db.execute(
+                select(CompanySignal).where(
+                    CompanySignal.company_id == company.id,
+                    CompanySignal.signal_type == "funding_round",
+                ).order_by(CompanySignal.detected_at.desc()).limit(1)
+            )
+            signal = signal_result.scalar_one_or_none()
+            if signal:
+                meta = signal.metadata_ or {}
+                funding_context = f"Recently raised {meta.get('funding_round', 'funding')} ({meta.get('amount', 'undisclosed')})"
+                recent_news = f"{funding_context}. {recent_news}" if recent_news != "None" else funding_context
+
     context = {
         "candidate_summary": dna.experience_summary if dna else "No candidate profile",
         "company_name": company.name,
@@ -123,7 +139,7 @@ async def gather_context_node(state: OutreachGraphState) -> dict:
         "tech_stack": ", ".join(company.tech_stack or []),
         "culture_summary": dossier.culture_summary if dossier else "Unknown",
         "why_hire_me": dossier.why_hire_me if dossier else "Strong candidate fit",
-        "recent_news": json.dumps(dossier.recent_news) if dossier and dossier.recent_news else "None",
+        "recent_news": recent_news,
         "contact_name": contact.full_name,
         "contact_title": contact.title or "Unknown",
         "contact_role": contact.role_type or "Unknown",

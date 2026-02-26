@@ -30,6 +30,7 @@ class Company(TimestampMixin, Base):
     embedding = mapped_column(Vector(1536))
     status: Mapped[str] = mapped_column(String(20), default="suggested", index=True)  # suggested, approved, rejected
     research_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, in_progress, completed, failed
+    source: Mapped[str] = mapped_column(String(50), default="manual")  # manual, discover, scout_funding
     last_enriched: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships

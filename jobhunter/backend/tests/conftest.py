@@ -31,6 +31,39 @@ class OpenAIStub:
         # Detect schema type by checking top-level required keys
         schema_keys = set(response_schema.get("properties", {}).keys())
 
+        # Scout query generation schema (has "queries" key)
+        if "queries" in schema_keys:
+            return {
+                "queries": [
+                    "Series B funding AI developer tools",
+                    "startup raises round cloud infrastructure",
+                ]
+            }
+
+        # Scout article parsing schema (companies with company_name)
+        companies_items = response_schema.get("properties", {}).get("companies", {}).get("items", {}).get("properties", {})
+        if "companies" in schema_keys and "company_name" in companies_items:
+            return {
+                "companies": [
+                    {
+                        "company_name": "TechStartup",
+                        "estimated_domain": "techstartup.io",
+                        "funding_round": "Series B",
+                        "amount": "$50M",
+                        "industry": "Developer Tools",
+                        "description": "AI-powered developer tools platform",
+                    },
+                    {
+                        "company_name": "CloudCorp",
+                        "estimated_domain": "cloudcorp.com",
+                        "funding_round": "Series A",
+                        "amount": "$30M",
+                        "industry": "Cloud Infrastructure",
+                        "description": "Cloud infrastructure platform for enterprises",
+                    },
+                ]
+            }
+
         # Company discovery schema
         if "companies" in schema_keys and len(schema_keys) == 1:
             return {
@@ -95,10 +128,10 @@ class OpenAIStub:
         }
 
     async def embed(self, text: str, dimensions: int = 1536) -> list[float]:
-        return [0.0] * dimensions
+        return [0.1] * dimensions
 
     async def batch_embed(self, texts: list[str], dimensions: int = 1536) -> list[list[float]]:
-        return [[0.0] * dimensions for _ in texts]
+        return [[0.1] * dimensions for _ in texts]
 
     async def chat(self, messages: list[dict]) -> str:
         return "Test chat response"
@@ -156,6 +189,35 @@ class StorageStub:
 
     async def delete(self, key: str) -> None:
         self._data.pop(key, None)
+
+
+class NewsAPIStub:
+    """Test stub that returns plausible NewsAPI-shaped data."""
+
+    async def search_articles(
+        self,
+        query: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        page_size: int = 100,
+        language: str = "en",
+    ) -> list[dict]:
+        return [
+            {
+                "title": "TechStartup raises $50M Series B for AI platform",
+                "description": "TechStartup, an AI-powered developer tools company, announced a $50M Series B round.",
+                "url": "https://example.com/techstartup-series-b",
+                "publishedAt": "2026-02-20T10:00:00Z",
+                "source": {"name": "TechCrunch"},
+            },
+            {
+                "title": "CloudCorp secures $30M Series A for cloud infrastructure",
+                "description": "CloudCorp has raised $30M in Series A funding to expand its cloud platform.",
+                "url": "https://example.com/cloudcorp-series-a",
+                "publishedAt": "2026-02-21T14:00:00Z",
+                "source": {"name": "VentureBeat"},
+            },
+        ]
 
 
 class ResendStub:
@@ -222,6 +284,7 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     _deps._openai_client = OpenAIStub()
     _deps._hunter_client = HunterStub()
     _deps._email_client = ResendStub()
+    _deps._newsapi_client = NewsAPIStub()
 
     # Use in-memory storage stub for tests
     import app.infrastructure.storage as _storage_mod
@@ -235,6 +298,7 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     _deps._openai_client = None
     _deps._hunter_client = None
     _deps._email_client = None
+    _deps._newsapi_client = None
     _storage_mod._storage_instance = None
 
 

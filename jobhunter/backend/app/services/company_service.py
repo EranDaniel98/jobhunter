@@ -288,6 +288,7 @@ async def discover_companies(
         try:
             data = await hunter.domain_search(domain)
             company = await _create_company_from_hunter(db, candidate_id, domain, data, dna)
+            company.source = "discover"
             # Backfill empty fields from OpenAI suggestion
             if not company.industry and suggestion.get("industry"):
                 company.industry = suggestion["industry"]
