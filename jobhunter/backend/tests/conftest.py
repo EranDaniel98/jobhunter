@@ -176,6 +176,21 @@ class OpenAIStub:
         if "cover_letter" in schema_keys and len(schema_keys) == 1:
             return {"cover_letter": "Dear Hiring Manager,\n\nI am excited to apply for this position. My experience in Python and FastAPI aligns well with your requirements.\n\nBest regards,\nTest User"}
 
+        # Analytics insights schema
+        if "insights" in schema_keys:
+            items_props = response_schema.get("properties", {}).get("insights", {}).get("items", {}).get("properties", {})
+            if "insight_type" in items_props:
+                return {
+                    "insights": [
+                        {"insight_type": "pipeline_health", "title": "Pipeline Growing",
+                         "body": "You have 5 companies in your pipeline, up from 3 last week.",
+                         "severity": "success", "data": {"current": 5, "previous": 3}},
+                        {"insight_type": "recommendation", "title": "Follow Up Needed",
+                         "body": "3 companies haven't received follow-ups in over a week.",
+                         "severity": "action_needed", "data": {"company_count": 3}},
+                    ],
+                }
+
         # Return a response that satisfies both resume parsing and outreach drafting schemas
         return {
             "name": "Test User",
