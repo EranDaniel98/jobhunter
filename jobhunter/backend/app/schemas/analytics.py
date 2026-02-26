@@ -25,3 +25,28 @@ class PipelineStatsResponse(BaseModel):
     rejected: int = 0
     researched: int = 0
     contacted: int = 0
+
+
+class AnalyticsInsightResponse(BaseModel):
+    id: str
+    insight_type: str
+    title: str
+    body: str
+    severity: str
+    data: dict | None = None
+    is_read: bool = False
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class AnalyticsInsightListResponse(BaseModel):
+    insights: list[AnalyticsInsightResponse]
+    total: int
+
+
+class AnalyticsDashboardResponse(BaseModel):
+    funnel: FunnelResponse
+    outreach: OutreachStatsResponse
+    pipeline: PipelineStatsResponse
+    insights: list[AnalyticsInsightResponse]
