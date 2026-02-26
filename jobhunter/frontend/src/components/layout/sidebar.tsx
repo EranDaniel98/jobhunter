@@ -28,6 +28,8 @@ import {
   Briefcase,
   Shield,
   Sparkles,
+  FileCheck,
+  GraduationCap,
 } from "lucide-react";
 
 const navItems = [
@@ -35,6 +37,8 @@ const navItems = [
   { href: "/resume", label: "Resume & DNA", icon: FileText },
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/outreach", label: "Outreach", icon: Mail },
+  { href: "/interview-prep", label: "Interview Prep", icon: GraduationCap },
+  { href: "/apply", label: "Apply", icon: FileCheck },
   { href: "/approvals", label: "Approvals", icon: ClipboardCheck, badge: true },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
