@@ -10,6 +10,7 @@ from app.models.audit import AdminAuditLog
 from app.models.pending_action import PendingAction
 from app.models.signal import CompanySignal
 from app.models.interview import InterviewPrepSession, MockInterviewMessage
+from app.models.job_posting import JobPosting
 
 __all__ = [
     "Base",
@@ -30,4 +31,5 @@ __all__ = [
     "CompanySignal",
     "InterviewPrepSession",
     "MockInterviewMessage",
+    "JobPosting",
 ]
