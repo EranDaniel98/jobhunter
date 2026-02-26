@@ -17,14 +17,16 @@ export function useApplyAnalysis(postingId: string | null) {
     queryKey: ["apply-analysis", postingId],
     queryFn: () => applyApi.getAnalysis(postingId!),
     enabled: !!postingId,
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // Don't retry 202 (still processing) or 404
-      if (error?.response?.status === 202 || error?.response?.status === 404) return false;
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 202 || status === 404) return false;
       return failureCount < 3;
     },
     refetchInterval: (query) => {
       // Poll while analysis is pending
-      if (query.state.error && (query.state.error as any)?.response?.status === 202) {
+      const status = (query.state.error as { response?: { status?: number } } | null)?.response?.status;
+      if (query.state.error && status === 202) {
         return 3000;
       }
       return false;
