@@ -117,6 +117,7 @@ from app.api.approvals import router as approvals_router  # noqa: E402
 from app.api.plans import router as plans_router  # noqa: E402
 from app.api.ws import router as ws_router  # noqa: E402
 from app.api.scout import router as scout_router  # noqa: E402
+from app.api.interview import router as interview_router  # noqa: E402
 
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
@@ -132,3 +133,4 @@ app.include_router(approvals_router, prefix=settings.API_V1_PREFIX)
 app.include_router(plans_router, prefix=settings.API_V1_PREFIX)
 app.include_router(ws_router, prefix=settings.API_V1_PREFIX)
 app.include_router(scout_router, prefix=settings.API_V1_PREFIX)
+app.include_router(interview_router, prefix=settings.API_V1_PREFIX)
