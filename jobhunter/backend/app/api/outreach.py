@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_candidate, get_db
 from app.rate_limit import limiter
 from app.models.candidate import Candidate
+from app.models.enums import MessageStatus
 from app.models.outreach import OutreachMessage
 from app.models.pending_action import PendingAction
 from app.schemas.outreach import (
@@ -60,12 +61,12 @@ async def _run_outreach_graph(state: dict) -> None:
                         select(OutreachMessage).where(
                             OutreachMessage.contact_id == _uuid.UUID(contact_id),
                             OutreachMessage.candidate_id == _uuid.UUID(candidate_id),
-                            OutreachMessage.status == "draft",
+                            OutreachMessage.status == MessageStatus.DRAFT,
                         )
                     )
                     msg = result.scalar_one_or_none()
                     if msg:
-                        msg.status = "failed"
+                        msg.status = MessageStatus.FAILED
                         await err_db.commit()
         except Exception:
             pass
@@ -238,7 +239,7 @@ async def send_message(
     graph_thread_id = (action.metadata_ or {}).get("thread_id") if action else None
 
     # If graph-based message: resume the graph
-    if graph_thread_id and (msg.status == "approved" or auto_approve):
+    if graph_thread_id and (msg.status == MessageStatus.APPROVED or auto_approve):
         from app.graphs.outreach import get_outreach_pipeline
         from langgraph.types import Command
         graph = get_outreach_pipeline()
@@ -254,10 +255,10 @@ async def send_message(
         return _message_to_response(msg)
 
     # Legacy path: no graph thread
-    if msg.status == "approved" or auto_approve:
+    if msg.status == MessageStatus.APPROVED or auto_approve:
         from app.services.email_service import send_outreach
         try:
-            if auto_approve and msg.status == "draft":
+            if auto_approve and msg.status == MessageStatus.DRAFT:
                 from app.services.approval_service import create_pending_action
                 action = await create_pending_action(
                     db, candidate.id, action_type="send_email", entity_id=msg.id,

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_candidate, get_db
 from app.rate_limit import limiter
 from app.models.candidate import Candidate
+from app.models.enums import JobPostingStatus
 from app.models.job_posting import JobPosting
 from app.schemas.apply import (
     ApplyAnalysisResponse,
@@ -72,7 +73,7 @@ async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
                 )
                 posting = result.scalar_one_or_none()
                 if posting:
-                    posting.status = "failed"
+                    posting.status = JobPostingStatus.FAILED
                     await err_db.commit()
         except Exception:
             pass
@@ -98,7 +99,7 @@ async def analyze_job_posting(
         company_name=req.company_name,
         url=req.url,
         raw_text=req.raw_text,
-        status="pending",
+        status=JobPostingStatus.PENDING,
     )
     db.add(posting)
     await db.commit()
@@ -138,14 +139,14 @@ async def list_postings(
 
 @router.get("/postings/{posting_id}/analysis", response_model=ApplyAnalysisResponse)
 async def get_analysis(
-    posting_id: str,
+    posting_id: uuid.UUID,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the analysis results for a job posting."""
     result = await db.execute(
         select(JobPosting).where(
-            JobPosting.id == uuid.UUID(posting_id),
+            JobPosting.id == posting_id,
             JobPosting.candidate_id == candidate.id,
         )
     )
@@ -153,7 +154,7 @@ async def get_analysis(
     if not posting:
         raise HTTPException(status_code=404, detail="Job posting not found")
 
-    if posting.status == "pending":
+    if posting.status == JobPostingStatus.PENDING:
         raise HTTPException(status_code=202, detail="Analysis still in progress")
 
     # Retrieve from Redis
@@ -165,8 +166,8 @@ async def get_analysis(
 
     analysis = json.loads(cached)
     return ApplyAnalysisResponse(
-        id=posting_id,
-        job_posting_id=posting_id,
+        id=str(posting_id),
+        job_posting_id=str(posting_id),
         readiness_score=analysis.get("readiness_score", 0),
         resume_tips=[ResumeTipItem(**t) for t in analysis.get("resume_tips", [])],
         cover_letter=analysis.get("cover_letter", ""),

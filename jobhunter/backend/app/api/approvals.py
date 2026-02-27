@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
 from app.models.candidate import Candidate
+from app.models.enums import ActionStatus, ActionType, MessageStatus
 from app.models.outreach import OutreachMessage
 from app.schemas.approval import PendingActionListResponse, PendingActionResponse, PendingCountResponse
 from app.services import approval_service
@@ -42,11 +43,11 @@ async def get_pending_count(
 
 @router.get("/{action_id}", response_model=PendingActionResponse)
 async def get_approval(
-    action_id: str,
+    action_id: _uuid.UUID,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    action = await approval_service.get_pending_action(db, _uuid.UUID(action_id), candidate.id)
+    action = await approval_service.get_pending_action(db, action_id, candidate.id)
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
     return action
@@ -54,17 +55,17 @@ async def get_approval(
 
 @router.post("/{action_id}/approve", response_model=PendingActionResponse)
 async def approve(
-    action_id: str,
+    action_id: _uuid.UUID,
     background_tasks: BackgroundTasks,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    action = await approval_service.approve_action(db, _uuid.UUID(action_id), candidate.id)
+    action = await approval_service.approve_action(db, action_id, candidate.id)
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
 
     # If this is a send action, trigger the actual send
-    if action.action_type in ("send_email", "send_followup") and action.status == "approved":
+    if action.action_type in (ActionType.SEND_EMAIL, ActionType.SEND_FOLLOWUP) and action.status == ActionStatus.APPROVED:
         thread_id = (action.metadata_ or {}).get("thread_id")
         attach_resume = (action.metadata_ or {}).get("attach_resume", True)
 
@@ -98,12 +99,12 @@ async def approve(
 
 @router.post("/{action_id}/reject")
 async def reject(
-    action_id: str,
+    action_id: _uuid.UUID,
     background_tasks: BackgroundTasks,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    action = await approval_service.reject_action(db, _uuid.UUID(action_id), candidate.id)
+    action = await approval_service.reject_action(db, action_id, candidate.id)
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
 
@@ -131,8 +132,8 @@ async def reject(
                 select(OutreachMessage).where(OutreachMessage.id == action.entity_id)
             )
             msg = result.scalar_one_or_none()
-            if msg and msg.status == "draft":
-                msg.status = "rejected"
+            if msg and msg.status == MessageStatus.DRAFT:
+                msg.status = MessageStatus.REJECTED
                 await db.commit()
 
     response = await approval_service.get_pending_action(db, action.id, action.candidate_id)
