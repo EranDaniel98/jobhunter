@@ -64,6 +64,18 @@ async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
         await redis.set(f"apply:analysis:{job_posting_id}", json.dumps(analysis), ex=86400 * 7)
     except Exception as e:
         logger.error("apply_pipeline_bg_failed", error=str(e))
+        try:
+            from app.infrastructure.database import async_session_factory
+            async with async_session_factory() as err_db:
+                result = await err_db.execute(
+                    select(JobPosting).where(JobPosting.id == uuid.UUID(job_posting_id))
+                )
+                posting = result.scalar_one_or_none()
+                if posting:
+                    posting.status = "failed"
+                    await err_db.commit()
+        except Exception:
+            pass
 
 
 @router.post("/analyze", response_model=JobPostingResponse)

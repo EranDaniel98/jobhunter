@@ -188,7 +188,7 @@ async def start_mock_interview(
         company_id=company.id,
         prep_type="mock_interview",
         content={"interview_type": req.interview_type, "status": "in_progress", "score": None},
-        status="completed",
+        status="in_progress",
     )
     db.add(session)
 
@@ -349,6 +349,7 @@ async def end_mock_interview(
     content_data["status"] = "completed"
     content_data["score"] = feedback.get("overall_score")
     session.content = content_data
+    session.status = "completed"
     await db.commit()
 
     # Reload with updated messages

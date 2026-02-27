@@ -50,6 +50,25 @@ async def _run_outreach_graph(state: dict) -> None:
         await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
     except Exception as e:
         logger.error("outreach_graph_background_failed", error=str(e), thread_id=thread_id)
+        try:
+            from app.infrastructure.database import async_session_factory
+            async with async_session_factory() as err_db:
+                contact_id = state.get("contact_id")
+                candidate_id = state.get("candidate_id")
+                if contact_id and candidate_id:
+                    result = await err_db.execute(
+                        select(OutreachMessage).where(
+                            OutreachMessage.contact_id == _uuid.UUID(contact_id),
+                            OutreachMessage.candidate_id == _uuid.UUID(candidate_id),
+                            OutreachMessage.status == "draft",
+                        )
+                    )
+                    msg = result.scalar_one_or_none()
+                    if msg:
+                        msg.status = "failed"
+                        await err_db.commit()
+        except Exception:
+            pass
 
 
 @router.post("/draft", status_code=202)
