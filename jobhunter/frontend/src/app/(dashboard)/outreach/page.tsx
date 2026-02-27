@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
+import { QueryError } from "@/components/shared/query-error";
 import type { OutreachMessageResponse } from "@/lib/types";
 import { formatDateTime, truncate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ export default function OutreachPage() {
     status: statusFilter === "all" ? undefined : statusFilter,
     channel: channelFilter === "all" ? undefined : channelFilter,
   };
-  const { data: messages, isLoading } = useMessages(params);
+  const { data: messages, isLoading, isError, refetch } = useMessages(params);
   const editMutation = useEditMessage();
   const sendMutation = useSendMessage();
   const followupMutation = useDraftFollowup();
@@ -155,7 +156,11 @@ export default function OutreachPage() {
 
       {isLoading && <TableSkeleton />}
 
-      {!isLoading && (!messages || messages.length === 0) && (
+      {!isLoading && isError && (
+        <QueryError message="Could not load messages." onRetry={() => refetch()} />
+      )}
+
+      {!isLoading && !isError && (!messages || messages.length === 0) && (
         <EmptyState
           icon={MessageSquare}
           title="No outreach messages yet"
@@ -163,7 +168,7 @@ export default function OutreachPage() {
         />
       )}
 
-      {!isLoading && messages && messages.length > 0 && (
+      {!isLoading && !isError && messages && messages.length > 0 && (
         <div className="grid gap-3">
           {messages.map((msg) => (
             <Card

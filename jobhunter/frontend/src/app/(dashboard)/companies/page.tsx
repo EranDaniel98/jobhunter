@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
+import { QueryError } from "@/components/shared/query-error";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FitScore } from "@/components/shared/fit-score";
 import { AddCompanyDialog } from "@/components/companies/add-company-dialog";
@@ -53,7 +54,7 @@ export default function CompaniesPage() {
   const router = useRouter();
 
   const queryStatus = statusFilter === "all" ? undefined : statusFilter;
-  const { data, isLoading } = useCompanies(queryStatus);
+  const { data, isLoading, isError, refetch } = useCompanies(queryStatus);
   const discoverMutation = useDiscoverCompanies();
   const approveMutation = useApproveCompany();
   const rejectMutation = useRejectCompany();
@@ -199,7 +200,11 @@ export default function CompaniesPage() {
 
       {isLoading && <TableSkeleton />}
 
-      {!isLoading && filteredCompanies.length === 0 && (
+      {!isLoading && isError && (
+        <QueryError message="Could not load companies." onRetry={() => refetch()} />
+      )}
+
+      {!isLoading && !isError && filteredCompanies.length === 0 && (
         <EmptyState
           icon={Building2}
           title="No companies yet"
@@ -208,7 +213,7 @@ export default function CompaniesPage() {
         />
       )}
 
-      {!isLoading && filteredCompanies.length > 0 && (
+      {!isLoading && !isError && filteredCompanies.length > 0 && (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
