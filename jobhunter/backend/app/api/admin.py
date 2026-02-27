@@ -1,11 +1,12 @@
 import uuid
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_admin, get_db, get_email_client
+from app.rate_limit import limiter
 from app.infrastructure.protocols import EmailClientProtocol
 from app.models.candidate import Candidate
 from app.schemas.admin import (
@@ -56,7 +57,9 @@ async def get_audit_log(
 
 
 @router.get("/users/export")
+@limiter.limit("5/hour")
 async def export_users_csv(
+    request: Request,
     admin: Candidate = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):

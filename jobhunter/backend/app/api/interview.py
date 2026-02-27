@@ -228,7 +228,9 @@ async def start_mock_interview(
 
 
 @router.post("/mock/reply", response_model=MockMessageResponse)
+@limiter.limit("60/hour")
 async def reply_mock_interview(
+    request: Request,
     req: MockInterviewReplyRequest,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
@@ -299,7 +301,9 @@ async def reply_mock_interview(
 
 
 @router.post("/mock/end", response_model=InterviewPrepSessionResponse)
+@limiter.limit("20/day")
 async def end_mock_interview(
+    request: Request,
     req: MockInterviewEndRequest,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
