@@ -3,6 +3,7 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,15 +18,67 @@ from app.schemas.apply import (
     JobPostingListResponse,
     JobPostingResponse,
     ResumeTipItem,
+    ScrapeUrlRequest,
+    ScrapeUrlResponse,
 )
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/apply", tags=["apply"])
 
+EXTRACT_METADATA_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "company_name": {"type": "string"},
+    },
+    "required": ["title", "company_name"],
+    "additionalProperties": False,
+}
+
+
+@router.post("/scrape-url", response_model=ScrapeUrlResponse)
+@limiter.limit("20/day")
+async def scrape_url(
+    request: Request,
+    req: ScrapeUrlRequest,
+    candidate: Candidate = Depends(get_current_candidate),
+):
+    """Scrape a job posting URL and return the extracted text."""
+    from app.infrastructure.url_scraper import scrape_job_url
+
+    try:
+        raw_text = await scrape_job_url(req.url)
+    except Exception as e:
+        logger.warning("scrape_url_failed", url=req.url, error=str(e))
+        raise HTTPException(
+            status_code=422,
+            detail="Could not fetch job posting from URL. Please paste the description manually.",
+        )
+
+    # Try to extract title and company name via LLM (best-effort)
+    title = None
+    company_name = None
+    try:
+        from app.dependencies import get_openai
+
+        client = get_openai()
+        snippet = raw_text[:2000]
+        meta = await client.parse_structured(
+            "Extract the job title and company name from this job posting snippet.",
+            snippet,
+            EXTRACT_METADATA_SCHEMA,
+        )
+        title = meta.get("title") or None
+        company_name = meta.get("company_name") or None
+    except Exception:
+        pass  # Metadata extraction is best-effort
+
+    return ScrapeUrlResponse(raw_text=raw_text, title=title, company_name=company_name)
+
 
 async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
-    """Background task to run the apply pipeline and cache results in Redis."""
+    """Background task to run the apply pipeline (Redis caching happens inside the pipeline)."""
     from app.graphs.apply_pipeline import get_apply_pipeline
 
     thread_id = f"apply-{uuid.uuid4()}"
@@ -47,23 +100,7 @@ async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
 
     try:
         graph = get_apply_pipeline()
-        result = await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
-
-        # Cache analysis results in Redis for retrieval (7 days TTL)
-        from app.infrastructure.redis_client import get_redis
-        redis = get_redis()
-        analysis = {
-            "job_posting_id": job_posting_id,
-            "readiness_score": result.get("readiness_score", 0),
-            "resume_tips": result.get("resume_tips", []),
-            "cover_letter": result.get("cover_letter", ""),
-            "ats_keywords": result.get("ats_keywords", []),
-            "missing_skills": result.get("missing_skills", []),
-            "matching_skills": result.get("matching_skills", []),
-            "status": result.get("status", "completed"),
-        }
-        from app.config import settings
-        await redis.set(f"apply:analysis:{job_posting_id}", json.dumps(analysis), ex=settings.REDIS_APPLY_ANALYSIS_TTL)
+        await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
     except Exception as e:
         logger.error("apply_pipeline_bg_failed", error=str(e))
         try:
@@ -156,7 +193,10 @@ async def get_analysis(
         raise HTTPException(status_code=404, detail="Job posting not found")
 
     if posting.status == JobPostingStatus.PENDING:
-        raise HTTPException(status_code=202, detail="Analysis still in progress")
+        return JSONResponse(
+            status_code=202,
+            content={"status": "pending", "detail": "Analysis still in progress"},
+        )
 
     # Retrieve from Redis
     from app.infrastructure.redis_client import get_redis

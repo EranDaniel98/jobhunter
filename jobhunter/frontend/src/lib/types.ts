@@ -366,6 +366,12 @@ export interface ResumeTipItem {
   priority: string;
 }
 
+export interface ScrapeUrlResponse {
+  raw_text: string;
+  title: string | null;
+  company_name: string | null;
+}
+
 export interface ApplyAnalysisResponse {
   id: string;
   job_posting_id: string;

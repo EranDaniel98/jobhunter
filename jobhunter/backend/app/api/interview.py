@@ -5,6 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.dependencies import get_current_candidate, get_db, get_openai
 from app.rate_limit import limiter
@@ -349,11 +350,12 @@ async def end_mock_interview(
     )
     db.add(feedback_msg)
 
-    # Update session content
-    content_data = session.content or {}
+    # Update session content (copy dict to ensure SQLAlchemy detects the change)
+    content_data = dict(session.content or {})
     content_data["status"] = SessionStatus.COMPLETED
     content_data["score"] = feedback.get("overall_score")
     session.content = content_data
+    flag_modified(session, "content")
     session.status = SessionStatus.COMPLETED
     await db.commit()
 

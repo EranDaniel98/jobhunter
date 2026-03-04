@@ -48,3 +48,13 @@ class JobPostingResponse(BaseModel):
 class JobPostingListResponse(BaseModel):
     postings: list[JobPostingResponse]
     total: int
+
+
+class ScrapeUrlRequest(BaseModel):
+    url: str
+
+
+class ScrapeUrlResponse(BaseModel):
+    raw_text: str
+    title: str | None = None
+    company_name: str | None = None

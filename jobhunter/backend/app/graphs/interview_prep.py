@@ -60,8 +60,11 @@ INTERVIEW_PREP_PROMPTS = {
         "Culture: {culture_summary}\n"
         "Red flags: {red_flags}\n"
         "Candidate profile: {candidate_summary}\n\n"
-        "Generate culture-fit preparation: company values alignment, questions to expect about culture fit, "
-        "and suggested answers that demonstrate genuine alignment."
+        "Generate culture-fit preparation with:\n"
+        "- 'values': an array of company values, each with 'value' (the value name), "
+        "'description' (what it means at this company), and 'how_to_demonstrate' "
+        "(specific advice for the candidate to show genuine alignment in an interview).\n"
+        "- 'tips': general tips for culture-fit interviews at this company."
     ),
     "salary_negotiation": (
         "You are a salary negotiation coach.\n"
@@ -85,10 +88,10 @@ INTERVIEW_PREP_SCHEMAS = {
                     "type": "object",
                     "properties": {
                         "question": {"type": "string"},
-                        "suggested_answer": {"type": "string"},
+                        "answer": {"type": "string"},
                         "category": {"type": "string"},
                     },
-                    "required": ["question", "suggested_answer", "category"],
+                    "required": ["question", "answer", "category"],
                     "additionalProperties": False,
                 },
             },
@@ -127,7 +130,7 @@ INTERVIEW_PREP_SCHEMAS = {
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string"},
+                        "topic": {"type": "string"},
                         "questions": {
                             "type": "array",
                             "items": {
@@ -142,7 +145,7 @@ INTERVIEW_PREP_SCHEMAS = {
                             },
                         },
                     },
-                    "required": ["name", "questions"],
+                    "required": ["topic", "questions"],
                     "additionalProperties": False,
                 },
             },
@@ -153,41 +156,41 @@ INTERVIEW_PREP_SCHEMAS = {
     "culture_fit": {
         "type": "object",
         "properties": {
-            "values": {"type": "array", "items": {"type": "string"}},
-            "alignment_tips": {"type": "array", "items": {"type": "string"}},
-            "questions": {
+            "values": {
                 "type": "array",
                 "items": {
                     "type": "object",
                     "properties": {
-                        "question": {"type": "string"},
-                        "suggested_answer": {"type": "string"},
+                        "value": {"type": "string"},
+                        "description": {"type": "string"},
+                        "how_to_demonstrate": {"type": "string"},
                     },
-                    "required": ["question", "suggested_answer"],
+                    "required": ["value", "description", "how_to_demonstrate"],
                     "additionalProperties": False,
                 },
             },
+            "tips": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["values", "alignment_tips", "questions"],
+        "required": ["values", "tips"],
         "additionalProperties": False,
     },
     "salary_negotiation": {
         "type": "object",
         "properties": {
-            "range": {
+            "salary_range": {
                 "type": "object",
                 "properties": {
-                    "min": {"type": "string"},
-                    "max": {"type": "string"},
-                    "median": {"type": "string"},
+                    "low": {"type": "number"},
+                    "mid": {"type": "number"},
+                    "high": {"type": "number"},
                 },
-                "required": ["min", "max", "median"],
+                "required": ["low", "mid", "high"],
                 "additionalProperties": False,
             },
+            "strategies": {"type": "array", "items": {"type": "string"}},
             "talking_points": {"type": "array", "items": {"type": "string"}},
-            "counter_strategies": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["range", "talking_points", "counter_strategies"],
+        "required": ["salary_range", "strategies", "talking_points"],
         "additionalProperties": False,
     },
 }

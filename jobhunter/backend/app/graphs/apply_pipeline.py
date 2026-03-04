@@ -253,8 +253,9 @@ async def generate_cover_letter_node(state: ApplyState) -> dict:
 
 
 async def save_and_notify_node(state: ApplyState) -> dict:
-    """Save analysis results to DB and notify."""
+    """Save analysis results to DB, cache to Redis, then notify via WebSocket."""
     job_posting_id = uuid.UUID(state["job_posting_id"])
+    job_posting_id_str = state["job_posting_id"]
 
     async with _db_mod.async_session_factory() as db:
         result = await db.execute(select(JobPosting).where(JobPosting.id == job_posting_id))
@@ -265,9 +266,29 @@ async def save_and_notify_node(state: ApplyState) -> dict:
             posting.status = "analyzed"
             await db.commit()
 
+    # Cache analysis to Redis BEFORE broadcasting WebSocket to avoid race condition
+    from app.infrastructure.redis_client import get_redis
+    from app.config import settings
+    redis = get_redis()
+    analysis = {
+        "job_posting_id": job_posting_id_str,
+        "readiness_score": state.get("readiness_score", 0),
+        "resume_tips": state.get("resume_tips", []),
+        "cover_letter": state.get("cover_letter", ""),
+        "ats_keywords": state.get("ats_keywords", []),
+        "missing_skills": state.get("missing_skills", []),
+        "matching_skills": state.get("matching_skills", []),
+        "status": "completed",
+    }
+    await redis.set(
+        f"apply:analysis:{job_posting_id_str}",
+        json.dumps(analysis),
+        ex=settings.REDIS_APPLY_ANALYSIS_TTL,
+    )
+
     await ws_manager.broadcast(
         state["candidate_id"], "apply_analysis_completed",
-        {"job_posting_id": state["job_posting_id"], "readiness_score": state.get("readiness_score", 0)},
+        {"job_posting_id": job_posting_id_str, "readiness_score": state.get("readiness_score", 0)},
     )
 
     return {"status": "completed"}

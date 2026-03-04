@@ -11,9 +11,9 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { useJobPostings, useApplyAnalysis, useAnalyzeJob } from "@/lib/hooks/use-apply";
+import { useJobPostings, useApplyAnalysis, useAnalyzeJob, useScrapeUrl } from "@/lib/hooks/use-apply";
 import type { JobPostingResponse, ResumeTipItem } from "@/lib/types";
-import { FileCheck, Copy, Loader2, CheckCircle2, XCircle, Clock, Plus, ArrowLeft } from "lucide-react";
+import { FileCheck, Copy, Loader2, CheckCircle2, XCircle, Clock, Plus, ArrowLeft, Link } from "lucide-react";
 import { toast } from "sonner";
 
 function statusColor(status: string) {
@@ -72,8 +72,9 @@ export default function ApplyPage() {
   const [rawText, setRawText] = useState("");
 
   const { data: postingsData, isLoading: loadingPostings } = useJobPostings();
-  const { data: analysis, isLoading: loadingAnalysis } = useApplyAnalysis(selectedPostingId);
+  const { data: analysis, isLoading: loadingAnalysis, error: analysisError } = useApplyAnalysis(selectedPostingId);
   const analyzeMutation = useAnalyzeJob();
+  const scrapeMutation = useScrapeUrl();
 
   const postings = postingsData?.postings ?? [];
 
@@ -101,6 +102,21 @@ export default function ApplyPage() {
         },
       }
     );
+  }
+
+  function handleFetch() {
+    if (!url.trim()) {
+      toast.error("Enter a URL first");
+      return;
+    }
+    scrapeMutation.mutate(url.trim(), {
+      onSuccess: (data) => {
+        setRawText(data.raw_text);
+        if (data.title) setTitle(data.title);
+        if (data.company_name) setCompanyName(data.company_name);
+        toast.success("Job posting fetched successfully");
+      },
+    });
   }
 
   function handleCopyLetter() {
@@ -158,6 +174,46 @@ export default function ApplyPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* URL fetch section */}
+                  <div className="space-y-2">
+                    <Label htmlFor="url">Job URL</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="url"
+                        type="url"
+                        placeholder="https://..."
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleFetch}
+                        disabled={scrapeMutation.isPending}
+                      >
+                        {scrapeMutation.isPending ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Link className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Fetch
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paste a job posting URL to auto-extract the description
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">or fill manually</span>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="title">Job Title *</Label>
                     <Input
@@ -175,16 +231,6 @@ export default function ApplyPage() {
                       placeholder="e.g. Acme Corp"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="url">Job URL (optional)</Label>
-                    <Input
-                      id="url"
-                      type="url"
-                      placeholder="https://..."
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -325,7 +371,19 @@ export default function ApplyPage() {
             </Card>
           )}
 
-          {selectedPostingId && !loadingAnalysis && !analysis && (
+          {selectedPostingId && !loadingAnalysis && !analysis && analysisError && (
+            <Card className="flex items-center justify-center min-h-[400px]">
+              <CardContent className="text-center py-16">
+                <XCircle className="mx-auto h-10 w-10 text-destructive/40 mb-4" />
+                <p className="text-muted-foreground font-medium">Analysis failed</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  The analysis could not be retrieved. Try submitting the job posting again.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {selectedPostingId && !loadingAnalysis && !analysis && !analysisError && (
             <Card className="flex items-center justify-center min-h-[400px]">
               <CardContent className="text-center py-16">
                 <Loader2 className="mx-auto h-10 w-10 text-muted-foreground/40 mb-4 animate-spin" />

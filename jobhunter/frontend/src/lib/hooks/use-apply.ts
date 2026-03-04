@@ -15,22 +15,35 @@ export function useJobPostings() {
 export function useApplyAnalysis(postingId: string | null) {
   return useQuery({
     queryKey: ["apply-analysis", postingId],
-    queryFn: () => applyApi.getAnalysis(postingId!),
+    queryFn: async () => {
+      const result = await applyApi.getAnalysis(postingId!);
+      // Backend returns {status: "pending", detail: "..."} with 202 for in-progress analyses.
+      // Axios treats 202 as success, so we check the shape and return null to signal "still pending".
+      if (result && "detail" in result && (result as Record<string, unknown>).status === "pending") {
+        return null;
+      }
+      return result;
+    },
     enabled: !!postingId,
     retry: (failureCount, error: unknown) => {
-      // Don't retry 202 (still processing) or 404
       const status = (error as { response?: { status?: number } })?.response?.status;
-      if (status === 202 || status === 404) return false;
+      if (status === 404) return false;
       return failureCount < 3;
     },
     refetchInterval: (query) => {
-      // Poll while analysis is pending
-      const status = (query.state.error as { response?: { status?: number } } | null)?.response?.status;
-      if (query.state.error && status === 202) {
+      // Poll while analysis is still pending (null data means 202 in-progress)
+      if (query.state.data === null && !query.state.error) {
         return 3000;
       }
       return false;
     },
+  });
+}
+
+export function useScrapeUrl() {
+  return useMutation({
+    mutationFn: (url: string) => applyApi.scrapeUrl(url),
+    onError: (err) => toastError(err, "Failed to fetch job posting"),
   });
 }
 
