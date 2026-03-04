@@ -1,11 +1,12 @@
 import uuid as _uuid
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
+from app.rate_limit import limiter
 from app.models.candidate import Candidate
 from app.models.contact import Contact
 from app.schemas.contact import ContactFindRequest, ContactResponse
@@ -31,7 +32,9 @@ def _contact_to_response(c: Contact) -> ContactResponse:
 
 
 @router.post("/find", response_model=ContactResponse, status_code=201)
+@limiter.limit("20/hour")
 async def find_contact(
+    request: Request,
     data: ContactFindRequest,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
@@ -46,15 +49,17 @@ async def find_contact(
 
 
 @router.post("/{contact_id}/verify", response_model=ContactResponse)
+@limiter.limit("30/hour")
 async def verify_contact(
-    contact_id: str,
+    request: Request,
+    contact_id: _uuid.UUID,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
     # Verify contact belongs to candidate
     result = await db.execute(
         select(Contact).where(
-            Contact.id == _uuid.UUID(contact_id),
+            Contact.id == contact_id,
             Contact.candidate_id == candidate.id,
         )
     )
@@ -62,7 +67,7 @@ async def verify_contact(
         raise HTTPException(status_code=404, detail="Contact not found")
 
     try:
-        contact = await contact_service.verify_contact(db, _uuid.UUID(contact_id))
+        contact = await contact_service.verify_contact(db, contact_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return _contact_to_response(contact)

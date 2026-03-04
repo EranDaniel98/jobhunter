@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.dependencies import get_current_candidate, get_db, get_openai
 from app.rate_limit import limiter
 from app.models.candidate import Candidate, CandidateDNA
+from app.models.enums import PrepType, SessionStatus
 from app.models.company import Company
 from app.models.interview import InterviewPrepSession, MockInterviewMessage
 from app.schemas.interview import (
@@ -25,7 +26,7 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/interview-prep", tags=["interview-prep"])
 
-VALID_PREP_TYPES = {"company_qa", "behavioral", "technical", "culture_fit", "salary_negotiation"}
+VALID_PREP_TYPES = {t.value for t in PrepType if t != PrepType.MOCK_INTERVIEW}
 VALID_INTERVIEW_TYPES = {"behavioral", "technical", "mixed"}
 
 MOCK_SYSTEM_PROMPT = (
@@ -137,7 +138,7 @@ async def list_sessions(
 
 @router.get("/sessions/{session_id}", response_model=InterviewPrepSessionResponse)
 async def get_session(
-    session_id: str,
+    session_id: uuid.UUID,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
@@ -145,7 +146,7 @@ async def get_session(
     result = await db.execute(
         select(InterviewPrepSession)
         .where(
-            InterviewPrepSession.id == uuid.UUID(session_id),
+            InterviewPrepSession.id == session_id,
             InterviewPrepSession.candidate_id == candidate.id,
         )
         .options(selectinload(InterviewPrepSession.messages))
@@ -186,9 +187,9 @@ async def start_mock_interview(
         id=uuid.uuid4(),
         candidate_id=candidate.id,
         company_id=company.id,
-        prep_type="mock_interview",
-        content={"interview_type": req.interview_type, "status": "in_progress", "score": None},
-        status="completed",
+        prep_type=PrepType.MOCK_INTERVIEW,
+        content={"interview_type": req.interview_type, "status": SessionStatus.IN_PROGRESS, "score": None},
+        status=SessionStatus.IN_PROGRESS,
     )
     db.add(session)
 
@@ -228,7 +229,9 @@ async def start_mock_interview(
 
 
 @router.post("/mock/reply", response_model=MockMessageResponse)
+@limiter.limit("60/hour")
 async def reply_mock_interview(
+    request: Request,
     req: MockInterviewReplyRequest,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
@@ -239,7 +242,7 @@ async def reply_mock_interview(
         .where(
             InterviewPrepSession.id == uuid.UUID(req.session_id),
             InterviewPrepSession.candidate_id == candidate.id,
-            InterviewPrepSession.prep_type == "mock_interview",
+            InterviewPrepSession.prep_type == PrepType.MOCK_INTERVIEW,
         )
         .options(selectinload(InterviewPrepSession.messages))
     )
@@ -248,7 +251,7 @@ async def reply_mock_interview(
         raise HTTPException(status_code=404, detail="Mock interview session not found")
 
     content_data = session.content or {}
-    if content_data.get("status") == "completed":
+    if content_data.get("status") == SessionStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="This mock interview is already completed")
 
     # Save candidate's answer
@@ -299,7 +302,9 @@ async def reply_mock_interview(
 
 
 @router.post("/mock/end", response_model=InterviewPrepSessionResponse)
+@limiter.limit("20/day")
 async def end_mock_interview(
+    request: Request,
     req: MockInterviewEndRequest,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
@@ -310,7 +315,7 @@ async def end_mock_interview(
         .where(
             InterviewPrepSession.id == uuid.UUID(req.session_id),
             InterviewPrepSession.candidate_id == candidate.id,
-            InterviewPrepSession.prep_type == "mock_interview",
+            InterviewPrepSession.prep_type == PrepType.MOCK_INTERVIEW,
         )
         .options(selectinload(InterviewPrepSession.messages))
     )
@@ -346,9 +351,10 @@ async def end_mock_interview(
 
     # Update session content
     content_data = session.content or {}
-    content_data["status"] = "completed"
+    content_data["status"] = SessionStatus.COMPLETED
     content_data["score"] = feedback.get("overall_score")
     session.content = content_data
+    session.status = SessionStatus.COMPLETED
     await db.commit()
 
     # Reload with updated messages

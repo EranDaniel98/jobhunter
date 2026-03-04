@@ -49,11 +49,13 @@ export function useWebSocket() {
             case "email_sent":
               qc.invalidateQueries({ queryKey: ["messages"] });
               qc.invalidateQueries({ queryKey: ["approvals"] });
+              qc.invalidateQueries({ queryKey: ["analytics"] });
               break;
             case "email_delivered":
             case "email_opened":
             case "email_clicked":
               qc.invalidateQueries({ queryKey: ["messages"] });
+              qc.invalidateQueries({ queryKey: ["analytics"] });
               break;
             case "resume_parsed":
               qc.invalidateQueries({ queryKey: ["candidates"] });
@@ -70,6 +72,7 @@ export function useWebSocket() {
             case "analytics_failed":
               qc.invalidateQueries({ queryKey: ["analytics-dashboard"] });
               qc.invalidateQueries({ queryKey: ["analytics-insights"] });
+              qc.invalidateQueries({ queryKey: ["analytics"] });
               break;
             case "apply_analysis_completed":
             case "apply_analysis_failed":

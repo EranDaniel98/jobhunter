@@ -177,6 +177,7 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                         onClick={() => verifyMutation.mutate(contact.id)}
                         disabled={verifyMutation.isPending}
                         title="Verify email"
+                        aria-label={`Verify email for ${contact.full_name}`}
                       >
                         <ShieldCheck className="h-4 w-4" />
                       </Button>
@@ -196,6 +197,7 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                       }
                       disabled={draftEmailMutation.isPending}
                       title="Draft email"
+                      aria-label={`Draft email for ${contact.full_name}`}
                     >
                       {draftEmailMutation.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -241,6 +243,7 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                       }
                       disabled={draftLinkedInMutation.isPending}
                       title="Draft LinkedIn message"
+                      aria-label={`Draft LinkedIn message for ${contact.full_name}`}
                     >
                       <Linkedin className="h-4 w-4" />
                     </Button>

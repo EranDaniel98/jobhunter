@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
+import { QueryError } from "@/components/shared/query-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +48,7 @@ export default function ApprovalsPage() {
   const params = {
     status: statusFilter === "all" ? undefined : statusFilter,
   };
-  const { data, isLoading } = useApprovals(params);
+  const { data, isLoading, isError, refetch } = useApprovals(params);
   const approveMutation = useApproveAction();
   const rejectMutation = useRejectAction();
 
@@ -91,7 +92,11 @@ export default function ApprovalsPage() {
 
       {isLoading && <TableSkeleton />}
 
-      {!isLoading && actions.length === 0 && (
+      {!isLoading && isError && (
+        <QueryError message="Could not load approvals." onRetry={() => refetch()} />
+      )}
+
+      {!isLoading && !isError && actions.length === 0 && (
         <EmptyState
           icon={ClipboardCheck}
           title="No actions to review"
@@ -103,7 +108,7 @@ export default function ApprovalsPage() {
         />
       )}
 
-      {!isLoading && actions.length > 0 && (
+      {!isLoading && !isError && actions.length > 0 && (
         <div className="grid gap-3">
           {actions.map((action) => (
             <Card

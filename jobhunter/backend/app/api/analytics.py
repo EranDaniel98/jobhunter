@@ -118,14 +118,14 @@ async def refresh_insights(
 
 @router.patch("/insights/{insight_id}/read")
 async def mark_insight_read(
-    insight_id: str,
+    insight_id: uuid.UUID,
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark an insight as read."""
     result = await db.execute(
         select(AnalyticsInsight).where(
-            AnalyticsInsight.id == uuid.UUID(insight_id),
+            AnalyticsInsight.id == insight_id,
             AnalyticsInsight.candidate_id == candidate.id,
         )
     )

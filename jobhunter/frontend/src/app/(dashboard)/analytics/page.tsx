@@ -10,6 +10,7 @@ import { BarChart3, RefreshCw, Loader2, TrendingUp, Mail, Building2, Lightbulb }
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { QueryError } from "@/components/shared/query-error";
 import { formatPercent } from "@/lib/utils";
 import type { AnalyticsInsightResponse } from "@/lib/types";
 
@@ -164,6 +165,18 @@ export default function AnalyticsPage() {
 
   if (dashboardQuery.isLoading) {
     return <DashboardSkeleton />;
+  }
+
+  if (dashboardQuery.isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Analytics" />
+        <QueryError
+          message="Could not load analytics data."
+          onRetry={() => dashboardQuery.refetch()}
+        />
+      </div>
+    );
   }
 
   const dashboard = dashboardQuery.data;

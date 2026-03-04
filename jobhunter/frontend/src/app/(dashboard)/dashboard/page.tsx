@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FitScore } from "@/components/shared/fit-score";
 import { CardSkeleton } from "@/components/shared/loading-skeleton";
+import { QueryError } from "@/components/shared/query-error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -46,6 +47,8 @@ export default function DashboardPage() {
 
   const isLoading =
     pipelineQuery.isLoading || funnelQuery.isLoading || statsQuery.isLoading;
+  const isError =
+    pipelineQuery.isError || funnelQuery.isError || statsQuery.isError;
 
   const stats = statsQuery.data;
   const pipeline = pipelineQuery.data;
@@ -85,7 +88,16 @@ export default function DashboardPage() {
       />
 
       {/* Stats cards */}
-      {isLoading ? (
+      {isError ? (
+        <QueryError
+          message="Could not load dashboard stats."
+          onRetry={() => {
+            pipelineQuery.refetch();
+            funnelQuery.refetch();
+            statsQuery.refetch();
+          }}
+        />
+      ) : isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <CardSkeleton />
           <CardSkeleton />

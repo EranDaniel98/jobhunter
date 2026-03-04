@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company import Company
 from app.models.contact import Contact
+from app.models.enums import ActionStatus
 from app.models.outreach import OutreachMessage
 from app.models.pending_action import PendingAction
 from app.schemas.approval import PendingActionResponse
@@ -83,7 +84,7 @@ async def create_pending_action(
         action_type=action_type,
         entity_type=entity_type,
         entity_id=entity_id,
-        status="pending",
+        status=ActionStatus.PENDING,
         ai_reasoning=ai_reasoning,
         metadata_=metadata,
     )
@@ -102,27 +103,52 @@ async def list_pending_actions(
     skip: int = 0,
     limit: int = 20,
 ) -> tuple[list[PendingActionResponse], int]:
-    query = select(PendingAction).where(PendingAction.candidate_id == candidate_id)
-    count_query = select(func.count()).select_from(PendingAction).where(
-        PendingAction.candidate_id == candidate_id
-    )
-
+    filters = [PendingAction.candidate_id == candidate_id]
     if status:
-        query = query.where(PendingAction.status == status)
-        count_query = count_query.where(PendingAction.status == status)
+        filters.append(PendingAction.status == status)
     if action_type:
-        query = query.where(PendingAction.action_type == action_type)
-        count_query = count_query.where(PendingAction.action_type == action_type)
+        filters.append(PendingAction.action_type == action_type)
 
+    count_query = select(func.count()).select_from(PendingAction).where(*filters)
     total = (await db.execute(count_query)).scalar() or 0
 
-    query = query.order_by(PendingAction.created_at.desc()).offset(skip).limit(limit)
+    # Single joined query instead of N+1 _enrich_context calls
+    query = (
+        select(
+            PendingAction,
+            OutreachMessage.subject.label("msg_subject"),
+            OutreachMessage.body.label("msg_body"),
+            OutreachMessage.message_type.label("msg_type"),
+            OutreachMessage.channel.label("msg_channel"),
+            Contact.full_name.label("contact_name"),
+            Company.name.label("company_name"),
+        )
+        .outerjoin(
+            OutreachMessage,
+            (PendingAction.entity_id == OutreachMessage.id)
+            & (PendingAction.entity_type == "outreach_message"),
+        )
+        .outerjoin(Contact, OutreachMessage.contact_id == Contact.id)
+        .outerjoin(Company, Contact.company_id == Company.id)
+        .where(*filters)
+        .order_by(PendingAction.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     result = await db.execute(query)
-    actions = result.scalars().all()
+    rows = result.all()
 
     responses = []
-    for action in actions:
-        ctx = await _enrich_context(db, action)
+    for row in rows:
+        action = row[0]
+        ctx = {
+            "message_subject": row.msg_subject,
+            "message_body": row.msg_body,
+            "contact_name": row.contact_name,
+            "company_name": row.company_name,
+            "message_type": row.msg_type,
+            "channel": row.msg_channel,
+        }
         responses.append(_action_to_response(action, ctx))
 
     return responses, total
@@ -156,10 +182,10 @@ async def approve_action(
     action = result.scalar_one_or_none()
     if not action:
         return None
-    if action.status != "pending":
+    if action.status != ActionStatus.PENDING:
         return action
 
-    action.status = "approved"
+    action.status = ActionStatus.APPROVED
     action.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(action)
@@ -179,10 +205,10 @@ async def reject_action(
     action = result.scalar_one_or_none()
     if not action:
         return None
-    if action.status != "pending":
+    if action.status != ActionStatus.PENDING:
         return action
 
-    action.status = "rejected"
+    action.status = ActionStatus.REJECTED
     action.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(action)
@@ -194,7 +220,7 @@ async def count_pending(db: AsyncSession, candidate_id: uuid.UUID) -> int:
     result = await db.execute(
         select(func.count()).select_from(PendingAction).where(
             PendingAction.candidate_id == candidate_id,
-            PendingAction.status == "pending",
+            PendingAction.status == ActionStatus.PENDING,
         )
     )
     return result.scalar() or 0
@@ -204,14 +230,14 @@ async def expire_stale_actions(db: AsyncSession, max_age_days: int = 30) -> int:
     cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
     result = await db.execute(
         select(PendingAction).where(
-            PendingAction.status == "pending",
+            PendingAction.status == ActionStatus.PENDING,
             PendingAction.created_at < cutoff,
         )
     )
     actions = result.scalars().all()
     count = 0
     for action in actions:
-        action.status = "expired"
+        action.status = ActionStatus.EXPIRED
         action.reviewed_at = datetime.now(timezone.utc)
         count += 1
     if count:

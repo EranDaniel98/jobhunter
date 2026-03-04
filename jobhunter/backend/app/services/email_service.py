@@ -193,7 +193,8 @@ async def handle_resend_webhook(
     event_id = data.get("event_id") or f"{external_id}:{event_type}"
     redis = get_redis()
     dedup_key = f"{WEBHOOK_DEDUP_PREFIX}{event_id}"
-    already_seen = await redis.set(dedup_key, "1", ex=86400, nx=True)
+    from app.config import settings
+    already_seen = await redis.set(dedup_key, "1", ex=settings.REDIS_WEBHOOK_DEDUP_TTL, nx=True)
     if not already_seen:
         logger.info("webhook_duplicate_skipped", event_id=event_id)
         return

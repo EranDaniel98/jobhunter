@@ -434,6 +434,7 @@ function InviteSection() {
                     size="icon"
                     onClick={() => copyInviteUrl(invite.code)}
                     title="Copy invite link"
+                    aria-label="Copy invite link"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
