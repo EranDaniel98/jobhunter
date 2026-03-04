@@ -26,7 +26,8 @@ async def check_and_increment(candidate_id: str, quota_type: str, plan_tier: str
 
     count = await redis.incr(key)
     if count == 1:
-        await redis.expire(key, 86400)
+        from app.config import settings
+        await redis.expire(key, settings.REDIS_QUOTA_TTL)
 
     if count > limit:
         await redis.decr(key)

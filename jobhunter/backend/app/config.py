@@ -73,6 +73,12 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET_NAME: str = ""
 
+    # TTLs (seconds)
+    REDIS_APPLY_ANALYSIS_TTL: int = 86400 * 7   # 7 days
+    REDIS_WEBHOOK_DEDUP_TTL: int = 86400         # 24 hours
+    REDIS_QUOTA_TTL: int = 86400                 # 24 hours
+    PENDING_ACTION_MAX_AGE_DAYS: int = 30
+
     # Paths
     UPLOAD_DIR: str = str(BASE_DIR / "data" / "uploads")
 

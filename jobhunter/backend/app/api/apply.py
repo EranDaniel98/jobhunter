@@ -62,7 +62,8 @@ async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
             "matching_skills": result.get("matching_skills", []),
             "status": result.get("status", "completed"),
         }
-        await redis.set(f"apply:analysis:{job_posting_id}", json.dumps(analysis), ex=86400 * 7)
+        from app.config import settings
+        await redis.set(f"apply:analysis:{job_posting_id}", json.dumps(analysis), ex=settings.REDIS_APPLY_ANALYSIS_TTL)
     except Exception as e:
         logger.error("apply_pipeline_bg_failed", error=str(e))
         try:

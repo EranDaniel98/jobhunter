@@ -425,6 +425,7 @@ function MockInterviewChat({
             onClick={handleReply}
             disabled={!answer.trim() || replyMutation.isPending}
             className="shrink-0 self-end"
+            aria-label="Send reply"
           >
             {replyMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
