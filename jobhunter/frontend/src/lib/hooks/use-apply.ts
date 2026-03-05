@@ -12,7 +12,7 @@ export function useJobPostings() {
   });
 }
 
-export function useApplyAnalysis(postingId: string | null) {
+export function useApplyAnalysis(postingId: string | null, isInProgress?: boolean) {
   return useQuery({
     queryKey: ["apply-analysis", postingId],
     queryFn: async () => {
@@ -31,8 +31,9 @@ export function useApplyAnalysis(postingId: string | null) {
       return failureCount < 3;
     },
     refetchInterval: (query) => {
-      // Poll while analysis is still pending (null data means 202 in-progress)
-      if (query.state.data === null && !query.state.error) {
+      // Poll while analysis is still pending (null data means 202 in-progress),
+      // or while the posting status indicates analysis is in progress
+      if ((query.state.data === null && !query.state.error) || isInProgress) {
         return 3000;
       }
       return false;

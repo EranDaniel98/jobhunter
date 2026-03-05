@@ -56,9 +56,9 @@ function priorityVariant(priority: string): "destructive" | "secondary" | "outli
 }
 
 function scoreColor(score: number): string {
-  if (score >= 80) return "text-green-600 dark:text-green-400";
-  if (score >= 60) return "text-yellow-600 dark:text-yellow-400";
-  return "text-red-600 dark:text-red-400";
+  if (score >= 80) return "text-primary";
+  if (score >= 60) return "text-chart-3";
+  return "text-destructive";
 }
 
 export default function ApplyPage() {
@@ -72,11 +72,15 @@ export default function ApplyPage() {
   const [rawText, setRawText] = useState("");
 
   const { data: postingsData, isLoading: loadingPostings } = useJobPostings();
-  const { data: analysis, isLoading: loadingAnalysis, error: analysisError } = useApplyAnalysis(selectedPostingId);
+  const postings = postingsData?.postings ?? [];
+  const selectedPosting = postings.find((p) => p.id === selectedPostingId) ?? null;
+
+  const { data: analysis, isLoading: loadingAnalysis, error: analysisError } = useApplyAnalysis(
+    selectedPostingId,
+    selectedPosting?.status === "pending" || selectedPosting?.status === "analyzing",
+  );
   const analyzeMutation = useAnalyzeJob();
   const scrapeMutation = useScrapeUrl();
-
-  const postings = postingsData?.postings ?? [];
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -300,7 +304,7 @@ export default function ApplyPage() {
             {!loadingPostings && postings.map((posting) => (
               <Card
                 key={posting.id}
-                className={`cursor-pointer transition-colors hover:bg-muted/50 ${
+                className={`cursor-pointer transition-colors hover:bg-muted/50 hover:shadow-md ${
                   selectedPostingId === posting.id ? "ring-2 ring-primary" : ""
                 }`}
                 onClick={() => handleSelectPosting(posting)}
@@ -371,7 +375,7 @@ export default function ApplyPage() {
             </Card>
           )}
 
-          {selectedPostingId && !loadingAnalysis && !analysis && analysisError && (
+          {selectedPostingId && !loadingAnalysis && !analysis && !!analysisError && (
             <Card className="flex items-center justify-center min-h-[400px]">
               <CardContent className="text-center py-16">
                 <XCircle className="mx-auto h-10 w-10 text-destructive/40 mb-4" />
@@ -418,7 +422,7 @@ export default function ApplyPage() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
                       Matching Skills
                     </CardTitle>
                   </CardHeader>
@@ -440,7 +444,7 @@ export default function ApplyPage() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <XCircle className="h-4 w-4 text-red-500" />
+                      <XCircle className="h-4 w-4 text-destructive" />
                       Missing Skills
                     </CardTitle>
                   </CardHeader>
