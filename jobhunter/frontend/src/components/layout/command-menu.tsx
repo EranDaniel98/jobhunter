@@ -12,20 +12,8 @@ import {
   CommandItem,
   CommandSeparator,
 } from "@/components/ui/command";
-import {
-  LayoutDashboard, FileText, Building2, Mail, ClipboardCheck,
-  BarChart3, Settings, Upload, Search,
-} from "lucide-react";
-
-const pages = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Resume & DNA", href: "/resume", icon: FileText },
-  { label: "Companies", href: "/companies", icon: Building2 },
-  { label: "Outreach", href: "/outreach", icon: Mail },
-  { label: "Approvals", href: "/approvals", icon: ClipboardCheck },
-  { label: "Analytics", href: "/analytics", icon: BarChart3 },
-  { label: "Settings", href: "/settings", icon: Settings },
-];
+import { Building2, Upload, Search } from "lucide-react";
+import { allNavItems } from "@/lib/nav-config";
 
 const actions = [
   { label: "Upload Resume", href: "/resume", icon: Upload },
@@ -48,6 +36,12 @@ export function CommandMenu() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  useEffect(() => {
+    function onOpen() { setOpen(true); }
+    window.addEventListener("open-command-menu", onOpen);
+    return () => window.removeEventListener("open-command-menu", onOpen);
+  }, []);
+
   const go = useCallback((href: string) => {
     setOpen(false);
     router.push(href);
@@ -66,7 +60,7 @@ export function CommandMenu() {
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Pages">
-          {pages.map((page) => (
+          {allNavItems.map((page) => (
             <CommandItem key={page.href} onSelect={() => go(page.href)}>
               <page.icon className="mr-2 h-4 w-4" />
               {page.label}
