@@ -7,6 +7,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { usePipelineStats, useFunnel, useOutreachStats } from "@/lib/hooks/use-analytics";
 import { useCompanies } from "@/lib/hooks/use-companies";
 import * as candidatesApi from "@/lib/api/candidates";
+import { UsageCard } from "@/components/dashboard/usage-card";
 import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
 import { EmailVerificationBanner } from "@/components/dashboard/email-verification-banner";
 import { PageHeader } from "@/components/shared/page-header";
@@ -63,7 +64,7 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3">
-        <Button variant="outline" onClick={() => router.push("/resume")}>
+        <Button variant="default" onClick={() => router.push("/resume")}>
           <Upload className="mr-2 h-4 w-4" />
           Upload Resume
         </Button>
@@ -71,7 +72,7 @@ export default function DashboardPage() {
           <Search className="mr-2 h-4 w-4" />
           Discover Companies
         </Button>
-        <Button variant="outline" onClick={() => router.push("/companies")}>
+        <Button variant="ghost" onClick={() => router.push("/companies")}>
           <Plus className="mr-2 h-4 w-4" />
           Add Company
         </Button>
@@ -98,14 +99,14 @@ export default function DashboardPage() {
           }}
         />
       ) : isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <Tooltip>
@@ -116,7 +117,9 @@ export default function DashboardPage() {
                 </TooltipTrigger>
                 <TooltipContent>Total companies in your pipeline</TooltipContent>
               </Tooltip>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                <Building2 className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -140,7 +143,9 @@ export default function DashboardPage() {
                 </TooltipTrigger>
                 <TooltipContent>Total outreach emails you&apos;ve sent</TooltipContent>
               </Tooltip>
-              <Mail className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                <Mail className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.total_sent || 0}</div>
@@ -157,7 +162,9 @@ export default function DashboardPage() {
                 </TooltipTrigger>
                 <TooltipContent>Percentage of sent emails that were opened</TooltipContent>
               </Tooltip>
-              <Eye className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                <Eye className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -176,7 +183,9 @@ export default function DashboardPage() {
                 </TooltipTrigger>
                 <TooltipContent>Percentage of sent emails that got a reply</TooltipContent>
               </Tooltip>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                <MessageSquare className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -187,34 +196,51 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Pipeline mini */}
-      {pipeline && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pipeline Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-6 text-center">
-              {[
-                { label: "Suggested", value: pipeline.suggested, color: "text-blue-600", tip: "AI-recommended companies based on your DNA profile" },
-                { label: "Approved", value: pipeline.approved, color: "text-green-600", tip: "Companies you've approved for outreach" },
-                { label: "Researched", value: pipeline.researched, color: "text-purple-600", tip: "Companies with completed research dossiers" },
-                { label: "Contacted", value: pipeline.contacted, color: "text-yellow-600", tip: "Companies where outreach has been sent" },
-              ].map((item) => (
-                <Tooltip key={item.label}>
-                  <TooltipTrigger asChild>
-                    <div className="cursor-help">
-                      <div className={`text-xl font-bold ${item.color}`}>{item.value}</div>
-                      <div className="text-xs text-muted-foreground">{item.label}</div>
+      {/* Pipeline mini + Usage */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {pipeline && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Pipeline Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const stages = [
+                    { label: "Suggested", value: pipeline.suggested, barColor: "bg-chart-1", tip: "AI-recommended companies based on your DNA profile" },
+                    { label: "Approved", value: pipeline.approved, barColor: "bg-chart-2", tip: "Companies you've approved for outreach" },
+                    { label: "Researched", value: pipeline.researched, barColor: "bg-chart-3", tip: "Companies with completed research dossiers" },
+                    { label: "Contacted", value: pipeline.contacted, barColor: "bg-chart-4", tip: "Companies where outreach has been sent" },
+                  ];
+                  const total = Math.max(stages.reduce((sum, s) => sum + s.value, 0), 1);
+                  return (
+                    <div className="space-y-3">
+                      {stages.map((stage) => (
+                        <Tooltip key={stage.label}>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-3 cursor-help">
+                              <span className="w-24 text-xs text-muted-foreground text-right">{stage.label}</span>
+                              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${stage.barColor}`}
+                                  style={{ width: `${(stage.value / total) * 100}%` }}
+                                />
+                              </div>
+                              <span className="w-8 text-sm font-bold text-right">{stage.value}</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>{stage.tip}</TooltipContent>
+                        </Tooltip>
+                      ))}
                     </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{item.tip}</TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        <UsageCard />
+      </div>
 
       {/* Recent companies */}
       {recentCompanies.length > 0 && (
@@ -254,6 +280,17 @@ export default function DashboardPage() {
                 ))}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+      )}
+      {recentCompanies.length === 0 && !companiesQuery.isLoading && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-muted-foreground">No companies in your pipeline yet.</p>
+            <Button variant="outline" className="mt-3" onClick={() => router.push("/companies")}>
+              <Search className="mr-2 h-4 w-4" />
+              Discover Companies
+            </Button>
           </CardContent>
         </Card>
       )}

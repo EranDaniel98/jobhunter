@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useCompany,
   useDossier,
@@ -15,12 +16,13 @@ import { FitScore } from "@/components/shared/fit-score";
 import { DossierView } from "@/components/companies/dossier-view";
 import { ContactsList } from "@/components/companies/contacts-list";
 import { PageSkeleton } from "@/components/shared/loading-skeleton";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Check, X, Globe, MapPin, Users, Banknote } from "lucide-react";
+import { ArrowLeft, Building2, Check, Loader2, X, Globe, MapPin, Users, Banknote } from "lucide-react";
 
 export default function CompanyDetailPage({
   params,
@@ -28,6 +30,7 @@ export default function CompanyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const { data: company, isLoading } = useCompany(id);
   const dossierQuery = useDossier(id, company?.research_status === "completed");
   const contactsQuery = useCompanyContacts(id);
@@ -35,7 +38,16 @@ export default function CompanyDetailPage({
   const rejectMutation = useRejectCompany();
 
   if (isLoading) return <PageSkeleton />;
-  if (!company) return <p>Company not found</p>;
+  if (!company) {
+    return (
+      <EmptyState
+        icon={Building2}
+        title="Company not found"
+        description="This company may have been removed or the link is incorrect."
+        action={{ label: "Back to Companies", onClick: () => router.push("/companies") }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -50,6 +62,17 @@ export default function CompanyDetailPage({
             <h1 className="text-2xl font-bold">{company.name}</h1>
             <StatusBadge type="company" status={company.status} />
             <StatusBadge type="research" status={company.research_status} />
+            {company.research_status === "failed" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => approveMutation.mutate(company.id)}
+                disabled={approveMutation.isPending}
+              >
+                {approveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Retry Research
+              </Button>
+            )}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             {company.domain && (
@@ -86,7 +109,7 @@ export default function CompanyDetailPage({
               <Button
                 size="sm"
                 variant="outline"
-                className="text-green-600"
+                className="text-primary hover:bg-primary/10 hover:text-primary"
                 onClick={() =>
                   approveMutation.mutate(company.id, {
                     onSuccess: () => toast.success("Company approved"),
@@ -99,7 +122,7 @@ export default function CompanyDetailPage({
               <Button
                 size="sm"
                 variant="outline"
-                className="text-red-600"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() =>
                   rejectMutation.mutate(
                     { id: company.id, reason: "Not interested" },
