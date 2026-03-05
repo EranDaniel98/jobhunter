@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { lastEvent } = useWebSocket();
 
   useEffect(() => {
@@ -35,12 +36,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar lastEvent={lastEvent} />
-      <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+      <Sidebar lastEvent={lastEvent} onCollapseChange={setSidebarCollapsed} />
+      <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} lastEvent={lastEvent} />
       <CommandMenu />
-      <div className="lg:pl-64">
+      <div className={sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"}>
         <Header onMenuClick={() => setMobileNavOpen(true)} lastEvent={lastEvent} />
-        <main className="p-4 md:p-6 lg:p-8">{children}</main>
+        <main id="main-content" className="p-4 md:p-6 lg:p-8">{children}</main>
         <Footer />
       </div>
     </div>

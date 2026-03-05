@@ -19,10 +19,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   if (isAuthenticated) return null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100 px-4 dark:from-zinc-950 dark:to-zinc-900">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-md shadow-primary/25">
             <Briefcase className="h-6 w-6 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold">JobHunter AI</h1>

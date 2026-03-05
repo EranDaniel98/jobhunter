@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function CardSkeleton() {
   return (
-    <div className="space-y-3 rounded-lg border p-6">
+    <div className="space-y-3 rounded-2xl border p-6" role="status" aria-label="Loading card">
       <Skeleton className="h-4 w-1/3" />
       <Skeleton className="h-8 w-1/2" />
       <Skeleton className="h-4 w-2/3" />
@@ -12,7 +12,7 @@ export function CardSkeleton() {
 
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" role="status" aria-label="Loading table">
       <Skeleton className="h-10 w-full" />
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton key={i} className="h-12 w-full" />
@@ -23,7 +23,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
 
 export function PageSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="status" aria-label="Loading page content">
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-72" />

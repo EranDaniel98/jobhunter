@@ -66,6 +66,7 @@ export function UploadZone({ onUploadSuccess }: UploadZoneProps) {
     <Card>
       <CardContent className="p-0">
         <label
+          aria-live="polite"
           className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
             dragOver
               ? "border-primary bg-primary/5"
@@ -85,13 +86,13 @@ export function UploadZone({ onUploadSuccess }: UploadZoneProps) {
             </>
           ) : uploadMutation.isSuccess ? (
             <>
-              <CheckCircle2 className="mb-2 h-10 w-10 text-green-500" />
+              <CheckCircle2 className="mb-2 h-10 w-10 text-primary" />
               <p className="text-sm font-medium">Resume uploaded successfully</p>
               <p className="text-xs text-muted-foreground">Drop another file to replace</p>
             </>
           ) : (
             <>
-              <Upload className="mb-2 h-10 w-10 text-muted-foreground" />
+              <Upload className="mb-2 h-10 w-10 text-primary/40" />
               <p className="text-sm font-medium">Drop your resume here or click to browse</p>
               <p className="text-xs text-muted-foreground">PDF or DOCX, max 10MB</p>
             </>
@@ -99,7 +100,8 @@ export function UploadZone({ onUploadSuccess }: UploadZoneProps) {
           <input
             type="file"
             accept=".pdf,.docx"
-            className="hidden"
+            className="sr-only"
+            aria-label="Upload resume file"
             onChange={handleInput}
           />
         </label>
