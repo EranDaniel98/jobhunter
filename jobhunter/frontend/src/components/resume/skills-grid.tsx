@@ -7,9 +7,9 @@ interface SkillsGridProps {
 }
 
 const categoryColors: Record<string, string> = {
-  explicit: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  transferable: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  adjacent: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+  explicit: "bg-secondary text-secondary-foreground",
+  transferable: "bg-chart-4/15 text-chart-4",
+  adjacent: "bg-chart-5/15 text-chart-5",
 };
 
 export function SkillsGrid({ skills }: SkillsGridProps) {
@@ -41,7 +41,7 @@ export function SkillsGrid({ skills }: SkillsGridProps) {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{skill.name}</span>
-                    <Badge className={categoryColors[category] || "bg-gray-100 text-gray-800"}>
+                    <Badge className={categoryColors[category] || "bg-muted text-muted-foreground"}>
                       {category}
                     </Badge>
                   </div>

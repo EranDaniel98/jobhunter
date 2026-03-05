@@ -12,15 +12,15 @@ import {
 } from "lucide-react";
 
 const EVENT_CONFIG: Record<string, { icon: typeof Mail; color: string; label: string }> = {
-  signup: { icon: UserPlus, color: "bg-green-100 text-green-800", label: "Signed up" },
-  email_sent: { icon: Mail, color: "bg-blue-100 text-blue-800", label: "Email sent" },
-  company_added: { icon: Building2, color: "bg-purple-100 text-purple-800", label: "Company added" },
-  company_discovered: { icon: Search, color: "bg-orange-100 text-orange-800", label: "Company discovered" },
-  company_researched: { icon: Search, color: "bg-yellow-100 text-yellow-800", label: "Research completed" },
-  contact_discovered: { icon: UserPlus, color: "bg-teal-100 text-teal-800", label: "Contact discovered" },
-  message_drafted: { icon: Mail, color: "bg-indigo-100 text-indigo-800", label: "Message drafted" },
-  resume_uploaded: { icon: Zap, color: "bg-pink-100 text-pink-800", label: "Resume uploaded" },
-  resume_parsed: { icon: Zap, color: "bg-pink-100 text-pink-800", label: "Resume parsed" },
+  signup: { icon: UserPlus, color: "bg-primary/15 text-primary", label: "Signed up" },
+  email_sent: { icon: Mail, color: "bg-secondary text-secondary-foreground", label: "Email sent" },
+  company_added: { icon: Building2, color: "bg-chart-4/15 text-chart-4", label: "Company added" },
+  company_discovered: { icon: Search, color: "bg-chart-5/15 text-chart-5", label: "Company discovered" },
+  company_researched: { icon: Search, color: "bg-accent text-accent-foreground", label: "Research completed" },
+  contact_discovered: { icon: UserPlus, color: "bg-chart-2/15 text-chart-2", label: "Contact discovered" },
+  message_drafted: { icon: Mail, color: "bg-chart-1/15 text-chart-1", label: "Message drafted" },
+  resume_uploaded: { icon: Zap, color: "bg-chart-3/15 text-chart-3", label: "Resume uploaded" },
+  resume_parsed: { icon: Zap, color: "bg-chart-3/15 text-chart-3", label: "Resume parsed" },
 };
 
 function formatRelativeTime(dateStr: string): string {
@@ -56,7 +56,7 @@ function ActivityFeedInner({ items }: ActivityFeedProps) {
       {items.map((item) => {
         const config = EVENT_CONFIG[item.event_type] || {
           icon: Zap,
-          color: "bg-gray-100 text-gray-800",
+          color: "bg-muted text-muted-foreground",
           label: item.event_type.replace(/_/g, " "),
         };
         const Icon = config.icon;

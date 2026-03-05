@@ -27,12 +27,12 @@ export function DnaProfile({ dna }: DnaProfileProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-green-600">Strengths</CardTitle>
+          <CardTitle className="text-primary">Strengths</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {dna.strengths?.map((s, i) => (
-              <Badge key={i} className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+              <Badge key={i} className="bg-primary/15 text-primary">
                 {s}
               </Badge>
             )) || <span className="text-sm text-muted-foreground">None identified</span>}
@@ -42,12 +42,12 @@ export function DnaProfile({ dna }: DnaProfileProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-yellow-600">Gaps</CardTitle>
+          <CardTitle className="text-chart-3">Gaps</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {dna.gaps?.map((g, i) => (
-              <Badge key={i} className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+              <Badge key={i} className="bg-accent text-accent-foreground">
                 {g}
               </Badge>
             )) || <span className="text-sm text-muted-foreground">None identified</span>}

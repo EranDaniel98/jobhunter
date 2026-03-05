@@ -17,11 +17,11 @@ interface PipelineChartProps {
 
 export function PipelineChart({ data }: PipelineChartProps) {
   const chartData = [
-    { name: "Suggested", value: data.suggested, fill: "hsl(210, 70%, 55%)" },
-    { name: "Approved", value: data.approved, fill: "hsl(142, 60%, 45%)" },
-    { name: "Researched", value: data.researched, fill: "hsl(262, 50%, 55%)" },
-    { name: "Contacted", value: data.contacted, fill: "hsl(45, 80%, 50%)" },
-    { name: "Rejected", value: data.rejected, fill: "hsl(0, 60%, 55%)" },
+    { name: "Suggested", value: data.suggested, fill: "var(--chart-1)" },
+    { name: "Approved", value: data.approved, fill: "var(--chart-2)" },
+    { name: "Researched", value: data.researched, fill: "var(--chart-3)" },
+    { name: "Contacted", value: data.contacted, fill: "var(--chart-4)" },
+    { name: "Rejected", value: data.rejected, fill: "var(--destructive)" },
   ];
 
   return (

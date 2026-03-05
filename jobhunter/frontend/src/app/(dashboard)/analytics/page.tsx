@@ -15,43 +15,43 @@ import { formatPercent } from "@/lib/utils";
 import type { AnalyticsInsightResponse } from "@/lib/types";
 
 const FUNNEL_COLORS = [
-  "hsl(210, 70%, 55%)",
-  "hsl(200, 65%, 50%)",
-  "hsl(180, 60%, 45%)",
-  "hsl(142, 60%, 45%)",
-  "hsl(120, 55%, 40%)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
 const PIE_COLORS = [
-  "hsl(210, 70%, 55%)",
-  "hsl(142, 60%, 45%)",
-  "hsl(262, 50%, 55%)",
-  "hsl(45, 80%, 50%)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
 ];
 
 const SEVERITY_STYLES: Record<string, { border: string; bg: string; badge: string; badgeText: string }> = {
   info: {
-    border: "border-l-blue-500",
-    bg: "hover:bg-blue-50/50 dark:hover:bg-blue-950/20",
-    badge: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    border: "border-l-secondary",
+    bg: "hover:bg-secondary/50",
+    badge: "bg-secondary text-secondary-foreground",
     badgeText: "Info",
   },
   success: {
-    border: "border-l-green-500",
-    bg: "hover:bg-green-50/50 dark:hover:bg-green-950/20",
-    badge: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    border: "border-l-primary",
+    bg: "hover:bg-primary/5",
+    badge: "bg-primary/15 text-primary",
     badgeText: "Success",
   },
   warning: {
-    border: "border-l-yellow-500",
-    bg: "hover:bg-yellow-50/50 dark:hover:bg-yellow-950/20",
-    badge: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    border: "border-l-chart-3",
+    bg: "hover:bg-chart-3/10",
+    badge: "bg-chart-3/15 text-chart-3",
     badgeText: "Warning",
   },
   action_needed: {
-    border: "border-l-red-500",
-    bg: "hover:bg-red-50/50 dark:hover:bg-red-950/20",
-    badge: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    border: "border-l-destructive",
+    bg: "hover:bg-destructive/5",
+    badge: "bg-destructive/15 text-destructive",
     badgeText: "Action Needed",
   },
 };
@@ -84,31 +84,39 @@ function DashboardSkeleton() {
       {/* Stat cards skeleton */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="space-y-3 rounded-lg border p-6">
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-2 w-full" />
-          </div>
+          <Card key={i}>
+            <CardContent className="space-y-3 pt-6">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-8 w-1/2" />
+              <Skeleton className="h-2 w-full" />
+            </CardContent>
+          </Card>
         ))}
       </div>
       {/* Charts skeleton */}
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border p-6 space-y-3">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-[250px] w-full" />
-        </div>
-        <div className="rounded-lg border p-6 space-y-3">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-[250px] w-full" />
-        </div>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-[250px] w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-[250px] w-full" />
+          </CardContent>
+        </Card>
       </div>
       {/* Insights skeleton */}
-      <div className="rounded-lg border p-6 space-y-3">
-        <Skeleton className="h-5 w-40" />
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 w-full" />
-        ))}
-      </div>
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          <Skeleton className="h-5 w-40" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -141,7 +149,7 @@ function InsightCard({
               {style.badgeText}
             </span>
             {!insight.is_read && (
-              <span className="inline-flex h-2 w-2 rounded-full bg-blue-500" />
+              <span className="inline-flex h-2 w-2 rounded-full bg-primary" />
             )}
             <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
               {formatRelativeTime(insight.created_at)}
@@ -243,7 +251,9 @@ export default function AnalyticsPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Sent</CardTitle>
-                <Mail className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-chart-2/15">
+                  <Mail className="h-4 w-4 text-chart-2" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{dashboard?.outreach.total_sent ?? 0}</div>
@@ -254,7 +264,9 @@ export default function AnalyticsPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Open Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-chart-3/15">
+                  <TrendingUp className="h-4 w-4 text-chart-3" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -273,7 +285,9 @@ export default function AnalyticsPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Reply Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-chart-5/15">
+                  <TrendingUp className="h-4 w-4 text-chart-5" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -292,7 +306,9 @@ export default function AnalyticsPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Companies</CardTitle>
-                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+                  <Building2 className="h-4 w-4 text-primary" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">

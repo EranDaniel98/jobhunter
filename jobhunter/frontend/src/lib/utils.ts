@@ -34,15 +34,15 @@ export function truncate(str: string, maxLen: number): string {
 }
 
 export function fitScoreColor(score: number | null): string {
-  if (score === null) return "text-gray-400";
-  if (score < 0.4) return "text-red-500";
-  if (score < 0.7) return "text-yellow-500";
-  return "text-green-500";
+  if (score === null) return "text-muted-foreground";
+  if (score < 0.4) return "text-destructive";
+  if (score < 0.7) return "text-chart-3";
+  return "text-primary";
 }
 
 export function fitScoreBarColor(score: number | null): string {
-  if (score === null) return "bg-gray-200";
-  if (score < 0.4) return "bg-red-500";
-  if (score < 0.7) return "bg-yellow-500";
-  return "bg-green-500";
+  if (score === null) return "bg-muted";
+  if (score < 0.4) return "bg-destructive";
+  if (score < 0.7) return "bg-chart-3";
+  return "bg-primary";
 }

@@ -262,7 +262,7 @@ export default function CompaniesPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8 text-green-600"
+                            className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary"
                             aria-label={`Approve ${company.name}`}
                             onClick={() =>
                               approveMutation.mutate(company.id, {
@@ -276,7 +276,7 @@ export default function CompaniesPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8 text-red-600"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                             aria-label={`Reject ${company.name}`}
                             onClick={() =>
                               rejectMutation.mutate(

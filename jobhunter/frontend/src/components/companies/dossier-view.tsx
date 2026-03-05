@@ -24,7 +24,7 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
   if (researchStatus === "failed") {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <AlertTriangle className="mb-4 h-8 w-8 text-red-500" />
+        <AlertTriangle className="mb-4 h-8 w-8 text-destructive" />
         <p className="text-sm font-medium">Research failed</p>
         <p className="text-xs text-muted-foreground">Please try approving the company again</p>
       </div>
@@ -67,9 +67,9 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
             <p className="text-sm text-muted-foreground">{dossier.culture_summary}</p>
             {dossier.red_flags && dossier.red_flags.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-red-600">Red Flags</p>
+                <p className="text-xs font-medium text-destructive">Red Flags</p>
                 {dossier.red_flags.map((flag, i) => (
-                  <p key={i} className="text-xs text-red-500">
+                  <p key={i} className="text-xs text-destructive/80">
                     {flag}
                   </p>
                 ))}

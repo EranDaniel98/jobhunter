@@ -86,10 +86,10 @@ export function BroadcastForm() {
       </Card>
 
       {result && (
-        <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+        <Card className="border-primary/30 bg-primary/5">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <CheckCircle2 className="h-5 w-5 text-primary" />
               <div>
                 <p className="font-medium">Broadcast sent successfully</p>
                 <p className="text-sm text-muted-foreground">

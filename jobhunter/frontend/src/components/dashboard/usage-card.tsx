@@ -17,14 +17,14 @@ const QUOTA_LABELS: Record<string, string> = {
 
 const PLAN_DISPLAY: Record<PlanTier, { name: string; className: string }> = {
   free: { name: "Free Plan", className: "" },
-  explorer: { name: "Explorer", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  hunter: { name: "Hunter", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+  explorer: { name: "Explorer", className: "bg-secondary text-secondary-foreground" },
+  hunter: { name: "Hunter", className: "bg-primary/15 text-primary" },
 };
 
 // Full class strings so Tailwind can detect them at build time
-const COLOR_GREEN = "[&_[data-slot=progress-indicator]]:bg-green-500";
-const COLOR_YELLOW = "[&_[data-slot=progress-indicator]]:bg-yellow-500";
-const COLOR_RED = "[&_[data-slot=progress-indicator]]:bg-red-500";
+const COLOR_GREEN = "[&_[data-slot=progress-indicator]]:bg-primary";
+const COLOR_YELLOW = "[&_[data-slot=progress-indicator]]:bg-chart-3";
+const COLOR_RED = "[&_[data-slot=progress-indicator]]:bg-destructive";
 
 function progressColorClass(used: number, limit: number): string {
   if (limit === 0) return COLOR_GREEN;
@@ -45,7 +45,7 @@ function QuotaRow({ label, quota }: { label: string; quota: QuotaItem }) {
         <span className="font-medium tabular-nums">
           {quota.used} / {quota.limit}
           {atLimit && (
-            <span className="ml-1.5 text-xs text-red-600 dark:text-red-400">Limit reached</span>
+            <span className="ml-1.5 text-xs text-destructive">Limit reached</span>
           )}
         </span>
       </div>
