@@ -47,6 +47,30 @@ export default function SettingsPage() {
     }
   }, [user]);
 
+  const isDirty = user ? (
+    fullName !== (user.full_name || "") ||
+    headline !== (user.headline || "") ||
+    location !== (user.location || "") ||
+    JSON.stringify(targetRoles) !== JSON.stringify(user.target_roles || []) ||
+    JSON.stringify(targetIndustries) !== JSON.stringify(user.target_industries || []) ||
+    JSON.stringify(targetLocations) !== JSON.stringify(user.target_locations || []) ||
+    salaryMin !== (user.salary_min?.toString() || "") ||
+    salaryMax !== (user.salary_max?.toString() || "")
+  ) : false;
+
+  function resetForm() {
+    if (user) {
+      setFullName(user.full_name || "");
+      setHeadline(user.headline || "");
+      setLocation(user.location || "");
+      setTargetRoles(user.target_roles || []);
+      setTargetIndustries(user.target_industries || []);
+      setTargetLocations(user.target_locations || []);
+      setSalaryMin(user.salary_min?.toString() || "");
+      setSalaryMax(user.salary_max?.toString() || "");
+    }
+  }
+
   function addTag(
     value: string,
     list: string[],
@@ -224,14 +248,19 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={loading}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save changes
-        </Button>
-      </div>
-
       <InviteSection />
+
+      {isDirty && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card p-3 shadow-lg lg:left-64">
+          <div className="flex items-center justify-end gap-3 max-w-5xl mx-auto">
+            <Button variant="ghost" onClick={resetForm}>Discard</Button>
+            <Button onClick={handleSave} disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save changes
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -293,8 +322,8 @@ function TagInput({
 
 const PLAN_DISPLAY: Record<PlanTier, { name: string; className: string }> = {
   free: { name: "Free Plan", className: "" },
-  explorer: { name: "Explorer", className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  hunter: { name: "Hunter", className: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+  explorer: { name: "Explorer", className: "bg-secondary text-secondary-foreground" },
+  hunter: { name: "Hunter", className: "bg-primary/15 text-primary" },
 };
 
 function PlanBillingCard({ tier }: { tier: PlanTier }) {

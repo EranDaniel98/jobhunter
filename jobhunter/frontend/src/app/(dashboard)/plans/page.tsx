@@ -7,6 +7,7 @@ import { getPlans } from "@/lib/api/candidates";
 import { PageHeader } from "@/components/shared/page-header";
 import { UpgradeDialog } from "@/components/shared/upgrade-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/shared/loading-skeleton";
@@ -79,7 +80,7 @@ export default function PlansPage() {
               <Card
                 key={plan.tier}
                 className={`relative flex flex-col ${
-                  isPopular ? "border-primary shadow-md" : ""
+                  isPopular ? "border-primary shadow-md shadow-primary/10" : ""
                 }`}
               >
                 {isPopular && (
@@ -110,7 +111,7 @@ export default function PlansPage() {
                         key={key}
                         className="flex items-center gap-2 text-sm"
                       >
-                        <Check className="h-4 w-4 text-green-600 shrink-0" />
+                        <Check className="h-4 w-4 text-primary shrink-0" />
                         <span>
                           <span className="font-medium">{value}</span>{" "}
                           {QUOTA_USER_LABELS[key] || key}/day
@@ -149,6 +150,38 @@ export default function PlansPage() {
             );
           })}
         </div>
+      )}
+
+      {sortedPlans && sortedPlans.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Feature Comparison</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Feature</TableHead>
+                  {sortedPlans.map((p) => (
+                    <TableHead key={p.tier} className="text-center">{p.display_name}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(QUOTA_USER_LABELS).map(([key, label]) => (
+                  <TableRow key={key}>
+                    <TableCell className="font-medium">{label}</TableCell>
+                    {sortedPlans.map((p) => (
+                      <TableCell key={p.tier} className="text-center font-medium">
+                        {p.limits[key] ?? "—"}/day
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       <UpgradeDialog

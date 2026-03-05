@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { toastError } from "@/lib/api/error-utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ClipboardCheck,
   Check,
@@ -44,6 +45,24 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
 export default function ApprovalsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("pending");
   const [selectedAction, setSelectedAction] = useState<PendingAction | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    const ids = actions.map((a: PendingAction) => a.id);
+    setSelected(new Set(ids));
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
 
   const params = {
     status: statusFilter === "all" ? undefined : statusFilter,
@@ -74,6 +93,10 @@ export default function ApprovalsPage() {
 
   const actions = data?.actions || [];
 
+  const pendingCount = data?.actions?.filter((a) => a.status === "pending").length ?? 0;
+  const approvedCount = data?.actions?.filter((a) => a.status === "approved").length ?? 0;
+  const rejectedCount = data?.actions?.filter((a) => a.status === "rejected").length ?? 0;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -83,9 +106,9 @@ export default function ApprovalsPage() {
 
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
         <TabsList>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          <TabsTrigger value="pending">Pending{pendingCount > 0 && ` (${pendingCount})`}</TabsTrigger>
+          <TabsTrigger value="approved">Approved{approvedCount > 0 && ` (${approvedCount})`}</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected{rejectedCount > 0 && ` (${rejectedCount})`}</TabsTrigger>
           <TabsTrigger value="all">All</TabsTrigger>
         </TabsList>
       </Tabs>
@@ -117,6 +140,14 @@ export default function ApprovalsPage() {
               onClick={() => setSelectedAction(action)}
             >
               <CardContent className="flex items-center gap-4 py-4">
+                {action.status === "pending" && (
+                  <Checkbox
+                    checked={selected.has(action.id)}
+                    onCheckedChange={() => toggleSelect(action.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Select ${action.contact_name || "action"}`}
+                  />
+                )}
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
                   {action.channel === "linkedin" ? (
                     <Linkedin className="h-4 w-4" />
@@ -149,7 +180,7 @@ export default function ApprovalsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-green-600"
+                        className="text-primary hover:bg-primary/10 hover:text-primary"
                         aria-label={`Approve ${action.contact_name || "action"}`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -162,7 +193,7 @@ export default function ApprovalsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-red-600"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         aria-label={`Reject ${action.contact_name || "action"}`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -181,6 +212,19 @@ export default function ApprovalsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {selected.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full bg-card border shadow-lg px-6 py-3 lg:left-[calc(50%+8rem)]">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <Button size="sm" onClick={() => { selected.forEach((id) => approveMutation.mutate(id)); clearSelection(); }}>
+            <Check className="mr-1 h-3.5 w-3.5" /> Approve All
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => { selected.forEach((id) => rejectMutation.mutate(id)); clearSelection(); }}>
+            <X className="mr-1 h-3.5 w-3.5" /> Reject All
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection}>Cancel</Button>
         </div>
       )}
 
