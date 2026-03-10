@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.analytics import AnalyticsEvent
 from app.models.company import Company
 from app.models.contact import Contact
+from app.models.enums import CompanyStatus, MessageStatus, ResearchStatus
 from app.models.outreach import OutreachMessage
 
 logger = structlog.get_logger()
@@ -44,19 +45,19 @@ async def get_funnel(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     )
     counts = dict(result.all())
     return {
-        "drafted": counts.get("draft", 0),
-        "sent": counts.get("sent", 0),
-        "delivered": counts.get("delivered", 0),
-        "opened": counts.get("opened", 0),
-        "replied": counts.get("replied", 0),
-        "bounced": counts.get("bounced", 0),
+        "drafted": counts.get(MessageStatus.DRAFT, 0),
+        "sent": counts.get(MessageStatus.SENT, 0),
+        "delivered": counts.get(MessageStatus.DELIVERED, 0),
+        "opened": counts.get(MessageStatus.OPENED, 0),
+        "replied": counts.get(MessageStatus.REPLIED, 0),
+        "bounced": counts.get(MessageStatus.BOUNCED, 0),
     }
 
 
 async def get_outreach_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     """Get outreach performance statistics using SQL aggregation."""
-    sent_statuses = ("sent", "delivered", "opened", "replied")
-    opened_statuses = ("opened", "replied")
+    sent_statuses = (MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.OPENED, MessageStatus.REPLIED)
+    opened_statuses = (MessageStatus.OPENED, MessageStatus.REPLIED)
 
     result = await db.execute(
         select(
@@ -68,7 +69,7 @@ async def get_outreach_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
                 case((OutreachMessage.status.in_(opened_statuses), 1))
             ).label("opened"),
             func.count(
-                case((OutreachMessage.status == "replied", 1))
+                case((OutreachMessage.status == MessageStatus.REPLIED, 1))
             ).label("replied"),
         )
         .where(OutreachMessage.candidate_id == candidate_id)
@@ -97,15 +98,15 @@ async def get_outreach_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
 
 async def get_variant_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     """Get outreach stats grouped by variant for A/B analysis."""
-    sent_statuses = ("sent", "delivered", "opened", "replied")
-    opened_statuses = ("opened", "replied")
+    sent_statuses = (MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.OPENED, MessageStatus.REPLIED)
+    opened_statuses = (MessageStatus.OPENED, MessageStatus.REPLIED)
 
     result = await db.execute(
         select(
             OutreachMessage.variant,
             func.count(case((OutreachMessage.status.in_(sent_statuses), 1))).label("sent"),
             func.count(case((OutreachMessage.status.in_(opened_statuses), 1))).label("opened"),
-            func.count(case((OutreachMessage.status == "replied", 1))).label("replied"),
+            func.count(case((OutreachMessage.status == MessageStatus.REPLIED, 1))).label("replied"),
         )
         .where(
             OutreachMessage.candidate_id == candidate_id,
@@ -133,10 +134,10 @@ async def get_pipeline_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     # Combined query: status counts + researched count in one pass
     result = await db.execute(
         select(
-            func.count(case((Company.status == "suggested", 1))).label("suggested"),
-            func.count(case((Company.status == "approved", 1))).label("approved"),
-            func.count(case((Company.status == "rejected", 1))).label("rejected"),
-            func.count(case((Company.research_status == "completed", 1))).label("researched"),
+            func.count(case((Company.status == CompanyStatus.SUGGESTED, 1))).label("suggested"),
+            func.count(case((Company.status == CompanyStatus.APPROVED, 1))).label("approved"),
+            func.count(case((Company.status == CompanyStatus.REJECTED, 1))).label("rejected"),
+            func.count(case((Company.research_status == ResearchStatus.COMPLETED, 1))).label("researched"),
         )
         .where(Company.candidate_id == candidate_id)
     )
@@ -150,7 +151,7 @@ async def get_pipeline_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
         .join(OutreachMessage, OutreachMessage.contact_id == Contact.id)
         .where(
             Company.candidate_id == candidate_id,
-            OutreachMessage.status.in_(["sent", "delivered", "opened", "replied"]),
+            OutreachMessage.status.in_([MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.OPENED, MessageStatus.REPLIED]),
         )
     )
     contacted_count = contacted.scalar() or 0

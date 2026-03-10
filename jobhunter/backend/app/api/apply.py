@@ -20,6 +20,7 @@ from app.schemas.apply import (
     ResumeTipItem,
     ScrapeUrlRequest,
     ScrapeUrlResponse,
+    UpdateStageRequest,
 )
 
 logger = structlog.get_logger()
@@ -71,8 +72,8 @@ async def scrape_url(
         )
         title = meta.get("title") or None
         company_name = meta.get("company_name") or None
-    except Exception:
-        pass  # Metadata extraction is best-effort
+    except Exception as e:
+        logger.debug("metadata_extraction_skipped", error=str(e))
 
     return ScrapeUrlResponse(raw_text=raw_text, title=title, company_name=company_name)
 
@@ -113,8 +114,8 @@ async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
                 if posting:
                     posting.status = JobPostingStatus.FAILED
                     await err_db.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("apply_pipeline_error_handler_failed", error=str(e))
 
 
 @router.post("/analyze", response_model=JobPostingResponse)
@@ -173,6 +174,28 @@ async def list_postings(
         postings=[JobPostingResponse.model_validate(p) for p in postings],
         total=total,
     )
+
+
+@router.patch("/postings/{posting_id}/stage", response_model=JobPostingResponse)
+async def update_posting_stage(
+    posting_id: uuid.UUID,
+    req: UpdateStageRequest,
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(JobPosting).where(
+            JobPosting.id == posting_id,
+            JobPosting.candidate_id == candidate.id,
+        )
+    )
+    posting = result.scalar_one_or_none()
+    if not posting:
+        raise HTTPException(status_code=404, detail="Job posting not found")
+    posting.application_stage = req.stage
+    await db.commit()
+    await db.refresh(posting)
+    return JobPostingResponse.model_validate(posting)
 
 
 @router.get("/postings/{posting_id}/analysis", response_model=ApplyAnalysisResponse)

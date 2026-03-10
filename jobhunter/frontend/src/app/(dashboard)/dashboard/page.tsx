@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/providers/auth-provider";
 import { usePipelineStats, useFunnel, useOutreachStats } from "@/lib/hooks/use-analytics";
 import { useCompanies } from "@/lib/hooks/use-companies";
+import { useApprovalCount } from "@/lib/hooks/use-approvals";
 import * as candidatesApi from "@/lib/api/candidates";
 import { UsageCard } from "@/components/dashboard/usage-card";
 import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
@@ -26,15 +27,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 import { formatPercent } from "@/lib/utils";
 import {
   Building2,
   Mail,
   Eye,
   MessageSquare,
-  Upload,
   Search,
-  Plus,
+  ArrowRight,
+  ClipboardCheck,
+  FileText,
+  Zap,
+  TrendingUp,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -45,6 +50,7 @@ export default function DashboardPage() {
   const statsQuery = useOutreachStats();
   const companiesQuery = useCompanies();
   const dnaQuery = useQuery({ queryKey: ["dna"], queryFn: candidatesApi.getDNA, retry: 1 });
+  const approvalCountQuery = useApprovalCount();
 
   const isLoading =
     pipelineQuery.isLoading || funnelQuery.isLoading || statsQuery.isLoading;
@@ -53,7 +59,27 @@ export default function DashboardPage() {
 
   const stats = statsQuery.data;
   const pipeline = pipelineQuery.data;
+  const funnel = funnelQuery.data;
   const recentCompanies = companiesQuery.data?.companies?.slice(0, 5) || [];
+  const pendingCount = approvalCountQuery.data?.count || 0;
+  const totalCompanies = pipeline
+    ? pipeline.suggested + pipeline.approved + pipeline.researched + pipeline.contacted
+    : 0;
+
+  // Compute next actions based on current state
+  const nextActions: { label: string; description: string; href: string; icon: React.ElementType; priority: "high" | "medium" | "low" }[] = [];
+  if (!dnaQuery.data) {
+    nextActions.push({ label: "Upload your resume", description: "Get AI-powered job matching", href: "/resume", icon: FileText, priority: "high" });
+  }
+  if (pendingCount > 0) {
+    nextActions.push({ label: `Review ${pendingCount} pending approval${pendingCount > 1 ? "s" : ""}`, description: "Messages waiting for your review", href: "/approvals", icon: ClipboardCheck, priority: "high" });
+  }
+  if (totalCompanies === 0 && dnaQuery.data) {
+    nextActions.push({ label: "Discover companies", description: "Find companies that match your profile", href: "/companies", icon: Search, priority: "medium" });
+  }
+  if (pipeline && pipeline.approved > 0 && pipeline.contacted === 0) {
+    nextActions.push({ label: "Start outreach", description: `${pipeline.approved} companies ready for contact`, href: "/outreach", icon: Mail, priority: "medium" });
+  }
 
   return (
     <div className="space-y-6">
@@ -62,33 +88,42 @@ export default function DashboardPage() {
         description="Here's an overview of your job search"
       />
 
-      {/* Quick actions */}
-      <div className="flex flex-wrap gap-3">
-        <Button variant="default" onClick={() => router.push("/resume")}>
-          <Upload className="mr-2 h-4 w-4" />
-          Upload Resume
-        </Button>
-        <Button variant="outline" onClick={() => router.push("/companies")}>
-          <Search className="mr-2 h-4 w-4" />
-          Discover Companies
-        </Button>
-        <Button variant="ghost" onClick={() => router.push("/companies")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Company
-        </Button>
-      </div>
-
       {/* Email verification banner */}
       {user && !user.email_verified && <EmailVerificationBanner />}
 
       {/* Onboarding checklist */}
       <OnboardingChecklist
         hasResume={!!dnaQuery.data}
-        hasCompanies={(pipeline ? pipeline.suggested + pipeline.approved + pipeline.researched + pipeline.contacted : 0) > 0}
+        hasCompanies={totalCompanies > 0}
         hasSentMessages={(stats?.total_sent || 0) > 0}
       />
 
-      {/* Stats cards */}
+      {/* Next Actions — contextual prompts */}
+      {nextActions.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {nextActions.slice(0, 3).map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.href}
+                onClick={() => router.push(action.href)}
+                className="group flex items-center gap-3 rounded-2xl border bg-card p-4 text-left transition-all hover:shadow-md hover:border-primary/20"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{action.label}</p>
+                  <p className="text-xs text-muted-foreground">{action.description}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Stats cards — square proportions */}
       {isError ? (
         <QueryError
           message="Could not load dashboard stats."
@@ -99,139 +134,119 @@ export default function DashboardPage() {
           }}
         />
       ) : isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
           <CardSkeleton />
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CardTitle className="text-sm font-medium text-muted-foreground cursor-help">
-                    Companies
-                  </CardTitle>
-                </TooltipTrigger>
-                <TooltipContent>Total companies in your pipeline</TooltipContent>
-              </Tooltip>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-                <Building2 className="h-4 w-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {pipeline
-                  ? pipeline.suggested + pipeline.approved + pipeline.researched + pipeline.contacted
-                  : 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {pipeline?.approved || 0} approved
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CardTitle className="text-sm font-medium text-muted-foreground cursor-help">
-                    Emails Sent
-                  </CardTitle>
-                </TooltipTrigger>
-                <TooltipContent>Total outreach emails you&apos;ve sent</TooltipContent>
-              </Tooltip>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-                <Mail className="h-4 w-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.total_sent || 0}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CardTitle className="text-sm font-medium text-muted-foreground cursor-help">
-                    Open Rate
-                  </CardTitle>
-                </TooltipTrigger>
-                <TooltipContent>Percentage of sent emails that were opened</TooltipContent>
-              </Tooltip>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-                <Eye className="h-4 w-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats ? formatPercent(stats.open_rate) : "0%"}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CardTitle className="text-sm font-medium text-muted-foreground cursor-help">
-                    Reply Rate
-                  </CardTitle>
-                </TooltipTrigger>
-                <TooltipContent>Percentage of sent emails that got a reply</TooltipContent>
-              </Tooltip>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-                <MessageSquare className="h-4 w-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats ? formatPercent(stats.reply_rate) : "0%"}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Companies"
+            value={totalCompanies}
+            sub={`${pipeline?.approved || 0} approved`}
+            icon={Building2}
+            href="/companies"
+          />
+          <StatCard
+            label="Emails Sent"
+            value={stats?.total_sent || 0}
+            sub={funnel ? `${funnel.drafted} drafts` : undefined}
+            icon={Mail}
+            href="/outreach"
+          />
+          <StatCard
+            label="Open Rate"
+            value={stats ? formatPercent(stats.open_rate) : "0%"}
+            sub={stats ? `${stats.total_opened} opened` : undefined}
+            icon={Eye}
+            href="/analytics"
+          />
+          <StatCard
+            label="Reply Rate"
+            value={stats ? formatPercent(stats.reply_rate) : "0%"}
+            sub={stats ? `${stats.total_replied} replies` : undefined}
+            icon={MessageSquare}
+            href="/analytics"
+          />
         </div>
       )}
 
-      {/* Pipeline mini + Usage */}
+      {/* Pipeline + Usage — 2-column */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {pipeline && (
-            <Card>
-              <CardHeader>
+            <Card className="h-full">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Pipeline Overview</CardTitle>
+                <Link href="/analytics">
+                  <Button variant="ghost" size="sm">
+                    <TrendingUp className="mr-1 h-3.5 w-3.5" />
+                    Analytics
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent>
                 {(() => {
                   const stages = [
-                    { label: "Suggested", value: pipeline.suggested, barColor: "bg-chart-1", tip: "AI-recommended companies based on your DNA profile" },
-                    { label: "Approved", value: pipeline.approved, barColor: "bg-chart-2", tip: "Companies you've approved for outreach" },
-                    { label: "Researched", value: pipeline.researched, barColor: "bg-chart-3", tip: "Companies with completed research dossiers" },
-                    { label: "Contacted", value: pipeline.contacted, barColor: "bg-chart-4", tip: "Companies where outreach has been sent" },
+                    { label: "Suggested", value: pipeline.suggested, barColor: "bg-sky-400 dark:bg-sky-500", tip: "AI-recommended companies based on your DNA profile" },
+                    { label: "Approved", value: pipeline.approved, barColor: "bg-primary", tip: "Companies you've approved for outreach" },
+                    { label: "Researched", value: pipeline.researched, barColor: "bg-teal-500", tip: "Companies with completed research dossiers" },
+                    { label: "Contacted", value: pipeline.contacted, barColor: "bg-violet-500", tip: "Companies where outreach has been sent" },
                   ];
                   const total = Math.max(stages.reduce((sum, s) => sum + s.value, 0), 1);
                   return (
-                    <div className="space-y-3">
-                      {stages.map((stage) => (
-                        <Tooltip key={stage.label}>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-3 cursor-help">
-                              <span className="w-24 text-xs text-muted-foreground text-right">{stage.label}</span>
-                              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${stage.barColor}`}
-                                  style={{ width: `${(stage.value / total) * 100}%` }}
-                                />
+                    <div className="space-y-4">
+                      {stages.map((stage) => {
+                        const pct = Math.round((stage.value / total) * 100);
+                        return (
+                          <Tooltip key={stage.label}>
+                            <TooltipTrigger asChild>
+                              <div className="space-y-1.5 cursor-help">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">{stage.label}</span>
+                                  <span className="font-bold tabular-nums">{stage.value}</span>
+                                </div>
+                                <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${stage.barColor}`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
                               </div>
-                              <span className="w-8 text-sm font-bold text-right">{stage.value}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>{stage.tip}</TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+
+                      {/* Outreach funnel mini-summary */}
+                      {funnel && (stats?.total_sent || 0) > 0 && (
+                        <>
+                          <div className="border-t pt-4 mt-2">
+                            <p className="text-xs font-medium text-muted-foreground mb-3">Outreach Funnel</p>
+                            <div className="flex items-center gap-2">
+                              {[
+                                { label: "Sent", value: funnel.sent },
+                                { label: "Delivered", value: funnel.delivered },
+                                { label: "Opened", value: funnel.opened },
+                                { label: "Replied", value: funnel.replied },
+                              ].map((step, i, arr) => (
+                                <div key={step.label} className="flex items-center gap-2">
+                                  <div className="text-center">
+                                    <p className="text-lg font-bold tabular-nums">{step.value}</p>
+                                    <p className="text-[10px] text-muted-foreground">{step.label}</p>
+                                  </div>
+                                  {i < arr.length - 1 && (
+                                    <ArrowRight className="h-3 w-3 text-muted-foreground/40" />
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                          </TooltipTrigger>
-                          <TooltipContent>{stage.tip}</TooltipContent>
-                        </Tooltip>
-                      ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })()}
@@ -250,6 +265,7 @@ export default function DashboardPage() {
             <Link href="/companies">
               <Button variant="ghost" size="sm">
                 View all
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </Button>
             </Link>
           </CardHeader>
@@ -260,6 +276,7 @@ export default function DashboardPage() {
                   <TableHead>Company</TableHead>
                   <TableHead>Fit Score</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">Research</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -275,6 +292,9 @@ export default function DashboardPage() {
                     </TableCell>
                     <TableCell>
                       <StatusBadge type="company" status={c.status} />
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <StatusBadge type="research" status={c.research_status} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -295,5 +315,39 @@ export default function DashboardPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+/* Square stat card — centered layout with icon, value, label */
+function StatCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  href,
+}: {
+  label: string;
+  value: number | string;
+  sub?: string;
+  icon: React.ElementType;
+  href: string;
+}) {
+  const router = useRouter();
+  return (
+    <Card
+      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/20"
+      onClick={() => router.push(href)}
+    >
+      <CardContent className="flex flex-col items-center justify-center py-6 px-4 text-center">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 mb-3">
+          <Icon className="h-5 w-5 text-primary" />
+        </div>
+        <p className="text-2xl font-bold tabular-nums">{value}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+        {sub && (
+          <p className="text-[11px] text-muted-foreground/70 mt-1">{sub}</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

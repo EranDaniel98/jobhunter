@@ -89,8 +89,8 @@ async def _run_async_background(resume_id, candidate_id):
                 if resume:
                     resume.parse_status = "failed"
                     await db.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("resume_pipeline_status_update_failed", error=str(e))
 
 
 @router.get("/me/usage")

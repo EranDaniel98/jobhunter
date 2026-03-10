@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
 
 
+class CandidatePreferences(BaseModel):
+    email_notifications: bool = True
+    theme: str = "system"
+    language: str = "en"
+    model_config = {"extra": "forbid"}
+
+
 class CandidateUpdate(BaseModel):
     full_name: str | None = Field(None, max_length=255)
     headline: str | None = Field(None, max_length=500)
@@ -10,7 +17,7 @@ class CandidateUpdate(BaseModel):
     target_locations: list[str] | None = Field(None, max_length=10)
     salary_min: int | None = Field(None, ge=0)
     salary_max: int | None = Field(None, ge=0)
-    preferences: dict | None = None
+    preferences: CandidatePreferences | None = None
 
 
 class ResumeUploadResponse(BaseModel):

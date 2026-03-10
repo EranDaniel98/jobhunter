@@ -1,9 +1,11 @@
+import asyncio
 import json
 import uuid
 
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_openai
 from app.models.candidate import CandidateDNA
@@ -89,11 +91,13 @@ async def draft_message(
     language: str = "en", variant: str | None = None
 ) -> OutreachMessage:
     """Draft a personalized outreach email."""
-    # Load all context
-    contact = await _get_contact(db, contact_id)
-    company = await _get_company(db, contact.company_id)
+    # Load contact+company and DNA in parallel; dossier depends on company
+    contact, dna = await asyncio.gather(
+        _get_contact_with_company(db, contact_id),
+        _get_dna(db, candidate_id),
+    )
+    company = contact.company
     dossier = await _get_dossier(db, company.id)
-    dna = await _get_dna(db, candidate_id)
 
     # Determine message type (check existing messages for this contact)
     existing = await db.execute(
@@ -232,6 +236,20 @@ async def _get_contact(db: AsyncSession, contact_id: uuid.UUID) -> Contact:
     contact = result.scalar_one_or_none()
     if not contact:
         raise ValueError("Contact not found")
+    return contact
+
+
+async def _get_contact_with_company(db: AsyncSession, contact_id: uuid.UUID) -> Contact:
+    result = await db.execute(
+        select(Contact)
+        .where(Contact.id == contact_id)
+        .options(selectinload(Contact.company))
+    )
+    contact = result.scalar_one_or_none()
+    if not contact:
+        raise ValueError("Contact not found")
+    if not contact.company:
+        raise ValueError("Company not found")
     return contact
 
 

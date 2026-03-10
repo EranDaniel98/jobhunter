@@ -17,6 +17,7 @@ from langgraph.graph import StateGraph, START, END
 
 from app.infrastructure import database as _db_mod
 from app.dependencies import get_openai
+from app.models.enums import ParseStatus
 from app.models.candidate import CandidateDNA, Resume, Skill
 from app.services.resume_service import (
     RESUME_PARSE_PROMPT,
@@ -66,7 +67,7 @@ async def parse_resume_node(state: ResumeProcessingState) -> dict:
         if not resume:
             return {"status": "failed", "error": f"Resume {resume_id} not found"}
         if not resume.raw_text:
-            resume.parse_status = "failed"
+            resume.parse_status = ParseStatus.FAILED
             await db.commit()
             return {"status": "failed", "error": f"Resume {resume_id} has no extracted text"}
 
@@ -207,13 +208,22 @@ async def notify_node(state: ResumeProcessingState) -> dict:
         result = await db.execute(select(Resume).where(Resume.id == resume_id))
         resume = result.scalar_one_or_none()
         if resume:
-            resume.parse_status = "completed"
+            resume.parse_status = ParseStatus.COMPLETED
             await db.commit()
 
     await ws_manager.broadcast(
         str(candidate_id), "resume_parsed",
         {"resume_id": str(resume_id), "status": "completed", "fit_scores_updated": fit_scores_updated},
     )
+
+    from app.events.bus import get_event_bus
+    skills = state.get("skills_data", {}).get("skills", []) if state.get("skills_data") else []
+    await get_event_bus().publish(
+        "resume_parsed",
+        {"candidate_id": str(candidate_id), "resume_id": str(resume_id), "skills": [s.get("name", "") for s in skills]},
+        source="resume_pipeline.notify_node",
+    )
+
     logger.info("graph_notify_done", resume_id=str(resume_id))
     return {"status": "completed"}
 
@@ -228,7 +238,7 @@ async def mark_failed_node(state: ResumeProcessingState) -> dict:
         result = await db.execute(select(Resume).where(Resume.id == resume_id))
         resume = result.scalar_one_or_none()
         if resume:
-            resume.parse_status = "failed"
+            resume.parse_status = ParseStatus.FAILED
             await db.commit()
 
     await ws_manager.broadcast(

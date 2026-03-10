@@ -16,12 +16,16 @@ async def resend_webhook(
 ):
     """Handle Resend webhook events (no JWT auth — uses Svix signature verification)."""
     body = await request.body()
-    signature = request.headers.get("svix-signature", "")
+    svix_headers = {
+        "svix-id": request.headers.get("svix-id", ""),
+        "svix-timestamp": request.headers.get("svix-timestamp", ""),
+        "svix-signature": request.headers.get("svix-signature", ""),
+    }
 
     email_client = get_email_client()
 
     try:
-        payload = email_client.verify_webhook(body, signature)
+        payload = email_client.verify_webhook(body, svix_headers)
     except Exception as e:
         logger.warning("webhook_verification_failed", error=str(e))
         raise HTTPException(status_code=400, detail="Invalid webhook signature")

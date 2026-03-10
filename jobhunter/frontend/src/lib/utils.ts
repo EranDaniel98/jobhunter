@@ -41,8 +41,8 @@ export function fitScoreColor(score: number | null): string {
 }
 
 export function fitScoreBarColor(score: number | null): string {
-  if (score === null) return "bg-muted";
-  if (score < 0.4) return "bg-destructive";
-  if (score < 0.7) return "bg-chart-3";
-  return "bg-primary";
+  if (score === null) return "[&_[data-slot=progress-indicator]]:bg-muted-foreground";
+  if (score < 0.4) return "[&_[data-slot=progress-indicator]]:bg-red-500";
+  if (score < 0.7) return "[&_[data-slot=progress-indicator]]:bg-yellow-400";
+  return "[&_[data-slot=progress-indicator]]:bg-green-500";
 }

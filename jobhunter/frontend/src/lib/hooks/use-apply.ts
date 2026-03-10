@@ -48,6 +48,17 @@ export function useScrapeUrl() {
   });
 }
 
+export function useUpdatePostingStage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postingId, stage }: { postingId: string; stage: string }) =>
+      applyApi.updatePostingStage(postingId, stage),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["job-postings"] });
+    },
+  });
+}
+
 export function useAnalyzeJob() {
   const qc = useQueryClient();
   return useMutation({

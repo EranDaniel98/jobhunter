@@ -24,6 +24,7 @@ class ResendClient:
         tags: list[str] | None = None,
         headers: dict | None = None,
         attachments: list[dict] | None = None,
+        reply_to: str | None = None,
     ) -> dict:
         params = {
             "from": from_email,
@@ -37,6 +38,8 @@ class ResendClient:
             params["headers"] = headers
         if attachments:
             params["attachments"] = attachments
+        if reply_to:
+            params["reply_to"] = [reply_to]
 
         # Resend SDK is synchronous — run in executor
         loop = asyncio.get_event_loop()
@@ -46,12 +49,6 @@ class ResendClient:
         logger.info("email_sent_via_resend", to=to, message_id=result.get("id"))
         return result
 
-    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+    def verify_webhook(self, payload: bytes, headers: dict) -> dict:
         wh = Webhook(self._webhook_secret)
-        # Svix expects headers dict
-        headers = {
-            "svix-id": "",
-            "svix-timestamp": "",
-            "svix-signature": signature,
-        }
         return wh.verify(payload, headers)

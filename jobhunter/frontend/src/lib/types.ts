@@ -126,6 +126,8 @@ export interface OutreachMessageResponse {
   sent_at: string | null;
   opened_at: string | null;
   replied_at: string | null;
+  contact_name: string | null;
+  company_name: string | null;
 }
 
 // Analytics
@@ -255,6 +257,8 @@ export interface QuotaItem {
 export interface UsageResponse {
   plan_tier: PlanTier;
   quotas: Record<string, QuotaItem>;
+  weekly?: Record<string, QuotaItem>;
+  monthly?: Record<string, QuotaItem>;
 }
 
 export interface QuotaExceededDetail {
@@ -351,6 +355,7 @@ export interface JobPostingResponse {
   company_id: string | null;
   url: string | null;
   status: string;
+  application_stage: string;
   ats_keywords: string[] | null;
   parsed_requirements: Record<string, unknown> | null;
 }

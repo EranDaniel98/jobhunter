@@ -159,7 +159,7 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                     )}
                     {!contact.email_verified && contact.email_confidence !== null && (
                       <Badge variant="secondary" className="text-xs">
-                        {Math.round((contact.email_confidence ?? 0) * 100)}%
+                        {Math.round(contact.email_confidence ?? 0)}%
                       </Badge>
                     )}
                   </div>

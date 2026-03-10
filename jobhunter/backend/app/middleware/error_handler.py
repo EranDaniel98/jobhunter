@@ -17,8 +17,8 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             try:
                 import sentry_sdk
                 sentry_sdk.capture_exception(exc)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("sentry_capture_failed", error=str(e))
             request_id = structlog.contextvars.get_contextvars().get("request_id", "unknown")
             logger.error(
                 "unhandled_exception",

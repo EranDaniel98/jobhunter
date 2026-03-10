@@ -1,6 +1,7 @@
 import type { SkillResponse } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BadgeCheck, CircleDashed } from "lucide-react";
 
 interface SkillsGridProps {
   skills: SkillResponse[];
@@ -40,7 +41,14 @@ export function SkillsGrid({ skills }: SkillsGridProps) {
                   className="rounded-lg border p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{skill.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-sm">{skill.name}</span>
+                      {skill.evidence ? (
+                        <span title="Evidence-backed"><BadgeCheck className="h-3.5 w-3.5 text-primary shrink-0" /></span>
+                      ) : (
+                        <span title="Inferred"><CircleDashed className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" /></span>
+                      )}
+                    </div>
                     <Badge className={categoryColors[category] || "bg-muted text-muted-foreground"}>
                       {category}
                     </Badge>

@@ -14,6 +14,7 @@ from arq.connections import RedisSettings
 from sqlalchemy import and_, exists, select
 
 from app.config import settings
+from app.models.enums import ActionStatus, MessageStatus
 
 logger = structlog.get_logger()
 
@@ -65,7 +66,7 @@ async def check_followup_due(ctx):
             query = (
                 select(OutreachMessage)
                 .where(
-                    OutreachMessage.status.in_(["sent", "delivered"]),
+                    OutreachMessage.status.in_([MessageStatus.SENT, MessageStatus.DELIVERED]),
                     OutreachMessage.channel == "email",
                     OutreachMessage.message_type == prev_type,
                     OutreachMessage.sent_at <= cutoff,
@@ -93,7 +94,7 @@ async def check_followup_due(ctx):
                     pending_check = await db.execute(
                         select(PendingAction.id).where(
                             PendingAction.entity_id == msg.id,
-                            PendingAction.status == "pending",
+                            PendingAction.status == ActionStatus.PENDING,
                         ).limit(1)
                     )
                     if pending_check.scalar_one_or_none():

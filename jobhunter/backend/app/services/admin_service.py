@@ -16,6 +16,7 @@ from app.models.candidate import Candidate
 from app.models.company import Company
 from app.models.contact import Contact
 from app.models.invite import InviteCode
+from app.models.enums import MessageStatus
 from app.models.outreach import OutreachMessage
 from app.schemas.admin import (
     ActivityFeedItem,
@@ -50,7 +51,7 @@ async def get_system_overview(db: AsyncSession) -> SystemOverview:
     total_contacts = (await db.execute(select(func.count(Contact.id)))).scalar() or 0
 
     total_messages_sent = (await db.execute(
-        select(func.count(OutreachMessage.id)).where(OutreachMessage.status != "draft")
+        select(func.count(OutreachMessage.id)).where(OutreachMessage.status != MessageStatus.DRAFT)
     )).scalar() or 0
 
     total_invites_used = (await db.execute(
@@ -110,7 +111,7 @@ async def list_users(
         select(func.count(OutreachMessage.id))
         .where(
             OutreachMessage.candidate_id == Candidate.id,
-            OutreachMessage.status != "draft",
+            OutreachMessage.status != MessageStatus.DRAFT,
         )
         .correlate(Candidate)
         .scalar_subquery()
@@ -173,7 +174,7 @@ async def get_user_detail(db: AsyncSession, user_id: uuid.UUID) -> UserDetail | 
     messages_sent_count = (await db.execute(
         select(func.count(OutreachMessage.id)).where(
             OutreachMessage.candidate_id == user_id,
-            OutreachMessage.status != "draft",
+            OutreachMessage.status != MessageStatus.DRAFT,
         )
     )).scalar() or 0
 
@@ -265,7 +266,7 @@ async def get_top_users(
                 func.count(OutreachMessage.id).label("metric_value"),
             )
             .join(OutreachMessage, OutreachMessage.candidate_id == Candidate.id)
-            .where(OutreachMessage.status != "draft")
+            .where(OutreachMessage.status != MessageStatus.DRAFT)
             .group_by(Candidate.id)
             .order_by(func.count(OutreachMessage.id).desc())
             .limit(limit)
@@ -386,7 +387,7 @@ async def export_users_csv(db: AsyncSession) -> str:
         select(func.count(OutreachMessage.id))
         .where(
             OutreachMessage.candidate_id == Candidate.id,
-            OutreachMessage.status != "draft",
+            OutreachMessage.status != MessageStatus.DRAFT,
         )
         .correlate(Candidate)
         .scalar_subquery()
@@ -488,10 +489,14 @@ async def broadcast_email(
 ) -> BroadcastResponse:
     from app.config import settings as app_settings
 
-    # Query all active candidates who haven't opted out of email notifications
+    # Query all active candidates who haven't opted out and aren't suppressed
+    from app.models.suppression import EmailSuppression
+
+    suppressed_emails = select(EmailSuppression.email).scalar_subquery()
     result = await db.execute(
         select(Candidate).where(
             Candidate.is_active == True,  # noqa: E712
+            Candidate.email.notin_(suppressed_emails),
         )
     )
     candidates = result.scalars().all()
@@ -521,8 +526,8 @@ async def broadcast_email(
                     body=body,
                 )
                 return True
-            except Exception:
-                logger.warning("broadcast_send_failed", email=candidate.email)
+            except Exception as e:
+                logger.warning("broadcast_send_failed", email=candidate.email, error=str(e))
                 return False
 
     results = await asyncio.gather(*[_send(c) for c in eligible])

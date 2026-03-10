@@ -23,6 +23,7 @@ from sqlalchemy import select
 from app.infrastructure import database as _db_mod
 from app.dependencies import get_openai, get_email_client
 from app.config import settings
+from app.models.enums import MessageStatus
 from app.models.candidate import CandidateDNA, Resume
 from app.models.company import Company, CompanyDossier
 from app.models.signal import CompanySignal
@@ -202,7 +203,7 @@ async def generate_draft_node(state: OutreachGraphState) -> dict:
             body=result["body"],
             personalization_data={"points": result.get("personalization_points", [])},
             variant=variant,
-            status="draft",
+            status=MessageStatus.DRAFT,
         )
         db.add(message)
         await db.commit()
@@ -306,7 +307,7 @@ async def validate_send_node(state: OutreachGraphState) -> dict:
             return {"status": "failed", "error": "OutreachMessage not found"}
 
         # Duplicate send prevention
-        if message.status not in ("draft", "approved"):
+        if message.status not in (MessageStatus.DRAFT, MessageStatus.APPROVED):
             return {"status": "failed", "error": f"Cannot send message with status '{message.status}'"}
 
         # Enforce outreach sequence for followups
@@ -323,7 +324,7 @@ async def validate_send_node(state: OutreachGraphState) -> dict:
                 .limit(1)
             )
             prev_msg = prev_msgs.scalar_one_or_none()
-            if prev_msg and prev_msg.status not in ("sent", "delivered", "opened", "replied"):
+            if prev_msg and prev_msg.status not in (MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.OPENED, MessageStatus.REPLIED):
                 return {"status": "failed", "error": f"Previous message has status '{prev_msg.status}'"}
 
         # Get contact email
@@ -361,7 +362,7 @@ async def send_email_node(state: OutreachGraphState) -> dict:
     outreach_message_id = uuid.UUID(state["outreach_message_id"])
     candidate_id = uuid.UUID(state["candidate_id"])
     decision = state.get("approval_decision") or {}
-    attach_resume = decision.get("attach_resume", state.get("attach_resume", True))
+    attach_resume = decision.get("attach_resume", state.get("attach_resume", False))
 
     async with _db_mod.async_session_factory() as db:
         result = await db.execute(
@@ -411,21 +412,51 @@ async def send_email_node(state: OutreachGraphState) -> dict:
         email_client = get_email_client()
         from_email = f"{settings.SENDER_NAME} <{settings.SENDER_EMAIL}>"
 
+        # Get candidate's email for Reply-To
+        from app.models.candidate import Candidate
+        candidate_result = await db.execute(
+            select(Candidate.email).where(Candidate.id == candidate_id)
+        )
+        candidate_email = candidate_result.scalar_one_or_none()
+
+        # Build headers — threading for follow-ups
+        send_headers = {
+            "List-Unsubscribe": f"<mailto:unsubscribe@hunter-job.com?subject=unsubscribe>, <{unsubscribe_link}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        }
+        # Thread follow-ups under the original email
+        if message.message_type != "initial":
+            prev_result = await db.execute(
+                select(OutreachMessage.external_message_id)
+                .where(
+                    OutreachMessage.contact_id == message.contact_id,
+                    OutreachMessage.candidate_id == candidate_id,
+                    OutreachMessage.created_at < message.created_at,
+                )
+                .order_by(OutreachMessage.created_at.desc())
+                .limit(1)
+            )
+            prev_ext_id = prev_result.scalar_one_or_none()
+            if prev_ext_id:
+                send_headers["In-Reply-To"] = f"<{prev_ext_id}>"
+                send_headers["References"] = f"<{prev_ext_id}>"
+
+        if not message.subject:
+            return {"status": "failed", "error": "Cannot send email without a subject"}
+
         try:
             send_result = await email_client.send(
                 to=contact.email,
                 from_email=from_email,
-                subject=message.subject or "Reaching out",
+                subject=message.subject,
                 body=body_with_footer,
                 tags=["outreach", message.message_type],
-                headers={
-                    "List-Unsubscribe": f"<{unsubscribe_link}>",
-                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-                },
+                headers=send_headers,
                 attachments=attachments,
+                reply_to=candidate_email,
             )
         except Exception as e:
-            message.status = "failed"
+            message.status = MessageStatus.FAILED
             await db.commit()
             logger.error("outreach_graph_send_failed", error=str(e), message_id=str(outreach_message_id))
             return {"status": "failed", "error": f"Failed to send email: {e}"}
@@ -433,7 +464,7 @@ async def send_email_node(state: OutreachGraphState) -> dict:
         # Update message
         external_id = send_result.get("id")
         message.external_message_id = external_id
-        message.status = "sent"
+        message.status = MessageStatus.SENT
         message.sent_at = datetime.now(timezone.utc)
 
         # Create events
@@ -489,7 +520,7 @@ async def mark_failed_node(state: OutreachGraphState) -> dict:
             )
             message = result.scalar_one_or_none()
             if message:
-                message.status = "failed"
+                message.status = MessageStatus.FAILED
                 await db.commit()
 
     await ws_manager.broadcast(

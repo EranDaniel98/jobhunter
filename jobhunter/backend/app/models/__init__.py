@@ -12,6 +12,8 @@ from app.models.signal import CompanySignal
 from app.models.interview import InterviewPrepSession, MockInterviewMessage
 from app.models.job_posting import JobPosting
 from app.models.insight import AnalyticsInsight
+from app.models.company_note import CompanyNote
+from app.models.waitlist import WaitlistEntry
 
 __all__ = [
     "Base",
@@ -34,4 +36,6 @@ __all__ = [
     "MockInterviewMessage",
     "JobPosting",
     "AnalyticsInsight",
+    "CompanyNote",
+    "WaitlistEntry",
 ]

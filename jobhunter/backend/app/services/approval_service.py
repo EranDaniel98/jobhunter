@@ -157,16 +157,42 @@ async def list_pending_actions(
 async def get_pending_action(
     db: AsyncSession, action_id: uuid.UUID, candidate_id: uuid.UUID
 ) -> PendingActionResponse | None:
-    result = await db.execute(
-        select(PendingAction).where(
+    # Single joined query instead of N+1 _enrich_context calls
+    query = (
+        select(
+            PendingAction,
+            OutreachMessage.subject.label("msg_subject"),
+            OutreachMessage.body.label("msg_body"),
+            OutreachMessage.message_type.label("msg_type"),
+            OutreachMessage.channel.label("msg_channel"),
+            Contact.full_name.label("contact_name"),
+            Company.name.label("company_name"),
+        )
+        .outerjoin(
+            OutreachMessage,
+            (PendingAction.entity_id == OutreachMessage.id)
+            & (PendingAction.entity_type == "outreach_message"),
+        )
+        .outerjoin(Contact, OutreachMessage.contact_id == Contact.id)
+        .outerjoin(Company, Contact.company_id == Company.id)
+        .where(
             PendingAction.id == action_id,
             PendingAction.candidate_id == candidate_id,
         )
     )
-    action = result.scalar_one_or_none()
-    if not action:
+    result = await db.execute(query)
+    row = result.one_or_none()
+    if not row:
         return None
-    ctx = await _enrich_context(db, action)
+    action = row[0]
+    ctx = {
+        "message_subject": row.msg_subject,
+        "message_body": row.msg_body,
+        "contact_name": row.contact_name,
+        "company_name": row.company_name,
+        "message_type": row.msg_type,
+        "channel": row.msg_channel,
+    }
     return _action_to_response(action, ctx)
 
 

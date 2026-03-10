@@ -26,3 +26,8 @@ export async function scrapeUrl(url: string) {
   const { data } = await api.post<ScrapeUrlResponse>("/apply/scrape-url", { url });
   return data;
 }
+
+export async function updatePostingStage(postingId: string, stage: string): Promise<JobPostingResponse> {
+  const { data } = await api.patch<JobPostingResponse>(`/apply/postings/${postingId}/stage`, { stage });
+  return data;
+}

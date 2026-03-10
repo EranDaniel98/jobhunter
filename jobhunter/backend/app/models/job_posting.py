@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -9,6 +9,13 @@ from app.models.base import Base, TimestampMixin
 
 class JobPosting(TimestampMixin, Base):
     __tablename__ = "job_postings"
+    __table_args__ = (
+        CheckConstraint(
+            "application_stage IN ('saved','applied','phone_screen','interview','offer','rejected')",
+            name="ck_job_posting_application_stage",
+        ),
+        {"extend_existing": True},
+    )
 
     candidate_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True
@@ -23,3 +30,4 @@ class JobPosting(TimestampMixin, Base):
     parsed_requirements: Mapped[dict | None] = mapped_column(JSONB)
     ats_keywords: Mapped[list[str] | None] = mapped_column(ARRAY(String(255)))
     status: Mapped[str] = mapped_column(String(20), default="pending")
+    application_stage: Mapped[str] = mapped_column(String(30), default="saved", server_default="saved")

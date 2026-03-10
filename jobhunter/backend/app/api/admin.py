@@ -1,6 +1,8 @@
 import uuid
 
 import structlog
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -212,7 +214,7 @@ async def get_invites(
 
 @router.get("/analytics/top-users", response_model=list[TopUserItem])
 async def get_top_users(
-    metric: str = Query("messages_sent"),
+    metric: Literal["messages_sent", "companies_added"] = Query("messages_sent"),
     limit: int = Query(10, ge=1, le=50),
     admin: Candidate = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),

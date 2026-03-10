@@ -32,7 +32,8 @@ class ConnectionManager:
         for ws in self._connections[candidate_id]:
             try:
                 await ws.send_text(message)
-            except Exception:
+            except Exception as e:
+                logger.debug("ws_send_failed", candidate_id=candidate_id, error=str(e))
                 dead.append(ws)
         for ws in dead:
             self._connections[candidate_id].remove(ws)

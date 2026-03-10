@@ -1,10 +1,20 @@
+import stripe
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_candidate
+from app.dependencies import get_current_candidate, get_db
 from app.models.candidate import Candidate
 from app.plans import PLANS, PlanTier
-from app.schemas.billing import CheckoutRequest, CheckoutResponse, PlanResponse
+from app.rate_limit import limiter
+from app.schemas.billing import (
+    CheckoutRequest,
+    CheckoutResponse,
+    PlanResponse,
+    PortalResponse,
+    SubscriptionResponse,
+)
+from app.services import billing_service
 
 router = APIRouter(tags=["plans"])
 logger = structlog.get_logger()
@@ -36,29 +46,73 @@ async def list_plans():
 
 
 @router.post("/billing/create-checkout-session", response_model=CheckoutResponse)
+@limiter.limit("5/minute")
 async def create_checkout_session(
+    request: Request,
     data: CheckoutRequest,
     candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Stub for Stripe checkout session creation."""
-    # Validate tier
+    """Create a Stripe Checkout session for the requested plan tier."""
     try:
         PlanTier(data.tier)
     except ValueError:
-        return CheckoutResponse(status="error", message=f"Invalid tier: {data.tier}")
+        raise HTTPException(status_code=400, detail=f"Invalid tier: {data.tier}")
 
-    return CheckoutResponse(
-        status="coming_soon",
-        message="Paid plans are coming soon! Stay tuned.",
-    )
+    if data.tier == PlanTier.free:
+        raise HTTPException(status_code=400, detail="Cannot checkout for the free tier")
+
+    try:
+        url = await billing_service.create_checkout_session(candidate, data.tier, db)
+        return CheckoutResponse(status="ok", url=url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("checkout_session_failed", error=str(e), candidate_id=str(candidate.id))
+        raise HTTPException(status_code=500, detail="Failed to create checkout session")
 
 
-@router.get("/billing/portal", response_model=CheckoutResponse)
+@router.get("/billing/portal", response_model=PortalResponse)
+@limiter.limit("10/minute")
 async def billing_portal(
+    request: Request,
     candidate: Candidate = Depends(get_current_candidate),
 ):
-    """Stub for Stripe customer portal."""
-    return CheckoutResponse(
-        status="coming_soon",
-        message="Billing portal is coming soon!",
-    )
+    """Create a Stripe Customer Portal session for managing subscription."""
+    try:
+        url = await billing_service.create_portal_session(candidate)
+        return PortalResponse(url=url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("portal_session_failed", error=str(e), candidate_id=str(candidate.id))
+        raise HTTPException(status_code=500, detail="Failed to create portal session")
+
+
+@router.get("/billing/subscription", response_model=SubscriptionResponse)
+async def get_subscription(
+    candidate: Candidate = Depends(get_current_candidate),
+):
+    """Get the current candidate's subscription details."""
+    result = await billing_service.get_subscription(candidate)
+    return SubscriptionResponse(**result)
+
+
+@router.post("/billing/webhooks/stripe")
+async def stripe_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Handle Stripe webhook events (no auth — verified by signature)."""
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    try:
+        await billing_service.handle_webhook_event(payload, sig_header, db)
+        return {"status": "ok"}
+    except stripe.SignatureVerificationError:
+        logger.warning("stripe_webhook_invalid_signature")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    except Exception as e:
+        logger.error("stripe_webhook_failed", error=str(e))
+        raise HTTPException(status_code=400, detail="Webhook processing failed")

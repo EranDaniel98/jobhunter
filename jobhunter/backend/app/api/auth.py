@@ -8,8 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_current_candidate, get_db, get_email_client
-from app.infrastructure.redis_client import get_redis
+from app.infrastructure.redis_client import get_redis, redis_safe_get, redis_safe_setex
 from app.models.candidate import Candidate
+from pydantic import BaseModel
+
 from app.schemas.auth import (
     CandidateResponse,
     ChangePasswordRequest,
@@ -21,6 +23,10 @@ from app.schemas.auth import (
 from app.schemas.candidate import CandidateUpdate
 from app.services import auth_service
 from app.utils.security import create_verification_token, decode_token, hash_password, verify_password
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str | None = None
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = structlog.get_logger()
@@ -51,11 +57,11 @@ async def refresh(data: RefreshRequest):
 
 
 @router.post("/logout", status_code=204)
-async def logout(request: Request):
+async def logout(request: Request, data: LogoutRequest | None = None):
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
     if token:
-        await auth_service.logout(token)
+        await auth_service.logout(token, refresh_token=data.refresh_token if data else None)
 
 
 @router.get("/me", response_model=CandidateResponse)
@@ -154,16 +160,15 @@ async def resend_verification(
         return {"message": "Email already verified"}
 
     # Rate limit: 1 per 5 minutes
-    redis = get_redis()
     cooldown_key = f"verify_cooldown:{candidate.id}"
-    ttl = await redis.ttl(cooldown_key)
-    if ttl and ttl > 0:
+    cooldown = await redis_safe_get(cooldown_key)
+    if cooldown:
         raise HTTPException(
             status_code=429,
-            detail=f"Please wait {ttl // 60} min {ttl % 60}s before requesting another email",
+            detail="Please wait before requesting another verification email",
         )
 
-    await redis.setex(cooldown_key, 300, "1")  # 5 min cooldown
+    await redis_safe_setex(cooldown_key, 300, "1")  # 5 min cooldown
 
     token = create_verification_token(str(candidate.id))
     verify_url = f"{settings.FRONTEND_URL}/login?verify={token}"

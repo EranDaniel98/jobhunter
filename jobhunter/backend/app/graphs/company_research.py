@@ -19,6 +19,7 @@ from langgraph.graph import StateGraph, START, END
 
 from app.infrastructure import database as _db_mod
 from app.dependencies import get_hunter, get_openai
+from app.models.enums import ResearchStatus
 from app.models.candidate import CandidateDNA
 from app.models.company import Company, CompanyDossier
 from app.services.company_service import (
@@ -80,7 +81,7 @@ async def enrich_company_node(state: CompanyResearchState) -> dict:
             if not company.tech_stack and hunter_data.get("technologies"):
                 company.tech_stack = hunter_data["technologies"]
 
-            company.research_status = "in_progress"
+            company.research_status = ResearchStatus.IN_PROGRESS
             await db.commit()
         except Exception as e:
             logger.error("graph_enrich_company_failed", company_id=str(company_id), error=str(e))
@@ -122,8 +123,8 @@ async def web_search_node(state: CompanyResearchState) -> dict:
                         results = ddgs.text(query, max_results=3)
                         for r in results:
                             collected.append(f"{r.get('title', '')}: {r.get('body', '')}")
-                    except Exception:
-                        # Individual query failure is fine
+                    except Exception as e:
+                        logger.debug("web_search_query_failed", query=query, error=str(e))
                         continue
             return collected
 
@@ -266,7 +267,7 @@ async def notify_node(state: CompanyResearchState) -> dict:
         company = result.scalar_one_or_none()
         company_name = ""
         if company:
-            company.research_status = "completed"
+            company.research_status = ResearchStatus.COMPLETED
             company_name = company.name
             await db.commit()
 
@@ -293,7 +294,7 @@ async def mark_failed_node(state: CompanyResearchState) -> dict:
         result = await db.execute(select(Company).where(Company.id == company_id))
         company = result.scalar_one_or_none()
         if company:
-            company.research_status = "failed"
+            company.research_status = ResearchStatus.FAILED
             await db.commit()
 
     await ws_manager.broadcast(

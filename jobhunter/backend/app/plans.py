@@ -18,6 +18,7 @@ class PlanDefinition:
     description: str
     limits: dict[str, int]
     stripe_price_id: str | None = None
+    features: tuple[str, ...] = ()
 
 
 PLANS: dict[PlanTier, PlanDefinition] = {
@@ -33,6 +34,11 @@ PLANS: dict[PlanTier, PlanDefinition] = {
             "email": 3,
             "openai": 30,
         },
+        features=(
+            "Basic company research",
+            "Resume parsing",
+            "3 outreach emails/day",
+        ),
     ),
     PlanTier.explorer: PlanDefinition(
         tier=PlanTier.explorer,
@@ -46,6 +52,12 @@ PLANS: dict[PlanTier, PlanDefinition] = {
             "email": 20,
             "openai": 150,
         },
+        features=(
+            "Everything in Free",
+            "15 company discoveries/day",
+            "20 outreach emails/day",
+            "Advanced interview prep",
+        ),
     ),
     PlanTier.hunter: PlanDefinition(
         tier=PlanTier.hunter,
@@ -59,6 +71,12 @@ PLANS: dict[PlanTier, PlanDefinition] = {
             "email": 75,
             "openai": 500,
         },
+        features=(
+            "Everything in Explorer",
+            "50 company discoveries/day",
+            "75 outreach emails/day",
+            "Priority support",
+        ),
     ),
 }
 

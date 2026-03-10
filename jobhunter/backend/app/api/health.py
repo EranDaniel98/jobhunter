@@ -42,7 +42,8 @@ async def health_check(
         row = result.first()
         current = row[0] if row else "none"
         checks["migration_version"] = current
-    except Exception:
+    except Exception as e:
+        logger.debug("health_check_migration_version_failed", error=str(e))
         checks["migration_version"] = "unknown"
 
     all_healthy = all(
@@ -54,7 +55,7 @@ async def health_check(
         status_code=status_code,
         content={
             "status": "healthy" if all_healthy else "degraded",
-            "version": "0.2.0",
+            "version": "0.3.0",
             "checks": checks,
         },
     )

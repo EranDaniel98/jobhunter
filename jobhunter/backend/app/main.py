@@ -11,7 +11,10 @@ from app.infrastructure.database import engine
 from app.infrastructure.redis_client import close_redis, init_redis
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.logging_config import setup_logging
+from app.middleware.metrics import MetricsMiddleware
 from app.middleware.request_id import RequestIDMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.tenant import TenantMiddleware
 from app.rate_limit import limiter
 
 logger = structlog.get_logger()
@@ -42,10 +45,29 @@ async def lifespan(app: FastAPI):
         )
         raise SystemExit("FATAL: JWT_SECRET must be changed from the default value.")
 
+    if not settings.UNSUBSCRIBE_SECRET:
+        logger.warning("UNSUBSCRIBE_SECRET is empty — unsubscribe tokens are insecure")
+
+    import os
+    if "localhost" in settings.FRONTEND_URL and os.getenv("RAILWAY_ENVIRONMENT"):
+        logger.error("FRONTEND_URL is localhost in production — CORS will block the real frontend")
+
     logger.info("starting_up", app=settings.APP_NAME)
     await init_redis()
     from app.graphs.resume_pipeline import init_checkpointer, close_checkpointer
     await init_checkpointer(settings.DATABASE_URL)
+
+    # Initialize event bus and register handlers
+    from app.events.bus import get_event_bus
+    from app.events.handlers import log_event, on_company_approved, on_outreach_sent, on_resume_parsed
+    bus = get_event_bus()
+    bus.subscribe("company_approved", log_event)
+    bus.subscribe("company_approved", on_company_approved)
+    bus.subscribe("outreach_sent", log_event)
+    bus.subscribe("outreach_sent", on_outreach_sent)
+    bus.subscribe("resume_parsed", log_event)
+    bus.subscribe("resume_parsed", on_resume_parsed)
+    logger.info("event_bus_initialized", handler_count=bus.handler_count)
 
     # Warn if migrations are behind
     try:
@@ -79,7 +101,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -93,6 +115,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Middleware (order matters: last added = first executed)
 app.add_middleware(ErrorHandlerMiddleware)
+app.add_middleware(MetricsMiddleware)
+app.add_middleware(TenantMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -120,6 +145,7 @@ from app.api.ws import router as ws_router  # noqa: E402
 from app.api.scout import router as scout_router  # noqa: E402
 from app.api.interview import router as interview_router  # noqa: E402
 from app.api.apply import router as apply_router  # noqa: E402
+from app.api.waitlist import router as waitlist_router  # noqa: E402
 
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
@@ -137,3 +163,4 @@ app.include_router(ws_router, prefix=settings.API_V1_PREFIX)
 app.include_router(scout_router, prefix=settings.API_V1_PREFIX)
 app.include_router(interview_router, prefix=settings.API_V1_PREFIX)
 app.include_router(apply_router, prefix=settings.API_V1_PREFIX)
+app.include_router(waitlist_router, prefix=settings.API_V1_PREFIX)

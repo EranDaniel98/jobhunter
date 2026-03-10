@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import NextLink from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { useJobPostings, useApplyAnalysis, useAnalyzeJob, useScrapeUrl } from "@/lib/hooks/use-apply";
+import { useJobPostings, useApplyAnalysis, useAnalyzeJob, useScrapeUrl, useUpdatePostingStage } from "@/lib/hooks/use-apply";
 import type { JobPostingResponse, ResumeTipItem } from "@/lib/types";
 import { FileCheck, Copy, Loader2, CheckCircle2, XCircle, Clock, Plus, ArrowLeft, Link } from "lucide-react";
 import { toast } from "sonner";
@@ -61,9 +62,19 @@ function scoreColor(score: number): string {
   return "text-destructive";
 }
 
+const APPLICATION_STAGES = [
+  { value: "saved", label: "Saved", color: "bg-gray-100 text-gray-700" },
+  { value: "applied", label: "Applied", color: "bg-blue-100 text-blue-700" },
+  { value: "phone_screen", label: "Phone Screen", color: "bg-amber-100 text-amber-700" },
+  { value: "interview", label: "Interview", color: "bg-purple-100 text-purple-700" },
+  { value: "offer", label: "Offer", color: "bg-green-100 text-green-700" },
+  { value: "rejected", label: "Rejected", color: "bg-red-100 text-red-700" },
+];
+
 export default function ApplyPage() {
   const [selectedPostingId, setSelectedPostingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -81,6 +92,7 @@ export default function ApplyPage() {
   );
   const analyzeMutation = useAnalyzeJob();
   const scrapeMutation = useScrapeUrl();
+  const stageMutation = useUpdatePostingStage();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -126,7 +138,11 @@ export default function ApplyPage() {
   function handleCopyLetter() {
     if (!analysis?.cover_letter) return;
     navigator.clipboard.writeText(analysis.cover_letter).then(
-      () => toast.success("Cover letter copied to clipboard"),
+      () => {
+        setCopied(true);
+        toast.success("Cover letter copied to clipboard");
+        setTimeout(() => setCopied(false), 2000);
+      },
       () => toast.error("Failed to copy")
     );
   }
@@ -157,7 +173,7 @@ export default function ApplyPage() {
         </Button>
       </PageHeader>
 
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[480px_1fr]">
         {/* Left column: form or postings list */}
         <div className="space-y-4">
           {showForm && (
@@ -315,7 +331,17 @@ export default function ApplyPage() {
                       <p className="font-medium text-sm truncate">{posting.title}</p>
                       {posting.company_name && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {posting.company_name}
+                          {posting.company_id ? (
+                            <NextLink
+                              href={`/companies/${posting.company_id}`}
+                              className="hover:underline hover:text-foreground"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {posting.company_name}
+                            </NextLink>
+                          ) : (
+                            posting.company_name
+                          )}
                         </p>
                       )}
                     </div>
@@ -323,6 +349,24 @@ export default function ApplyPage() {
                       {statusIcon(posting.status)}
                       {posting.status}
                     </Badge>
+                  </div>
+                  {/* Application stage */}
+                  <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                    <Select
+                      value={posting.application_stage || "saved"}
+                      onValueChange={(stage) => stageMutation.mutate({ postingId: posting.id, stage })}
+                    >
+                      <SelectTrigger className="h-7 w-[140px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {APPLICATION_STAGES.map(s => (
+                          <SelectItem key={s.value} value={s.value} className="text-xs">
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {posting.ats_keywords && posting.ats_keywords.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -408,14 +452,70 @@ export default function ApplyPage() {
                   <CardDescription>How well your profile matches this role</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-4">
-                    <Progress value={analysis.readiness_score} className="flex-1" />
-                    <span className={`text-2xl font-bold tabular-nums ${scoreColor(analysis.readiness_score)}`}>
-                      {analysis.readiness_score}%
-                    </span>
+                  <div className="flex items-center gap-6">
+                    <div className="relative h-28 w-28 shrink-0">
+                      <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
+                        <circle cx="60" cy="60" r="50" fill="none" strokeWidth="8" className="stroke-muted" />
+                        <circle
+                          cx="60" cy="60" r="50"
+                          fill="none" strokeWidth="8"
+                          strokeDasharray={2 * Math.PI * 50}
+                          strokeDashoffset={2 * Math.PI * 50 - (analysis.readiness_score / 100) * 2 * Math.PI * 50}
+                          strokeLinecap="round"
+                          className={`transition-all duration-700 ${
+                            analysis.readiness_score >= 80 ? "stroke-primary" :
+                            analysis.readiness_score >= 60 ? "stroke-chart-3" :
+                            "stroke-destructive"
+                          }`}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className={`text-3xl font-bold tabular-nums ${scoreColor(analysis.readiness_score)}`}>
+                          {analysis.readiness_score}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium">
+                        {analysis.readiness_score >= 80 ? "Strong match!" :
+                         analysis.readiness_score >= 60 ? "Good potential" :
+                         "Needs improvement"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {analysis.matching_skills.length} matching skills, {analysis.missing_skills.length} gaps
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Parsed Requirements */}
+              {selectedPosting?.parsed_requirements && Object.keys(selectedPosting.parsed_requirements).length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Job Requirements</CardTitle>
+                    <CardDescription>Parsed requirements from the posting</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {Object.entries(selectedPosting.parsed_requirements).map(([key, value]) => (
+                        <div key={key}>
+                          <h4 className="text-sm font-medium capitalize mb-1">{key.replace(/_/g, " ")}</h4>
+                          {Array.isArray(value) ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {(value as string[]).map((item, i) => (
+                                <Badge key={i} variant="outline" className="text-xs">{item}</Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">{String(value)}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Skills Comparison */}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -537,8 +637,12 @@ export default function ApplyPage() {
                         size="sm"
                         onClick={handleCopyLetter}
                       >
-                        <Copy className="mr-1.5 h-3.5 w-3.5" />
-                        Copy
+                        {copied ? (
+                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                        ) : (
+                          <Copy className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        {copied ? "Copied!" : "Copy"}
                       </Button>
                     </div>
                   </CardHeader>
