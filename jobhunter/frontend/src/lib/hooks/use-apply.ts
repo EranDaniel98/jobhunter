@@ -70,3 +70,14 @@ export function useAnalyzeJob() {
     onError: (err) => toastError(err, "Failed to analyze job posting"),
   });
 }
+
+export function useDeletePosting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (postingId: string) => applyApi.deletePosting(postingId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["job-postings"] });
+    },
+    onError: (err) => toastError(err, "Failed to delete posting"),
+  });
+}

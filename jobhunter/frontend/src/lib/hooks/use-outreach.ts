@@ -102,6 +102,8 @@ export function useDeleteMessage() {
     mutationFn: (id: string) => outreachApi.deleteMessage(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages"] });
+      qc.invalidateQueries({ queryKey: ["approvals"] });
+      qc.invalidateQueries({ queryKey: ["pending-actions"] });
     },
   });
 }

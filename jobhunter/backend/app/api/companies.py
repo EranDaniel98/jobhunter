@@ -52,7 +52,7 @@ async def discover_companies(
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    await check_and_increment(str(candidate.id), "discovery", candidate.plan_tier)
+    await check_and_increment(str(candidate.id), "discovery", candidate.plan_tier, is_admin=candidate.is_admin)
     companies = await company_service.discover_companies(
         db,
         candidate.id,
@@ -74,7 +74,7 @@ async def add_company(
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    await check_and_increment(str(candidate.id), "hunter", candidate.plan_tier)
+    await check_and_increment(str(candidate.id), "hunter", candidate.plan_tier, is_admin=candidate.is_admin)
     try:
         company = await company_service.add_company_manual(db, candidate.id, data.domain)
 
@@ -381,9 +381,10 @@ async def _research_background(company_id):
             )
             cand = cand_result.scalar_one_or_none()
             tier = cand.plan_tier if cand else "free"
+            is_admin = cand.is_admin if cand else False
 
-            await check_and_increment(candidate_id, "research", tier)
-            await check_and_increment(candidate_id, "openai", tier)
+            await check_and_increment(candidate_id, "research", tier, is_admin=is_admin)
+            await check_and_increment(candidate_id, "openai", tier, is_admin=is_admin)
         except Exception as e:
             logger.error("background_research_quota_failed", error=str(e), company_id=str(company_id))
             try:

@@ -1,3 +1,5 @@
+import uuid as _uuid
+
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
 from sqlalchemy import select
@@ -6,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_candidate, get_db
 from app.rate_limit import limiter
 from app.models.candidate import Candidate, CandidateDNA, Resume, Skill
-from app.schemas.candidate import CandidateDNAResponse, ResumeUploadResponse, SkillResponse
+from app.schemas.candidate import CandidateDNAResponse, ResumeListItem, ResumeUploadResponse, SkillResponse
 from app.services import resume_service
 from app.services.quota_service import get_usage
 
@@ -97,7 +99,7 @@ async def _run_async_background(resume_id, candidate_id):
 async def get_my_usage(
     candidate: Candidate = Depends(get_current_candidate),
 ):
-    return await get_usage(str(candidate.id), candidate.plan_tier)
+    return await get_usage(str(candidate.id), candidate.plan_tier, is_admin=candidate.is_admin)
 
 
 @router.get("/me/dna", response_model=CandidateDNAResponse)
@@ -158,3 +160,48 @@ async def get_skills(
         )
         for s in skills
     ]
+
+
+@router.get("/me/resumes", response_model=list[ResumeListItem])
+async def list_resumes(
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Resume)
+        .where(Resume.candidate_id == candidate.id)
+        .order_by(Resume.created_at.desc())
+    )
+    resumes = result.scalars().all()
+    return [
+        ResumeListItem(
+            id=str(r.id),
+            file_path=r.file_path,
+            is_primary=r.is_primary,
+            parse_status=r.parse_status,
+            created_at=r.created_at.isoformat() if r.created_at else "",
+        )
+        for r in resumes
+    ]
+
+
+@router.delete("/me/resumes/{resume_id}", status_code=204)
+async def delete_resume(
+    resume_id: str,
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Resume).where(
+            Resume.id == _uuid.UUID(resume_id),
+            Resume.candidate_id == candidate.id,
+        )
+    )
+    resume = result.scalar_one_or_none()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    if resume.is_primary:
+        raise HTTPException(status_code=400, detail="Cannot delete the primary resume")
+    await db.delete(resume)
+    await db.commit()
+    logger.info("resume_deleted", resume_id=resume_id)

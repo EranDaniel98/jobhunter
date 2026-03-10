@@ -70,22 +70,43 @@ async def enrich_company_node(state: CompanyResearchState) -> dict:
             hunter_data = await hunter.domain_search(company.domain)
 
             # Update empty fields from Hunter data
-            if not company.industry and hunter_data.get("industry"):
-                company.industry = hunter_data["industry"]
-            if not company.size_range and hunter_data.get("size"):
-                company.size_range = hunter_data["size"]
-            if not company.location_hq and hunter_data.get("location"):
-                company.location_hq = hunter_data["location"]
-            if not company.description and hunter_data.get("description"):
-                company.description = hunter_data["description"]
-            if not company.tech_stack and hunter_data.get("technologies"):
-                company.tech_stack = hunter_data["technologies"]
+            # Hunter.io may nest org data under "organization" key
+            org = hunter_data.get("organization") or hunter_data
+            if not company.industry and (org.get("industry") or hunter_data.get("industry")):
+                company.industry = org.get("industry") or hunter_data.get("industry")
+            if not company.size_range and (org.get("size") or hunter_data.get("size")):
+                company.size_range = org.get("size") or hunter_data.get("size")
+            if not company.location_hq:
+                # Try top-level "location" first, then construct from city/state/country
+                location = hunter_data.get("location") or org.get("location")
+                if not location:
+                    parts = [
+                        org.get("city") or hunter_data.get("city"),
+                        org.get("state") or hunter_data.get("state"),
+                        org.get("country") or hunter_data.get("country"),
+                    ]
+                    location = ", ".join(p for p in parts if p) or None
+                if location:
+                    company.location_hq = location
+            if not company.description and (org.get("description") or hunter_data.get("description")):
+                company.description = org.get("description") or hunter_data.get("description")
+            if not company.tech_stack and (org.get("technologies") or hunter_data.get("technologies")):
+                company.tech_stack = org.get("technologies") or hunter_data.get("technologies")
 
             company.research_status = ResearchStatus.IN_PROGRESS
             await db.commit()
         except Exception as e:
             logger.error("graph_enrich_company_failed", company_id=str(company_id), error=str(e))
-            return {"status": "failed", "error": f"Company enrichment failed: {e}"}
+            error_str = str(e).lower()
+            if "rate" in error_str and "limit" in error_str:
+                error_msg = "Hunter.io rate limit reached. Please try again later."
+            elif "quota" in error_str or "credit" in error_str:
+                error_msg = "Hunter.io quota exhausted for today."
+            elif "timeout" in error_str or "connect" in error_str or "unreachable" in error_str:
+                error_msg = "Hunter.io is currently unavailable. Please try again later."
+            else:
+                error_msg = f"Company enrichment failed: {e}"
+            return {"status": "failed", "error": error_msg}
 
     logger.info("graph_enrich_company_done", company_id=str(company_id))
     return {"hunter_data": hunter_data}

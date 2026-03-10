@@ -21,8 +21,11 @@ return count
 USER_FACING_QUOTAS = ["discovery", "research", "hunter", "email"]
 
 
-async def check_and_increment(candidate_id: str, quota_type: str, plan_tier: str = "free") -> int:
+async def check_and_increment(candidate_id: str, quota_type: str, plan_tier: str = "free", is_admin: bool = False) -> int:
     """Atomically increment quota counter. Raises HTTP 429 if limit exceeded."""
+    if is_admin:
+        return 0
+
     limits = get_limits_for_tier(PlanTier(plan_tier))
     limit = limits.get(quota_type)
     if limit is None:
@@ -53,9 +56,13 @@ async def check_and_increment(candidate_id: str, quota_type: str, plan_tier: str
     return count
 
 
-async def get_usage(candidate_id: str, plan_tier: str = "free") -> dict:
+async def get_usage(candidate_id: str, plan_tier: str = "free", is_admin: bool = False) -> dict:
     """Return current usage across user-facing quota types (daily, weekly, monthly)."""
-    limits = get_limits_for_tier(PlanTier(plan_tier))
+    if is_admin:
+        # Admin sees hunter-tier limits so usage cards show generous caps
+        limits = get_limits_for_tier(PlanTier("hunter"))
+    else:
+        limits = get_limits_for_tier(PlanTier(plan_tier))
     now = datetime.now(timezone.utc)
     week_dates = [(now - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
     month_dates = [(now - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)]

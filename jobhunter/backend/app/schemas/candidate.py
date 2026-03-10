@@ -52,6 +52,16 @@ class CandidateDNAResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ResumeListItem(BaseModel):
+    id: str
+    file_path: str
+    is_primary: bool
+    parse_status: str
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
 class ParsedResumeSchema(BaseModel):
     name: str | None = None
     headline: str | None = None

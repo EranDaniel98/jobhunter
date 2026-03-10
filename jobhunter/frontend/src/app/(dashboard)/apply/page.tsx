@@ -12,9 +12,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { useJobPostings, useApplyAnalysis, useAnalyzeJob, useScrapeUrl, useUpdatePostingStage } from "@/lib/hooks/use-apply";
+import { useJobPostings, useApplyAnalysis, useAnalyzeJob, useScrapeUrl, useUpdatePostingStage, useDeletePosting } from "@/lib/hooks/use-apply";
 import type { JobPostingResponse, ResumeTipItem } from "@/lib/types";
-import { FileCheck, Copy, Loader2, CheckCircle2, XCircle, Clock, Plus, ArrowLeft, Link } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { FileCheck, Copy, Loader2, CheckCircle2, XCircle, Clock, Plus, ArrowLeft, Link, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 function statusColor(status: string) {
@@ -75,6 +85,7 @@ export default function ApplyPage() {
   const [selectedPostingId, setSelectedPostingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -93,6 +104,8 @@ export default function ApplyPage() {
   const analyzeMutation = useAnalyzeJob();
   const scrapeMutation = useScrapeUrl();
   const stageMutation = useUpdatePostingStage();
+  const deleteMutation = useDeletePosting();
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -125,12 +138,19 @@ export default function ApplyPage() {
       toast.error("Enter a URL first");
       return;
     }
+    setScrapeError(null);
     scrapeMutation.mutate(url.trim(), {
       onSuccess: (data) => {
+        setScrapeError(null);
         setRawText(data.raw_text);
         if (data.title) setTitle(data.title);
         if (data.company_name) setCompanyName(data.company_name);
         toast.success("Job posting fetched successfully");
+      },
+      onError: (err) => {
+        const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+          || "Could not fetch job posting from URL. Please paste the description manually.";
+        setScrapeError(message);
       },
     });
   }
@@ -203,7 +223,7 @@ export default function ApplyPage() {
                         type="url"
                         placeholder="https://..."
                         value={url}
-                        onChange={(e) => setUrl(e.target.value)}
+                        onChange={(e) => { setUrl(e.target.value); setScrapeError(null); }}
                         className="flex-1"
                       />
                       <Button
@@ -220,6 +240,9 @@ export default function ApplyPage() {
                         Fetch
                       </Button>
                     </div>
+                    {scrapeError && (
+                      <p className="text-xs text-destructive">{scrapeError}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       Paste a job posting URL to auto-extract the description
                     </p>
@@ -350,8 +373,8 @@ export default function ApplyPage() {
                       {posting.status}
                     </Badge>
                   </div>
-                  {/* Application stage */}
-                  <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                  {/* Application stage + delete */}
+                  <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Select
                       value={posting.application_stage || "saved"}
                       onValueChange={(stage) => stageMutation.mutate({ postingId: posting.id, stage })}
@@ -367,6 +390,14 @@ export default function ApplyPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() => setDeleteConfirmId(posting.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                   {posting.ats_keywords && posting.ats_keywords.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -433,12 +464,15 @@ export default function ApplyPage() {
 
           {selectedPostingId && !loadingAnalysis && !analysis && !analysisError && (
             <Card className="flex items-center justify-center min-h-[400px]">
-              <CardContent className="text-center py-16">
+              <CardContent className="text-center py-16 w-full max-w-xs">
                 <Loader2 className="mx-auto h-10 w-10 text-muted-foreground/40 mb-4 animate-spin" />
                 <p className="text-muted-foreground font-medium">Analysis in progress...</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   This usually takes 20-30 seconds
                 </p>
+                <div className="mt-4 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full w-1/3 rounded-full bg-primary animate-[indeterminate_1.5s_ease-in-out_infinite]" />
+                </div>
               </CardContent>
             </Card>
           )}
@@ -657,6 +691,41 @@ export default function ApplyPage() {
           )}
         </div>
       </div>
+
+      {/* Delete posting confirmation */}
+      <AlertDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete job posting?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this job posting and its analysis. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteConfirmId) {
+                  deleteMutation.mutate(deleteConfirmId, {
+                    onSuccess: () => {
+                      if (selectedPostingId === deleteConfirmId) {
+                        setSelectedPostingId(null);
+                      }
+                      toast.success("Job posting deleted");
+                      setDeleteConfirmId(null);
+                    },
+                  });
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

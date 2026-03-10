@@ -370,7 +370,7 @@ export default function OutreachPage() {
             "border-r flex flex-col bg-muted/30",
             selectedMessage
               ? "hidden md:flex md:w-[340px] lg:w-[400px] shrink-0"
-              : "w-full",
+              : "w-full md:w-[340px] lg:w-[400px] md:shrink-0",
           )}
         >
           {/* Search box */}
@@ -822,8 +822,8 @@ export default function OutreachPage() {
             </div>
           ) : (
             /* Empty state when no message selected (desktop) */
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <div className="text-center px-6">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground p-6">
+              <div className="text-center px-6 max-w-sm">
                 <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-2xl bg-muted/50">
                   <Mail className="h-8 w-8 opacity-30" />
                 </div>

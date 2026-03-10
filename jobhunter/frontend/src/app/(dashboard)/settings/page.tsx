@@ -492,6 +492,9 @@ export default function SettingsPage() {
                       ) : (
                         <Badge variant="secondary">{plan.name}</Badge>
                       )}
+                      {user?.is_admin && (
+                        <Badge className="bg-amber-500/15 text-amber-600">Admin</Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <a href="/plans">

@@ -31,3 +31,7 @@ export async function updatePostingStage(postingId: string, stage: string): Prom
   const { data } = await api.patch<JobPostingResponse>(`/apply/postings/${postingId}/stage`, { stage });
   return data;
 }
+
+export async function deletePosting(postingId: string): Promise<void> {
+  await api.delete(`/apply/postings/${postingId}`);
+}

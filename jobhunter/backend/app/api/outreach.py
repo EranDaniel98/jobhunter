@@ -91,7 +91,7 @@ async def draft_message(
     # Check openai quota before launching graph
     from app.services.quota_service import check_and_increment
     try:
-        await check_and_increment(str(candidate.id), "openai", candidate.plan_tier)
+        await check_and_increment(str(candidate.id), "openai", candidate.plan_tier, is_admin=candidate.is_admin)
     except Exception as e:
         from fastapi import HTTPException as _HTTPException
         if isinstance(e, _HTTPException):
@@ -307,6 +307,9 @@ async def delete_message(
     msg = await _get_candidate_message(db, message_id, candidate.id)
     if msg.status != MessageStatus.DRAFT:
         raise HTTPException(status_code=400, detail="Can only delete draft messages")
+    # Clean up related PendingActions before deleting the message
+    from sqlalchemy import delete as sql_delete
+    await db.execute(sql_delete(PendingAction).where(PendingAction.entity_id == msg.id))
     await db.delete(msg)
     await db.commit()
     logger.info("outreach_deleted", message_id=message_id)

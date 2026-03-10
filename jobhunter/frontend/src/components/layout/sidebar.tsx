@@ -18,7 +18,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { useApprovalCount } from "@/lib/hooks/use-approvals";
 import type { PlanTier } from "@/lib/types";
-import { LogOut, Briefcase, Sparkles, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { LogOut, Briefcase, Sparkles, Search, ChevronLeft, ChevronRight, Shield } from "lucide-react";
 import { navSections, adminNavItem } from "@/lib/nav-config";
 
 interface SidebarProps {
@@ -180,7 +180,25 @@ export function Sidebar({ lastEvent = null, onCollapseChange }: SidebarProps) {
         )}
       </nav>
 
-      {user && (user.plan_tier as PlanTier) !== "hunter" && (
+      {user && user.is_admin ? (
+        <div className="px-3 pb-2">
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl mx-auto bg-amber-500/15 text-amber-600">
+                  <Shield className="h-3.5 w-3.5" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">Admin</TooltipContent>
+            </Tooltip>
+          ) : (
+            <div className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs bg-amber-500/15 text-amber-600 font-medium">
+              <Shield className="h-3.5 w-3.5" />
+              Admin
+            </div>
+          )}
+        </div>
+      ) : user && (user.plan_tier as PlanTier) !== "hunter" ? (
         <div className="px-3 pb-2">
           {collapsed ? (
             <Tooltip>
@@ -200,11 +218,15 @@ export function Sidebar({ lastEvent = null, onCollapseChange }: SidebarProps) {
             </Link>
           )}
         </div>
-      )}
+      ) : null}
 
-      <div className={cn("border-t border-sidebar-border p-3 flex items-center", collapsed ? "flex-col gap-2" : "gap-2")}>
-        {!collapsed && <NotificationCenter lastEvent={lastEvent} />}
-        {!collapsed && <ThemeToggle />}
+      <div className={cn("border-t border-sidebar-border p-3", collapsed ? "flex flex-col items-center gap-2" : "space-y-2")}>
+        {!collapsed && (
+          <div className="flex items-center gap-2">
+            <NotificationCenter lastEvent={lastEvent} />
+            <ThemeToggle />
+          </div>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             {collapsed ? (
@@ -215,10 +237,10 @@ export function Sidebar({ lastEvent = null, onCollapseChange }: SidebarProps) {
               </button>
             ) : (
               <Button variant="ghost" className="group/avatar w-full justify-start gap-3 rounded-xl text-sidebar-foreground hover:bg-sidebar-accent">
-                <Avatar className="h-7 w-7">
+                <Avatar className="h-7 w-7 shrink-0">
                   <AvatarFallback className="text-xs bg-primary/15 text-primary font-semibold ring-2 ring-transparent group-hover/avatar:ring-primary/30 transition-all">{initials}</AvatarFallback>
                 </Avatar>
-                <span className="truncate text-sm">{user?.full_name}</span>
+                <span className="text-sm">{user?.full_name}</span>
               </Button>
             )}
           </DropdownMenuTrigger>

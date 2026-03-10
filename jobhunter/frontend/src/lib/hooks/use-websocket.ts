@@ -62,12 +62,18 @@ export function useWebSocket() {
               qc.invalidateQueries({ queryKey: ["dna"] });
               toast.success("Resume parsed successfully");
               break;
-            case "research_completed":
+            case "research_completed": {
               qc.invalidateQueries({ queryKey: ["companies"] });
-              toast.success(
-                `Research completed for ${(parsed.data as { company_name?: string }).company_name || "company"}`
-              );
+              const researchData = parsed.data as { company_name?: string; status?: string; error?: string };
+              if (researchData.status === "failed") {
+                toast.error(researchData.error || `Research failed for ${researchData.company_name || "company"}`);
+              } else {
+                toast.success(
+                  `Research completed for ${researchData.company_name || "company"}`
+                );
+              }
               break;
+            }
             case "analytics_completed":
             case "analytics_failed":
               qc.invalidateQueries({ queryKey: ["analytics-dashboard"] });

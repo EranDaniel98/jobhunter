@@ -198,6 +198,35 @@ async def update_posting_stage(
     return JobPostingResponse.model_validate(posting)
 
 
+@router.delete("/postings/{posting_id}", status_code=204)
+async def delete_posting(
+    posting_id: uuid.UUID,
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(JobPosting).where(
+            JobPosting.id == posting_id,
+            JobPosting.candidate_id == candidate.id,
+        )
+    )
+    posting = result.scalar_one_or_none()
+    if not posting:
+        raise HTTPException(status_code=404, detail="Job posting not found")
+
+    # Clean up cached analysis from Redis
+    try:
+        from app.infrastructure.redis_client import get_redis
+        redis = get_redis()
+        await redis.delete(f"apply:analysis:{posting_id}")
+    except Exception as e:
+        logger.debug("delete_posting_redis_cleanup_skipped", error=str(e))
+
+    await db.delete(posting)
+    await db.commit()
+    logger.info("posting_deleted", posting_id=str(posting_id))
+
+
 @router.get("/postings/{posting_id}/analysis", response_model=ApplyAnalysisResponse)
 async def get_analysis(
     posting_id: uuid.UUID,
