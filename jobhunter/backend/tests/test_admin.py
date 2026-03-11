@@ -665,8 +665,7 @@ class TestTopUsers:
             headers=admin_headers,
             params={"metric": "totally_fake"},
         )
-        assert resp.status_code == 200
-        assert resp.json() == []
+        assert resp.status_code == 422
 
     @pytest.mark.asyncio
     async def test_top_users_excludes_drafts(
