@@ -1,13 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Smoke tests", () => {
-  test("app loads and shows login page for unauthenticated users", async ({
+  test("app loads and shows marketing page for unauthenticated users", async ({
     page,
   }) => {
     await page.goto("/");
-    // Unauthenticated users should be redirected to login
-    await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
-    await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
+    // Unauthenticated users see the marketing landing page
+    await expect(page.getByRole("link", { name: /log in/i }).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("login page has expected form elements", async ({ page }) => {
