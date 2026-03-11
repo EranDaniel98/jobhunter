@@ -222,7 +222,7 @@ async def edit_message(
         msg.body = data.body
 
     await db.commit()
-    await db.refresh(msg)
+    msg = await _get_candidate_message(db, message_id, candidate.id)
     logger.info("outreach_edited", message_id=message_id)
     return _message_to_response(msg)
 

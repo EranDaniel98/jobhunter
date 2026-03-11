@@ -24,7 +24,8 @@ class UpdatePlanRequest(BaseModel):
 
 
 class PortalResponse(BaseModel):
-    url: str
+    status: str = "ok"
+    url: str | None = None
 
 
 class SubscriptionResponse(BaseModel):

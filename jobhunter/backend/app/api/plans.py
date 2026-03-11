@@ -56,6 +56,11 @@ async def create_checkout_session(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a Stripe Checkout session for the requested plan tier."""
+    from app.config import settings as _settings
+
+    if not _settings.STRIPE_SECRET_KEY:
+        return CheckoutResponse(status="coming_soon", message="Billing not yet available")
+
     try:
         PlanTier(data.tier)
     except ValueError:
@@ -81,9 +86,14 @@ async def billing_portal(
     candidate: Candidate = Depends(get_current_candidate),
 ):
     """Create a Stripe Customer Portal session for managing subscription."""
+    from app.config import settings as _settings
+
+    if not _settings.STRIPE_SECRET_KEY:
+        return PortalResponse(status="coming_soon")
+
     try:
         url = await billing_service.create_portal_session(candidate)
-        return PortalResponse(url=url)
+        return PortalResponse(status="ok", url=url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
