@@ -27,10 +27,10 @@ const passwordRequirements = [
 ];
 
 function getStrengthColor(count: number): string {
-  if (count <= 1) return "bg-red-500";
-  if (count === 2) return "bg-orange-500";
-  if (count === 3) return "bg-yellow-500";
-  return "bg-green-500";
+  if (count <= 1) return "bg-destructive";
+  if (count === 2) return "bg-chart-5";
+  if (count === 3) return "bg-chart-3";
+  return "bg-primary";
 }
 
 interface RegisterFormProps {
@@ -115,8 +115,10 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
               onChange={(e) => setFullName(stripHtml(e.target.value))}
               onBlur={() => markTouched("fullName")}
               required
+              aria-invalid={!!nameError}
+              aria-describedby={nameError ? "name-error" : undefined}
             />
-            {nameError && <p className="text-sm text-destructive">{nameError}</p>}
+            {nameError && <p id="name-error" className="text-sm text-destructive">{nameError}</p>}
           </div>
 
           {/* Email */}
@@ -130,8 +132,10 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => markTouched("email")}
               required
+              aria-invalid={!!emailError}
+              aria-describedby={emailError ? "email-error" : undefined}
             />
-            {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+            {emailError && <p id="email-error" className="text-sm text-destructive">{emailError}</p>}
           </div>
 
           {/* Password */}
@@ -150,9 +154,9 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setShowPassword(!showPassword)}
-                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -179,11 +183,11 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
                     return (
                       <li key={req.label} className="flex items-center gap-2 text-xs">
                         {met ? (
-                          <Check className="h-3 w-3 text-green-500" />
+                          <Check className="h-3 w-3 text-primary" />
                         ) : (
                           <X className="h-3 w-3 text-muted-foreground" />
                         )}
-                        <span className={met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+                        <span className={met ? "text-primary" : "text-muted-foreground"}>
                           {req.label}
                         </span>
                       </li>
@@ -207,17 +211,19 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
                 onBlur={() => markTouched("confirmPassword")}
                 required
                 className="pr-10"
+                aria-invalid={!!confirmError}
+                aria-describedby={confirmError ? "confirm-error" : undefined}
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                tabIndex={-1}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {confirmError && <p className="text-sm text-destructive">{confirmError}</p>}
+            {confirmError && <p id="confirm-error" className="text-sm text-destructive">{confirmError}</p>}
           </div>
 
           {/* Notification Opt-in */}
@@ -231,6 +237,17 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
               Email me about follow-up reminders and outreach updates
             </Label>
           </div>
+          <p className="text-xs text-muted-foreground">
+            By creating an account, you agree to our{" "}
+            <a href="/terms" target="_blank" className="underline underline-offset-4 hover:text-foreground">
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a href="/privacy" target="_blank" className="underline underline-offset-4 hover:text-foreground">
+              Privacy Policy
+            </a>
+            .
+          </p>
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={loading}>

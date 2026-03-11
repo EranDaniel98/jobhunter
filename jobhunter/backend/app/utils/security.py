@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from passlib.context import CryptContext
@@ -22,7 +22,7 @@ def create_access_token(candidate_id: str) -> tuple[str, str]:
     jti = str(uuid.uuid4())
     payload = {
         "sub": candidate_id,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_ACCESS_EXPIRE_MINUTES),
+        "exp": datetime.now(UTC) + timedelta(minutes=settings.JWT_ACCESS_EXPIRE_MINUTES),
         "type": "access",
         "jti": jti,
     }
@@ -35,7 +35,7 @@ def create_refresh_token(candidate_id: str) -> tuple[str, str]:
     jti = str(uuid.uuid4())
     payload = {
         "sub": candidate_id,
-        "exp": datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS),
+        "exp": datetime.now(UTC) + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS),
         "type": "refresh",
         "jti": jti,
     }
@@ -47,7 +47,7 @@ def create_verification_token(candidate_id: str) -> str:
     """Create a short-lived JWT for email verification (24h)."""
     payload = {
         "sub": candidate_id,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=24),
+        "exp": datetime.now(UTC) + timedelta(hours=24),
         "type": "verify",
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)

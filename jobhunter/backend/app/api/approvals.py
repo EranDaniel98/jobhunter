@@ -65,15 +65,20 @@ async def approve(
         raise HTTPException(status_code=404, detail="Action not found")
 
     # If this is a send action, trigger the actual send
-    if action.action_type in (ActionType.SEND_EMAIL, ActionType.SEND_FOLLOWUP) and action.status == ActionStatus.APPROVED:
+    if (
+        action.action_type in (ActionType.SEND_EMAIL, ActionType.SEND_FOLLOWUP)
+        and action.status == ActionStatus.APPROVED
+    ):
         thread_id = (action.metadata_ or {}).get("thread_id")
         attach_resume = (action.metadata_ or {}).get("attach_resume", True)
 
         if thread_id:
             # Graph-based: resume the outreach graph in background
             async def _resume_graph():
-                from app.graphs.outreach import get_outreach_pipeline
                 from langgraph.types import Command
+
+                from app.graphs.outreach import get_outreach_pipeline
+
                 graph = get_outreach_pipeline()
                 try:
                     await graph.ainvoke(
@@ -81,8 +86,7 @@ async def approve(
                         config={"configurable": {"thread_id": thread_id}},
                     )
                 except Exception as e:
-                    logger.error("graph_resume_approve_failed",
-                                 action_id=action_id, thread_id=thread_id, error=str(e))
+                    logger.error("graph_resume_approve_failed", action_id=action_id, thread_id=thread_id, error=str(e))
 
             background_tasks.add_task(_resume_graph)
         else:
@@ -111,9 +115,12 @@ async def reject(
     # If graph-based, resume with rejection so graph can finalize
     thread_id = (action.metadata_ or {}).get("thread_id")
     if thread_id:
+
         async def _resume_graph_reject():
-            from app.graphs.outreach import get_outreach_pipeline
             from langgraph.types import Command
+
+            from app.graphs.outreach import get_outreach_pipeline
+
             graph = get_outreach_pipeline()
             try:
                 await graph.ainvoke(
@@ -121,16 +128,13 @@ async def reject(
                     config={"configurable": {"thread_id": thread_id}},
                 )
             except Exception as e:
-                logger.error("graph_resume_reject_failed",
-                             action_id=action_id, thread_id=thread_id, error=str(e))
+                logger.error("graph_resume_reject_failed", action_id=action_id, thread_id=thread_id, error=str(e))
 
         background_tasks.add_task(_resume_graph_reject)
 
         # Also update OutreachMessage status to "rejected"
         if action.entity_type == "outreach_message":
-            result = await db.execute(
-                select(OutreachMessage).where(OutreachMessage.id == action.entity_id)
-            )
+            result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == action.entity_id))
             msg = result.scalar_one_or_none()
             if msg and msg.status == MessageStatus.DRAFT:
                 msg.status = MessageStatus.REJECTED

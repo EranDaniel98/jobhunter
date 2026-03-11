@@ -126,10 +126,11 @@ async def test_admin_can_change_user_plan(client: AsyncClient, db_session: Async
     assert resp.status_code == 200
 
     # Verify usage now reflects explorer limits
+    # Note: admin users always see hunter-tier limits in usage (generous caps for admins)
     resp = await client.get(f"{API}/candidates/me/usage", headers=auth_headers)
     data = resp.json()
     assert data["plan_tier"] == "explorer"
-    assert data["quotas"]["discovery"]["limit"] == 15
+    assert data["quotas"]["discovery"]["limit"] == 50
 
 
 @pytest.mark.asyncio

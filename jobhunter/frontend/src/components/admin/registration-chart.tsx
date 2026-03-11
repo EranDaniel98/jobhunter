@@ -35,8 +35,8 @@ function RegistrationChartInner({ data }: RegistrationChartProps) {
         <Area
           type="monotone"
           dataKey="count"
-          stroke="hsl(210, 70%, 55%)"
-          fill="hsl(210, 70%, 55%)"
+          stroke="var(--chart-1)"
+          fill="var(--chart-1)"
           fillOpacity={0.2}
           name="Signups"
         />

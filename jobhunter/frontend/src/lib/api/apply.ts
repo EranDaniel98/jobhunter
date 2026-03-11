@@ -1,5 +1,5 @@
 import api from "./client";
-import type { JobPostingResponse, JobPostingListResponse, ApplyAnalysisResponse } from "@/lib/types";
+import type { JobPostingResponse, JobPostingListResponse, ApplyAnalysisResponse, ScrapeUrlResponse } from "@/lib/types";
 
 export async function analyzeJobPosting(data: {
   title: string;
@@ -20,4 +20,18 @@ export async function listPostings(skip = 0, limit = 20) {
 export async function getAnalysis(postingId: string) {
   const { data } = await api.get<ApplyAnalysisResponse>(`/apply/postings/${postingId}/analysis`);
   return data;
+}
+
+export async function scrapeUrl(url: string) {
+  const { data } = await api.post<ScrapeUrlResponse>("/apply/scrape-url", { url });
+  return data;
+}
+
+export async function updatePostingStage(postingId: string, stage: string): Promise<JobPostingResponse> {
+  const { data } = await api.patch<JobPostingResponse>(`/apply/postings/${postingId}/stage`, { stage });
+  return data;
+}
+
+export async function deletePosting(postingId: string): Promise<void> {
+  await api.delete(`/apply/postings/${postingId}`);
 }

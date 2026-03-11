@@ -3,29 +3,83 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from sqlalchemy import select, func
+from fastapi.responses import JSONResponse
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
-from app.rate_limit import limiter
 from app.models.candidate import Candidate
 from app.models.enums import JobPostingStatus
 from app.models.job_posting import JobPosting
+from app.rate_limit import limiter
 from app.schemas.apply import (
     ApplyAnalysisResponse,
     JobPostingCreateRequest,
     JobPostingListResponse,
     JobPostingResponse,
     ResumeTipItem,
+    ScrapeUrlRequest,
+    ScrapeUrlResponse,
+    UpdateStageRequest,
 )
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/apply", tags=["apply"])
 
+EXTRACT_METADATA_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "company_name": {"type": "string"},
+    },
+    "required": ["title", "company_name"],
+    "additionalProperties": False,
+}
+
+
+@router.post("/scrape-url", response_model=ScrapeUrlResponse)
+@limiter.limit("20/day")
+async def scrape_url(
+    request: Request,
+    req: ScrapeUrlRequest,
+    candidate: Candidate = Depends(get_current_candidate),
+):
+    """Scrape a job posting URL and return the extracted text."""
+    from app.infrastructure.url_scraper import scrape_job_url
+
+    try:
+        raw_text = await scrape_job_url(req.url)
+    except Exception as e:
+        logger.warning("scrape_url_failed", url=req.url, error=str(e))
+        raise HTTPException(
+            status_code=422,
+            detail="Could not fetch job posting from URL. Please paste the description manually.",
+        ) from e
+
+    # Try to extract title and company name via LLM (best-effort)
+    title = None
+    company_name = None
+    try:
+        from app.dependencies import get_openai
+
+        client = get_openai()
+        snippet = raw_text[:2000]
+        meta = await client.parse_structured(
+            "Extract the job title and company name from this job posting snippet.",
+            snippet,
+            EXTRACT_METADATA_SCHEMA,
+        )
+        title = meta.get("title") or None
+        company_name = meta.get("company_name") or None
+    except Exception as e:
+        logger.debug("metadata_extraction_skipped", error=str(e))
+
+    return ScrapeUrlResponse(raw_text=raw_text, title=title, company_name=company_name)
+
 
 async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
-    """Background task to run the apply pipeline and cache results in Redis."""
+    """Background task to run the apply pipeline (Redis caching happens inside the pipeline)."""
     from app.graphs.apply_pipeline import get_apply_pipeline
 
     thread_id = f"apply-{uuid.uuid4()}"
@@ -47,37 +101,20 @@ async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
 
     try:
         graph = get_apply_pipeline()
-        result = await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
-
-        # Cache analysis results in Redis for retrieval (7 days TTL)
-        from app.infrastructure.redis_client import get_redis
-        redis = get_redis()
-        analysis = {
-            "job_posting_id": job_posting_id,
-            "readiness_score": result.get("readiness_score", 0),
-            "resume_tips": result.get("resume_tips", []),
-            "cover_letter": result.get("cover_letter", ""),
-            "ats_keywords": result.get("ats_keywords", []),
-            "missing_skills": result.get("missing_skills", []),
-            "matching_skills": result.get("matching_skills", []),
-            "status": result.get("status", "completed"),
-        }
-        from app.config import settings
-        await redis.set(f"apply:analysis:{job_posting_id}", json.dumps(analysis), ex=settings.REDIS_APPLY_ANALYSIS_TTL)
+        await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
     except Exception as e:
         logger.error("apply_pipeline_bg_failed", error=str(e))
         try:
             from app.infrastructure.database import async_session_factory
+
             async with async_session_factory() as err_db:
-                result = await err_db.execute(
-                    select(JobPosting).where(JobPosting.id == uuid.UUID(job_posting_id))
-                )
+                result = await err_db.execute(select(JobPosting).where(JobPosting.id == uuid.UUID(job_posting_id)))
                 posting = result.scalar_one_or_none()
                 if posting:
                     posting.status = JobPostingStatus.FAILED
                     await err_db.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("apply_pipeline_error_handler_failed", error=str(e))
 
 
 @router.post("/analyze", response_model=JobPostingResponse)
@@ -127,15 +164,65 @@ async def list_postings(
     )
     postings = result.scalars().all()
 
-    count_result = await db.execute(
-        select(func.count(JobPosting.id)).where(JobPosting.candidate_id == candidate.id)
-    )
+    count_result = await db.execute(select(func.count(JobPosting.id)).where(JobPosting.candidate_id == candidate.id))
     total = count_result.scalar() or 0
 
     return JobPostingListResponse(
         postings=[JobPostingResponse.model_validate(p) for p in postings],
         total=total,
     )
+
+
+@router.patch("/postings/{posting_id}/stage", response_model=JobPostingResponse)
+async def update_posting_stage(
+    posting_id: uuid.UUID,
+    req: UpdateStageRequest,
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(JobPosting).where(
+            JobPosting.id == posting_id,
+            JobPosting.candidate_id == candidate.id,
+        )
+    )
+    posting = result.scalar_one_or_none()
+    if not posting:
+        raise HTTPException(status_code=404, detail="Job posting not found")
+    posting.application_stage = req.stage
+    await db.commit()
+    await db.refresh(posting)
+    return JobPostingResponse.model_validate(posting)
+
+
+@router.delete("/postings/{posting_id}", status_code=204)
+async def delete_posting(
+    posting_id: uuid.UUID,
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(JobPosting).where(
+            JobPosting.id == posting_id,
+            JobPosting.candidate_id == candidate.id,
+        )
+    )
+    posting = result.scalar_one_or_none()
+    if not posting:
+        raise HTTPException(status_code=404, detail="Job posting not found")
+
+    # Clean up cached analysis from Redis
+    try:
+        from app.infrastructure.redis_client import get_redis
+
+        redis = get_redis()
+        await redis.delete(f"apply:analysis:{posting_id}")
+    except Exception as e:
+        logger.debug("delete_posting_redis_cleanup_skipped", error=str(e))
+
+    await db.delete(posting)
+    await db.commit()
+    logger.info("posting_deleted", posting_id=str(posting_id))
 
 
 @router.get("/postings/{posting_id}/analysis", response_model=ApplyAnalysisResponse)
@@ -156,10 +243,14 @@ async def get_analysis(
         raise HTTPException(status_code=404, detail="Job posting not found")
 
     if posting.status == JobPostingStatus.PENDING:
-        raise HTTPException(status_code=202, detail="Analysis still in progress")
+        return JSONResponse(
+            status_code=202,
+            content={"status": "pending", "detail": "Analysis still in progress"},
+        )
 
     # Retrieve from Redis
     from app.infrastructure.redis_client import get_redis
+
     redis = get_redis()
     cached = await redis.get(f"apply:analysis:{posting_id}")
     if not cached:

@@ -1,5 +1,5 @@
-import structlog
 import redis.asyncio as aioredis
+import structlog
 
 from app.config import settings
 

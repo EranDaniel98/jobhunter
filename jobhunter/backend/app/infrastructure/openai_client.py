@@ -15,9 +15,7 @@ class OpenAIClient:
         self._client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
     @retry_on_rate_limit
-    async def parse_structured(
-        self, system_prompt: str, user_content: str, response_schema: dict
-    ) -> dict:
+    async def parse_structured(self, system_prompt: str, user_content: str, response_schema: dict) -> dict:
         response = await self._client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -66,10 +64,12 @@ class OpenAIClient:
         content = []
         for img in images:
             b64 = base64.b64encode(img).decode()
-            content.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{b64}"},
-            })
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{b64}"},
+                }
+            )
         for msg in messages:
             if msg.get("role") == "user":
                 content.append({"type": "text", "text": msg["content"]})

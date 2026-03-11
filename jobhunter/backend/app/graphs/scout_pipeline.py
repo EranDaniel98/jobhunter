@@ -10,23 +10,22 @@ and creates them as status="suggested" with source="scout_funding".
 """
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
-from typing_extensions import TypedDict
-from langgraph.graph import StateGraph, START, END
-
+from langgraph.graph import END, START, StateGraph
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from typing_extensions import TypedDict
 
+from app.dependencies import get_newsapi, get_openai
 from app.infrastructure import database as _db_mod
-from app.dependencies import get_openai, get_newsapi
+from app.infrastructure.redis_client import get_redis
+from app.infrastructure.websocket_manager import ws_manager
 from app.models.candidate import CandidateDNA
 from app.models.company import Company
 from app.models.signal import CompanySignal
-from app.services.embedding_service import embed_text, cosine_similarity
-from app.infrastructure.websocket_manager import ws_manager
-from app.infrastructure.redis_client import get_redis
+from app.services.embedding_service import cosine_similarity, embed_text
 
 logger = structlog.get_logger()
 
@@ -34,6 +33,7 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # State schema
 # ---------------------------------------------------------------------------
+
 
 class ScoutState(TypedDict):
     candidate_id: str
@@ -43,7 +43,7 @@ class ScoutState(TypedDict):
     parsed_companies: list[dict] | None
     scored_companies: list[dict] | None
     companies_created: int
-    status: str       # "pending" | "completed" | "failed"
+    status: str  # "pending" | "completed" | "failed"
     error: str | None
 
 
@@ -51,18 +51,21 @@ class ScoutState(TypedDict):
 # Prompts & schemas
 # ---------------------------------------------------------------------------
 
-SCOUT_QUERIES_PROMPT = """You are a job market intelligence assistant. Based on the candidate's profile, generate 2-3 NewsAPI search queries to find companies that recently raised funding rounds.
-
-CANDIDATE PROFILE:
-{experience_summary}
-
-SKILLS: {skills}
-CAREER STAGE: {career_stage}
-TARGET INDUSTRIES: {industries}
-
-Generate search queries that will find recent funding news for companies relevant to this candidate's skills and experience. Focus on Series A, B, C rounds and companies in related industries.
-
-Each query should be a concise NewsAPI search string (e.g. "Series A funding fintech" or "startup raises round AI machine learning")."""
+SCOUT_QUERIES_PROMPT = (
+    "You are a job market intelligence assistant. Based on the candidate's profile,"
+    " generate 2-3 NewsAPI search queries to find companies that recently raised"
+    " funding rounds.\n\n"
+    "CANDIDATE PROFILE:\n"
+    "{experience_summary}\n\n"
+    "SKILLS: {skills}\n"
+    "CAREER STAGE: {career_stage}\n"
+    "TARGET INDUSTRIES: {industries}\n\n"
+    "Generate search queries that will find recent funding news for companies relevant"
+    " to this candidate's skills and experience."
+    " Focus on Series A, B, C rounds and companies in related industries.\n\n"
+    "Each query should be a concise NewsAPI search string"
+    ' (e.g. "Series A funding fintech" or "startup raises round AI machine learning").'
+)
 
 SCOUT_QUERIES_SCHEMA = {
     "type": "object",
@@ -76,20 +79,21 @@ SCOUT_QUERIES_SCHEMA = {
     "additionalProperties": False,
 }
 
-PARSE_ARTICLES_PROMPT = """You are a company data extraction assistant. From the following news articles about funding rounds, extract structured company data.
-
-ARTICLES:
-{articles}
-
-For each unique company mentioned that raised funding, extract:
-- company_name: The company name
-- estimated_domain: Best guess at their website domain (e.g. "stripe.com")
-- funding_round: The round type (e.g. "Series A", "Series B", "Seed")
-- amount: The amount raised (e.g. "$50M", "undisclosed")
-- industry: The company's primary industry
-- description: A brief description of what the company does
-
-Only include companies where a funding round is clearly mentioned. Deduplicate — each company should appear only once."""
+PARSE_ARTICLES_PROMPT = (
+    "You are a company data extraction assistant. From the following news articles"
+    " about funding rounds, extract structured company data.\n\n"
+    "ARTICLES:\n"
+    "{articles}\n\n"
+    "For each unique company mentioned that raised funding, extract:\n"
+    "- company_name: The company name\n"
+    '- estimated_domain: Best guess at their website domain (e.g. "stripe.com")\n'
+    '- funding_round: The round type (e.g. "Series A", "Series B", "Seed")\n'
+    '- amount: The amount raised (e.g. "$50M", "undisclosed")\n'
+    "- industry: The company's primary industry\n"
+    "- description: A brief description of what the company does\n\n"
+    "Only include companies where a funding round is clearly mentioned."
+    " Deduplicate — each company should appear only once."
+)
 
 PARSE_ARTICLES_SCHEMA = {
     "type": "object",
@@ -106,7 +110,14 @@ PARSE_ARTICLES_SCHEMA = {
                     "industry": {"type": "string"},
                     "description": {"type": "string"},
                 },
-                "required": ["company_name", "estimated_domain", "funding_round", "amount", "industry", "description"],
+                "required": [
+                    "company_name",
+                    "estimated_domain",
+                    "funding_round",
+                    "amount",
+                    "industry",
+                    "description",
+                ],
                 "additionalProperties": False,
             },
         },
@@ -120,20 +131,20 @@ PARSE_ARTICLES_SCHEMA = {
 # Node functions
 # ---------------------------------------------------------------------------
 
+
 async def build_search_queries_node(state: ScoutState) -> dict:
     """Load CandidateDNA, generate NewsAPI search queries via OpenAI."""
     candidate_id = uuid.UUID(state["candidate_id"])
 
     async with _db_mod.async_session_factory() as db:
-        result = await db.execute(
-            select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id)
-        )
+        result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
         dna = result.scalar_one_or_none()
         if not dna:
             return {"status": "failed", "error": "No CandidateDNA found — upload a resume first"}
 
         # Load candidate for target industries
         from app.models.candidate import Candidate
+
         cand_result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
         candidate = cand_result.scalar_one_or_none()
 
@@ -170,18 +181,18 @@ async def search_news_node(state: ScoutState) -> dict:
     # Rate limit: check daily NewsAPI counter
     try:
         redis = get_redis()
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         count_key = f"newsapi:daily:{today}"
         current = await redis.get(count_key)
         if current and int(current) > 90:
             logger.warning("scout_newsapi_rate_limit_reached", daily_count=int(current))
             return {"raw_articles": [], "status": "pending"}
-    except Exception:
-        pass  # Redis failure — proceed anyway
+    except Exception as e:
+        logger.debug("scout_redis_rate_check_failed", error=str(e))
 
     newsapi = get_newsapi()
-    from_date = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
-    to_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    from_date = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+    to_date = datetime.now(UTC).strftime("%Y-%m-%d")
 
     all_articles = []
     seen_urls = set()
@@ -197,13 +208,13 @@ async def search_news_node(state: ScoutState) -> dict:
             # Track daily usage
             try:
                 redis = get_redis()
-                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                today = datetime.now(UTC).strftime("%Y-%m-%d")
                 pipe = redis.pipeline()
                 pipe.incr(f"newsapi:daily:{today}")
                 pipe.expire(f"newsapi:daily:{today}", 86400)
                 await pipe.execute()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("scout_redis_usage_tracking_failed", error=str(e))
 
             for article in articles:
                 url = article.get("url", "")
@@ -283,9 +294,7 @@ async def score_and_filter_node(state: ScoutState) -> dict:
 
     async with _db_mod.async_session_factory() as db:
         # Load DNA embedding
-        result = await db.execute(
-            select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id)
-        )
+        result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
         dna = result.scalar_one_or_none()
         if not dna or dna.embedding is None:
             return {"status": "failed", "error": "CandidateDNA embedding not found"}
@@ -293,9 +302,7 @@ async def score_and_filter_node(state: ScoutState) -> dict:
         candidate_embedding = [float(x) for x in dna.embedding]
 
         # Get existing domains for this candidate
-        existing_result = await db.execute(
-            select(Company.domain).where(Company.candidate_id == candidate_id)
-        )
+        existing_result = await db.execute(select(Company.domain).where(Company.candidate_id == candidate_id))
         existing_domains = {row[0] for row in existing_result.all()}
 
     scored = []
@@ -362,7 +369,7 @@ async def create_companies_node(state: ScoutState) -> dict:
                     description=c.get("description"),
                     source_url=c.get("source_url"),
                     signal_strength=c.get("fit_score"),
-                    detected_at=datetime.now(timezone.utc),
+                    detected_at=datetime.now(UTC),
                     metadata_={
                         "funding_round": c.get("funding_round"),
                         "amount": c.get("amount"),
@@ -391,7 +398,8 @@ async def notify_node(state: ScoutState) -> dict:
     companies_created = state.get("companies_created", 0)
 
     await ws_manager.broadcast(
-        str(candidate_id), "scout_completed",
+        str(candidate_id),
+        "scout_completed",
         {"companies_found": companies_created, "status": "completed"},
     )
 
@@ -405,7 +413,8 @@ async def mark_failed_node(state: ScoutState) -> dict:
     error = state.get("error", "unknown error")
 
     await ws_manager.broadcast(
-        str(candidate_id), "scout_failed",
+        str(candidate_id),
+        "scout_failed",
         {"error": error},
     )
 
@@ -416,6 +425,7 @@ async def mark_failed_node(state: ScoutState) -> dict:
 # ---------------------------------------------------------------------------
 # Conditional routing
 # ---------------------------------------------------------------------------
+
 
 def _check_error(state: ScoutState) -> str:
     if state.get("status") == "failed":
@@ -434,6 +444,7 @@ def _check_empty_or_error(state: ScoutState) -> str:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_scout_pipeline() -> StateGraph:
     """Build (but don't compile) the scout graph."""
@@ -499,9 +510,11 @@ _builder = build_scout_pipeline()
 # Graph accessors
 # ---------------------------------------------------------------------------
 
+
 def get_scout_pipeline(checkpointer=None):
     """Production: compiled graph with PostgreSQL checkpointer."""
     from app.graphs.resume_pipeline import _checkpointer as shared
+
     return _builder.compile(checkpointer=checkpointer or shared)
 
 

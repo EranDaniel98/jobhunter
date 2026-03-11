@@ -1,12 +1,14 @@
+import uuid as _uuid
+
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
-from app.rate_limit import limiter
 from app.models.candidate import Candidate, CandidateDNA, Resume, Skill
-from app.schemas.candidate import CandidateDNAResponse, ResumeUploadResponse, SkillResponse
+from app.rate_limit import limiter
+from app.schemas.candidate import CandidateDNAResponse, ResumeListItem, ResumeUploadResponse, SkillResponse
 from app.services import resume_service
 from app.services.quota_service import get_usage
 
@@ -38,9 +40,7 @@ async def upload_resume(
     resume = await resume_service.upload_resume(db, candidate.id, contents, file.filename)
 
     # Parse and generate DNA in background
-    background_tasks.add_task(
-        _run_async_background, resume.id, candidate.id
-    )
+    background_tasks.add_task(_run_async_background, resume.id, candidate.id)
 
     return ResumeUploadResponse(
         id=str(resume.id),
@@ -82,6 +82,7 @@ async def _run_async_background(resume_id, candidate_id):
         logger.error("resume_pipeline_exception", resume_id=str(resume_id), error=str(e))
         # Fallback: mark resume as failed
         from app.infrastructure.database import async_session_factory
+
         async with async_session_factory() as db:
             try:
                 result = await db.execute(select(Resume).where(Resume.id == resume_id))
@@ -89,15 +90,15 @@ async def _run_async_background(resume_id, candidate_id):
                 if resume:
                     resume.parse_status = "failed"
                     await db.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("resume_pipeline_status_update_failed", error=str(e))
 
 
 @router.get("/me/usage")
 async def get_my_usage(
     candidate: Candidate = Depends(get_current_candidate),
 ):
-    return await get_usage(str(candidate.id), candidate.plan_tier)
+    return await get_usage(str(candidate.id), candidate.plan_tier, is_admin=candidate.is_admin)
 
 
 @router.get("/me/dna", response_model=CandidateDNAResponse)
@@ -105,16 +106,12 @@ async def get_dna(
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(CandidateDNA).where(CandidateDNA.candidate_id == candidate.id)
-    )
+    result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate.id))
     dna = result.scalar_one_or_none()
     if not dna:
         raise HTTPException(status_code=404, detail="DNA not generated yet. Upload a resume first.")
 
-    skills_result = await db.execute(
-        select(Skill).where(Skill.candidate_id == candidate.id)
-    )
+    skills_result = await db.execute(select(Skill).where(Skill.candidate_id == candidate.id))
     skills = skills_result.scalars().all()
 
     return CandidateDNAResponse(
@@ -143,9 +140,7 @@ async def get_skills(
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Skill).where(Skill.candidate_id == candidate.id)
-    )
+    result = await db.execute(select(Skill).where(Skill.candidate_id == candidate.id))
     skills = result.scalars().all()
     return [
         SkillResponse(
@@ -158,3 +153,46 @@ async def get_skills(
         )
         for s in skills
     ]
+
+
+@router.get("/me/resumes", response_model=list[ResumeListItem])
+async def list_resumes(
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Resume).where(Resume.candidate_id == candidate.id).order_by(Resume.created_at.desc())
+    )
+    resumes = result.scalars().all()
+    return [
+        ResumeListItem(
+            id=str(r.id),
+            file_path=r.file_path,
+            is_primary=r.is_primary,
+            parse_status=r.parse_status,
+            created_at=r.created_at.isoformat() if r.created_at else "",
+        )
+        for r in resumes
+    ]
+
+
+@router.delete("/me/resumes/{resume_id}", status_code=204)
+async def delete_resume(
+    resume_id: str,
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Resume).where(
+            Resume.id == _uuid.UUID(resume_id),
+            Resume.candidate_id == candidate.id,
+        )
+    )
+    resume = result.scalar_one_or_none()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    if resume.is_primary:
+        raise HTTPException(status_code=400, detail="Cannot delete the primary resume")
+    await db.delete(resume)
+    await db.commit()
+    logger.info("resume_deleted", resume_id=resume_id)

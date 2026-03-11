@@ -1,6 +1,9 @@
+import structlog
 from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+
+logger = structlog.get_logger()
 
 
 def _get_rate_limit_key(request: Request) -> str:
@@ -18,8 +21,8 @@ def _get_rate_limit_key(request: Request) -> str:
             candidate_id = payload.get("sub")
             if candidate_id:
                 return f"user:{candidate_id}"
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("rate_limit_key_jwt_decode_failed", error=str(e))
 
     # Try Cloudflare header for real client IP
     cf_ip = request.headers.get("cf-connecting-ip")

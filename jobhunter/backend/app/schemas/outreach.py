@@ -32,5 +32,7 @@ class OutreachMessageResponse(BaseModel):
     sent_at: datetime | None = None
     opened_at: datetime | None = None
     replied_at: datetime | None = None
+    contact_name: str | None = None
+    company_name: str | None = None
 
     model_config = {"from_attributes": True}

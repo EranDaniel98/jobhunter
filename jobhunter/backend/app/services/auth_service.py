@@ -27,9 +27,6 @@ TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 
 
 async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
-    # Validate invite code first
-    await invite_service.validate_invite(db, data.invite_code)
-
     # Check for existing email
     result = await db.execute(select(Candidate).where(Candidate.email == data.email))
     if result.scalar_one_or_none():
@@ -49,8 +46,8 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
     db.add(candidate)
     await db.flush()
 
-    # Consume invite code atomically
-    await invite_service.consume_invite(db, data.invite_code, candidate)
+    # Validate and atomically consume invite code (race-condition safe)
+    await invite_service.validate_and_consume(db, data.invite_code, candidate.id)
 
     await db.commit()
     await db.refresh(candidate)
@@ -65,7 +62,11 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
             to=candidate.email,
             from_email=settings.SENDER_EMAIL,
             subject=f"Verify your {settings.APP_NAME} account",
-            body=f"Hi {candidate.full_name},\n\nPlease verify your email by clicking: {verify_url}\n\nThis link expires in 24 hours.",
+            body=(
+                f"Hi {candidate.full_name},\n\n"
+                f"Please verify your email by clicking: {verify_url}\n\n"
+                "This link expires in 24 hours."
+            ),
         )
         logger.info("verification_email_sent", candidate_id=str(candidate.id))
     except Exception as e:
@@ -104,7 +105,7 @@ async def refresh_token(token: str) -> TokenPair:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
-        )
+        ) from None
 
     if payload.get("type") != "refresh":
         raise HTTPException(
@@ -133,7 +134,7 @@ async def refresh_token(token: str) -> TokenPair:
     return TokenPair(access_token=access_token, refresh_token=new_refresh)
 
 
-async def logout(token: str) -> None:
+async def logout(token: str, refresh_token: str | None = None) -> None:
     try:
         payload = decode_token(token)
     except JWTError:
@@ -145,3 +146,15 @@ async def logout(token: str) -> None:
         ttl = settings.JWT_ACCESS_EXPIRE_MINUTES * 60
         await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{jti}", ttl, "revoked")
         logger.info("token_blacklisted", jti=jti)
+
+    if refresh_token:
+        try:
+            ref_payload = decode_token(refresh_token)
+            ref_jti = ref_payload.get("jti")
+            if ref_jti:
+                redis = get_redis()
+                ttl = settings.JWT_REFRESH_EXPIRE_DAYS * 86400
+                await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{ref_jti}", ttl, "revoked")
+                logger.info("refresh_token_blacklisted", jti=ref_jti)
+        except Exception as e:
+            logger.debug("refresh_token_blacklist_skipped", error=str(e))

@@ -70,6 +70,25 @@ export function useApproveCompany() {
   });
 }
 
+export function useCompanyNotes(companyId: string) {
+  return useQuery({
+    queryKey: ["company-notes", companyId],
+    queryFn: () => companiesApi.getCompanyNotes(companyId),
+    enabled: !!companyId,
+  });
+}
+
+export function useUpsertCompanyNotes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ companyId, content }: { companyId: string; content: string }) =>
+      companiesApi.upsertCompanyNotes(companyId, content),
+    onSuccess: (_, { companyId }) => {
+      qc.invalidateQueries({ queryKey: ["company-notes", companyId] });
+    },
+  });
+}
+
 export function useRejectCompany() {
   const qc = useQueryClient();
   return useMutation({

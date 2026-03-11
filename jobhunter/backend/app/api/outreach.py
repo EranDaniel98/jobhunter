@@ -1,17 +1,19 @@
 import uuid as _uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.dependencies import get_current_candidate, get_db
-from app.rate_limit import limiter
 from app.models.candidate import Candidate
+from app.models.contact import Contact
 from app.models.enums import MessageStatus
 from app.models.outreach import OutreachMessage
 from app.models.pending_action import PendingAction
+from app.rate_limit import limiter
 from app.schemas.outreach import (
     OutreachDraftRequest,
     OutreachEditRequest,
@@ -25,6 +27,10 @@ logger = structlog.get_logger()
 
 
 def _message_to_response(m: OutreachMessage) -> OutreachMessageResponse:
+    contact = getattr(m, "contact", None)
+    contact_name = contact.full_name if contact else None
+    company = getattr(contact, "company", None) if contact else None
+    company_name = company.name if company else None
     return OutreachMessageResponse(
         id=str(m.id),
         contact_id=str(m.contact_id),
@@ -39,13 +45,15 @@ def _message_to_response(m: OutreachMessage) -> OutreachMessageResponse:
         sent_at=m.sent_at,
         opened_at=m.opened_at,
         replied_at=m.replied_at,
+        contact_name=contact_name or None,
+        company_name=company_name,
     )
 
 
-async def _run_outreach_graph(state: dict) -> None:
+async def _run_outreach_graph(state: dict, thread_id: str) -> None:
     """Background task: run the outreach graph (gather → draft → quality → approval → interrupt)."""
     from app.graphs.outreach import get_outreach_pipeline
-    thread_id = state.pop("_thread_id")
+
     graph = get_outreach_pipeline()
     try:
         await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
@@ -53,6 +61,7 @@ async def _run_outreach_graph(state: dict) -> None:
         logger.error("outreach_graph_background_failed", error=str(e), thread_id=thread_id)
         try:
             from app.infrastructure.database import async_session_factory
+
             async with async_session_factory() as err_db:
                 contact_id = state.get("contact_id")
                 candidate_id = state.get("candidate_id")
@@ -68,8 +77,8 @@ async def _run_outreach_graph(state: dict) -> None:
                     if msg:
                         msg.status = MessageStatus.FAILED
                         await err_db.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("outreach_graph_error_handler_failed", error=str(e))
 
 
 @router.post("/draft", status_code=202)
@@ -83,13 +92,15 @@ async def draft_message(
 ):
     # Check openai quota before launching graph
     from app.services.quota_service import check_and_increment
+
     try:
-        await check_and_increment(str(candidate.id), "openai", candidate.plan_tier)
+        await check_and_increment(str(candidate.id), "openai", candidate.plan_tier, is_admin=candidate.is_admin)
     except Exception as e:
         from fastapi import HTTPException as _HTTPException
+
         if isinstance(e, _HTTPException):
             raise
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     thread_id = f"outreach-{_uuid.uuid4()}"
     state = {
@@ -108,9 +119,8 @@ async def draft_message(
         "external_message_id": None,
         "status": "pending",
         "error": None,
-        "_thread_id": thread_id,
     }
-    background_tasks.add_task(_run_outreach_graph, state)
+    background_tasks.add_task(_run_outreach_graph, state, thread_id)
     return {"status": "drafting", "thread_id": thread_id}
 
 
@@ -124,7 +134,7 @@ async def draft_followup(
     try:
         followup = await outreach_service.draft_followup(db, msg.id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _message_to_response(followup)
 
 
@@ -139,7 +149,7 @@ async def draft_linkedin(
             db, candidate.id, _uuid.UUID(data.contact_id), language=data.language
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _message_to_response(message)
 
 
@@ -154,11 +164,9 @@ async def draft_message_variants(
 ):
     """Draft two message variants for A/B comparison."""
     try:
-        variants = await outreach_service.draft_variants(
-            db, candidate.id, _uuid.UUID(contact_id), language=language
-        )
+        variants = await outreach_service.draft_variants(db, candidate.id, _uuid.UUID(contact_id), language=language)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return [_message_to_response(m) for m in variants]
 
 
@@ -171,7 +179,11 @@ async def list_messages(
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(OutreachMessage).where(OutreachMessage.candidate_id == candidate.id)
+    query = (
+        select(OutreachMessage)
+        .where(OutreachMessage.candidate_id == candidate.id)
+        .options(selectinload(OutreachMessage.contact).selectinload(Contact.company))
+    )
     if status:
         query = query.where(OutreachMessage.status == status)
     if channel:
@@ -201,7 +213,7 @@ async def edit_message(
     db: AsyncSession = Depends(get_db),
 ):
     msg = await _get_candidate_message(db, message_id, candidate.id)
-    if msg.status != "draft":
+    if msg.status != MessageStatus.DRAFT:
         raise HTTPException(status_code=400, detail="Can only edit draft messages")
 
     if data.subject is not None:
@@ -210,7 +222,7 @@ async def edit_message(
         msg.body = data.body
 
     await db.commit()
-    await db.refresh(msg)
+    msg = await _get_candidate_message(db, message_id, candidate.id)
     logger.info("outreach_edited", message_id=message_id)
     return _message_to_response(msg)
 
@@ -225,23 +237,28 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
 ):
     msg = await _get_candidate_message(db, message_id, candidate.id)
-    if msg.status not in ("draft", "approved"):
+    if msg.status not in (MessageStatus.DRAFT, MessageStatus.APPROVED):
         raise HTTPException(status_code=400, detail=f"Cannot send message with status '{msg.status}'")
 
     # Check if this message has a graph thread_id via its PendingAction
     action_result = await db.execute(
-        select(PendingAction).where(
+        select(PendingAction)
+        .where(
             PendingAction.entity_id == msg.id,
             PendingAction.action_type.in_(["send_email", "send_followup"]),
-        ).order_by(PendingAction.created_at.desc()).limit(1)
+        )
+        .order_by(PendingAction.created_at.desc())
+        .limit(1)
     )
     action = action_result.scalar_one_or_none()
     graph_thread_id = (action.metadata_ or {}).get("thread_id") if action else None
 
     # If graph-based message: resume the graph
     if graph_thread_id and (msg.status == MessageStatus.APPROVED or auto_approve):
-        from app.graphs.outreach import get_outreach_pipeline
         from langgraph.types import Command
+
+        from app.graphs.outreach import get_outreach_pipeline
+
         graph = get_outreach_pipeline()
         try:
             await graph.ainvoke(
@@ -249,33 +266,42 @@ async def send_message(
                 config={"configurable": {"thread_id": graph_thread_id}},
             )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        # Refresh message from DB
-        await db.refresh(msg)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        # Re-fetch with eager-loaded relationships for response serialization
+        msg = await _get_candidate_message(db, message_id, candidate.id)
         return _message_to_response(msg)
 
     # Legacy path: no graph thread
     if msg.status == MessageStatus.APPROVED or auto_approve:
         from app.services.email_service import send_outreach
+
         try:
             if auto_approve and msg.status == MessageStatus.DRAFT:
                 from app.services.approval_service import create_pending_action
+
                 action = await create_pending_action(
-                    db, candidate.id, action_type="send_email", entity_id=msg.id,
+                    db,
+                    candidate.id,
+                    action_type="send_email",
+                    entity_id=msg.id,
                     metadata={"auto_approved": True, "attach_resume": attach_resume},
                 )
                 from app.services.approval_service import approve_action
+
                 await approve_action(db, action.id, candidate.id)
 
-            msg = await send_outreach(db, msg.id, attach_resume=attach_resume, plan_tier=candidate.plan_tier)
+            await send_outreach(db, msg.id, attach_resume=attach_resume, plan_tier=candidate.plan_tier)
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        msg = await _get_candidate_message(db, message_id, candidate.id)
         return _message_to_response(msg)
 
     # Otherwise, create a PendingAction for approval
     from app.services.approval_service import create_pending_action
+
     action = await create_pending_action(
-        db, candidate.id,
+        db,
+        candidate.id,
         action_type="send_email",
         entity_id=msg.id,
         metadata={"attach_resume": attach_resume},
@@ -295,8 +321,12 @@ async def delete_message(
     db: AsyncSession = Depends(get_db),
 ):
     msg = await _get_candidate_message(db, message_id, candidate.id)
-    if msg.status != "draft":
+    if msg.status != MessageStatus.DRAFT:
         raise HTTPException(status_code=400, detail="Can only delete draft messages")
+    # Clean up related PendingActions before deleting the message
+    from sqlalchemy import delete as sql_delete
+
+    await db.execute(sql_delete(PendingAction).where(PendingAction.entity_id == msg.id))
     await db.delete(msg)
     await db.commit()
     logger.info("outreach_deleted", message_id=message_id)
@@ -309,22 +339,22 @@ async def mark_replied(
     db: AsyncSession = Depends(get_db),
 ):
     msg = await _get_candidate_message(db, message_id, candidate.id)
-    msg.status = "replied"
-    msg.replied_at = datetime.now(timezone.utc)
+    msg.status = MessageStatus.REPLIED
+    msg.replied_at = datetime.now(UTC)
     await db.commit()
-    await db.refresh(msg)
+    msg = await _get_candidate_message(db, message_id, candidate.id)
     logger.info("outreach_marked_replied", message_id=message_id)
     return _message_to_response(msg)
 
 
-async def _get_candidate_message(
-    db: AsyncSession, message_id: str, candidate_id
-) -> OutreachMessage:
+async def _get_candidate_message(db: AsyncSession, message_id: str, candidate_id) -> OutreachMessage:
     result = await db.execute(
-        select(OutreachMessage).where(
+        select(OutreachMessage)
+        .where(
             OutreachMessage.id == _uuid.UUID(message_id),
             OutreachMessage.candidate_id == candidate_id,
         )
+        .options(selectinload(OutreachMessage.contact).selectinload(Contact.company))
     )
     msg = result.scalar_one_or_none()
     if not msg:

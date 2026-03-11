@@ -11,25 +11,25 @@ On failure, the graph routes to mark_failed -> END.
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
+from langgraph.graph import END, START, StateGraph
+from sqlalchemy import select
 from typing_extensions import TypedDict
-from langgraph.graph import StateGraph, START, END
 
-from app.infrastructure import database as _db_mod
 from app.dependencies import get_hunter, get_openai
+from app.infrastructure import database as _db_mod
+from app.infrastructure.websocket_manager import ws_manager
 from app.models.candidate import CandidateDNA
 from app.models.company import Company, CompanyDossier
+from app.models.enums import ResearchStatus
 from app.services.company_service import (
     DOSSIER_PROMPT,
     DOSSIER_SCHEMA,
     _create_contacts_from_hunter,
 )
 from app.services.embedding_service import embed_text
-from app.infrastructure.websocket_manager import ws_manager
-
-from sqlalchemy import select
 
 logger = structlog.get_logger()
 
@@ -37,6 +37,7 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # State schema
 # ---------------------------------------------------------------------------
+
 
 class CompanyResearchState(TypedDict):
     company_id: str
@@ -47,13 +48,14 @@ class CompanyResearchState(TypedDict):
     dossier_data: dict | None
     contacts_created: int
     embedding_set: bool
-    status: str        # "pending" | "completed" | "failed"
+    status: str  # "pending" | "completed" | "failed"
     error: str | None
 
 
 # ---------------------------------------------------------------------------
 # Node functions
 # ---------------------------------------------------------------------------
+
 
 async def enrich_company_node(state: CompanyResearchState) -> dict:
     """Load Company from DB, call Hunter domain_search, update empty fields."""
@@ -69,22 +71,45 @@ async def enrich_company_node(state: CompanyResearchState) -> dict:
             hunter_data = await hunter.domain_search(company.domain)
 
             # Update empty fields from Hunter data
-            if not company.industry and hunter_data.get("industry"):
-                company.industry = hunter_data["industry"]
-            if not company.size_range and hunter_data.get("size"):
-                company.size_range = hunter_data["size"]
-            if not company.location_hq and hunter_data.get("location"):
-                company.location_hq = hunter_data["location"]
-            if not company.description and hunter_data.get("description"):
-                company.description = hunter_data["description"]
-            if not company.tech_stack and hunter_data.get("technologies"):
-                company.tech_stack = hunter_data["technologies"]
+            # Hunter.io may nest org data under "organization" key (as a dict)
+            # or return it as a plain string (company name). Fall back to top-level dict.
+            raw_org = hunter_data.get("organization")
+            org = raw_org if isinstance(raw_org, dict) else hunter_data
+            if not company.industry and (org.get("industry") or hunter_data.get("industry")):
+                company.industry = org.get("industry") or hunter_data.get("industry")
+            if not company.size_range and (org.get("size") or hunter_data.get("size")):
+                company.size_range = org.get("size") or hunter_data.get("size")
+            if not company.location_hq:
+                # Try top-level "location" first, then construct from city/state/country
+                location = hunter_data.get("location") or org.get("location")
+                if not location:
+                    parts = [
+                        org.get("city") or hunter_data.get("city"),
+                        org.get("state") or hunter_data.get("state"),
+                        org.get("country") or hunter_data.get("country"),
+                    ]
+                    location = ", ".join(p for p in parts if p) or None
+                if location:
+                    company.location_hq = location
+            if not company.description and (org.get("description") or hunter_data.get("description")):
+                company.description = org.get("description") or hunter_data.get("description")
+            if not company.tech_stack and (org.get("technologies") or hunter_data.get("technologies")):
+                company.tech_stack = org.get("technologies") or hunter_data.get("technologies")
 
-            company.research_status = "in_progress"
+            company.research_status = ResearchStatus.IN_PROGRESS
             await db.commit()
         except Exception as e:
             logger.error("graph_enrich_company_failed", company_id=str(company_id), error=str(e))
-            return {"status": "failed", "error": f"Company enrichment failed: {e}"}
+            error_str = str(e).lower()
+            if "rate" in error_str and "limit" in error_str:
+                error_msg = "Hunter.io rate limit reached. Please try again later."
+            elif "quota" in error_str or "credit" in error_str:
+                error_msg = "Hunter.io quota exhausted for today."
+            elif "timeout" in error_str or "connect" in error_str or "unreachable" in error_str:
+                error_msg = "Hunter.io is currently unavailable. Please try again later."
+            else:
+                error_msg = f"Company enrichment failed: {e}"
+            return {"status": "failed", "error": error_msg}
 
     logger.info("graph_enrich_company_done", company_id=str(company_id))
     return {"hunter_data": hunter_data}
@@ -122,8 +147,8 @@ async def web_search_node(state: CompanyResearchState) -> dict:
                         results = ddgs.text(query, max_results=3)
                         for r in results:
                             collected.append(f"{r.get('title', '')}: {r.get('body', '')}")
-                    except Exception:
-                        # Individual query failure is fine
+                    except Exception as e:
+                        logger.debug("web_search_query_failed", query=query, error=str(e))
                         continue
             return collected
 
@@ -152,9 +177,7 @@ async def generate_dossier_node(state: CompanyResearchState) -> dict:
             return {"status": "failed", "error": f"Company {company_id} not found"}
 
         # Load candidate DNA
-        dna_result = await db.execute(
-            select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id)
-        )
+        dna_result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
         dna = dna_result.scalar_one_or_none()
         candidate_summary = dna.experience_summary if dna else "No candidate DNA available"
 
@@ -177,14 +200,10 @@ async def generate_dossier_node(state: CompanyResearchState) -> dict:
                 prompt_filled += f"\n\nAdditional web research context:\n{web_context}"
 
             hunter_data = state.get("hunter_data") or {}
-            dossier_data = await client.parse_structured(
-                prompt_filled, json.dumps(hunter_data), DOSSIER_SCHEMA
-            )
+            dossier_data = await client.parse_structured(prompt_filled, json.dumps(hunter_data), DOSSIER_SCHEMA)
 
             # Create or update dossier
-            existing = await db.execute(
-                select(CompanyDossier).where(CompanyDossier.company_id == company_id)
-            )
+            existing = await db.execute(select(CompanyDossier).where(CompanyDossier.company_id == company_id))
             dossier = existing.scalar_one_or_none()
             if not dossier:
                 dossier = CompanyDossier(id=uuid.uuid4(), company_id=company_id)
@@ -219,9 +238,7 @@ async def create_contacts_node(state: CompanyResearchState) -> dict:
 
     async with _db_mod.async_session_factory() as db:
         try:
-            contacts = await _create_contacts_from_hunter(
-                db, candidate_id, company_id, hunter_data
-            )
+            contacts = await _create_contacts_from_hunter(db, candidate_id, company_id, hunter_data)
             await db.commit()
         except Exception as e:
             logger.error("graph_create_contacts_failed", company_id=str(company_id), error=str(e))
@@ -245,7 +262,7 @@ async def embed_company_node(state: CompanyResearchState) -> dict:
         try:
             embed_text_content = f"{company.name} {company.description or ''} {company.industry or ''}"
             company.embedding = await embed_text(embed_text_content)
-            company.last_enriched = datetime.now(timezone.utc)
+            company.last_enriched = datetime.now(UTC)
             await db.commit()
         except Exception as e:
             logger.error("graph_embed_company_failed", company_id=str(company_id), error=str(e))
@@ -266,12 +283,13 @@ async def notify_node(state: CompanyResearchState) -> dict:
         company = result.scalar_one_or_none()
         company_name = ""
         if company:
-            company.research_status = "completed"
+            company.research_status = ResearchStatus.COMPLETED
             company_name = company.name
             await db.commit()
 
     await ws_manager.broadcast(
-        str(candidate_id), "research_completed",
+        str(candidate_id),
+        "research_completed",
         {
             "company_id": str(company_id),
             "company_name": company_name,
@@ -293,11 +311,12 @@ async def mark_failed_node(state: CompanyResearchState) -> dict:
         result = await db.execute(select(Company).where(Company.id == company_id))
         company = result.scalar_one_or_none()
         if company:
-            company.research_status = "failed"
+            company.research_status = ResearchStatus.FAILED
             await db.commit()
 
     await ws_manager.broadcast(
-        str(candidate_id), "research_completed",
+        str(candidate_id),
+        "research_completed",
         {
             "company_id": str(company_id),
             "status": "failed",
@@ -312,6 +331,7 @@ async def mark_failed_node(state: CompanyResearchState) -> dict:
 # Conditional routing
 # ---------------------------------------------------------------------------
 
+
 def _check_error(state: CompanyResearchState) -> str:
     """Route to mark_failed if status is 'failed', otherwise continue."""
     if state.get("status") == "failed":
@@ -322,6 +342,7 @@ def _check_error(state: CompanyResearchState) -> str:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_company_research_graph() -> StateGraph:
     """Build (but don't compile) the company research graph."""
@@ -380,9 +401,11 @@ _builder = build_company_research_graph()
 # Graph accessors
 # ---------------------------------------------------------------------------
 
+
 def get_company_research_pipeline(checkpointer=None):
     """Production: uses shared checkpointer from resume_pipeline."""
     from app.graphs.resume_pipeline import _checkpointer as shared_checkpointer
+
     cp = checkpointer or shared_checkpointer
     return _builder.compile(checkpointer=cp)
 

@@ -2,16 +2,17 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.dependencies import get_current_candidate, get_db, get_openai
-from app.rate_limit import limiter
 from app.models.candidate import Candidate, CandidateDNA
-from app.models.enums import PrepType, SessionStatus
 from app.models.company import Company
+from app.models.enums import PrepType, SessionStatus
 from app.models.interview import InterviewPrepSession, MockInterviewMessage
+from app.rate_limit import limiter
 from app.schemas.interview import (
     InterviewPrepListResponse,
     InterviewPrepRequest,
@@ -122,9 +123,7 @@ async def list_sessions(
     result = await db.execute(query)
     sessions = result.scalars().unique().all()
 
-    count_query = select(func.count(InterviewPrepSession.id)).where(
-        InterviewPrepSession.candidate_id == candidate.id
-    )
+    count_query = select(func.count(InterviewPrepSession.id)).where(InterviewPrepSession.candidate_id == candidate.id)
     if company_id:
         count_query = count_query.where(InterviewPrepSession.company_id == uuid.UUID(company_id))
     count_result = await db.execute(count_query)
@@ -168,7 +167,9 @@ async def start_mock_interview(
 ):
     """Start a mock interview session."""
     if req.interview_type not in VALID_INTERVIEW_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid interview_type. Must be one of: {sorted(VALID_INTERVIEW_TYPES)}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid interview_type. Must be one of: {sorted(VALID_INTERVIEW_TYPES)}"
+        )
 
     # Verify company
     result = await db.execute(
@@ -202,10 +203,12 @@ async def start_mock_interview(
     )
 
     client = get_openai()
-    first_question = await client.chat([
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": "Begin the interview. Ask your first question."},
-    ])
+    first_question = await client.chat(
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "Begin the interview. Ask your first question."},
+        ]
+    )
 
     msg = MockInterviewMessage(
         id=uuid.uuid4(),
@@ -325,8 +328,7 @@ async def end_mock_interview(
 
     # Build transcript
     transcript = "\n".join(
-        f"{'Interviewer' if m.role == 'interviewer' else 'Candidate'}: {m.content}"
-        for m in session.messages
+        f"{'Interviewer' if m.role == 'interviewer' else 'Candidate'}: {m.content}" for m in session.messages
     )
 
     prompt = (
@@ -349,11 +351,12 @@ async def end_mock_interview(
     )
     db.add(feedback_msg)
 
-    # Update session content
-    content_data = session.content or {}
+    # Update session content (copy dict to ensure SQLAlchemy detects the change)
+    content_data = dict(session.content or {})
     content_data["status"] = SessionStatus.COMPLETED
     content_data["score"] = feedback.get("overall_score")
     session.content = content_data
+    flag_modified(session, "content")
     session.status = SessionStatus.COMPLETED
     await db.commit()
 

@@ -61,3 +61,19 @@ export async function getCompanyContacts(companyId: string): Promise<ContactResp
   const { data } = await api.get<ContactResponse[]>(`/companies/${companyId}/contacts`);
   return data;
 }
+
+export interface CompanyNoteResponse {
+  id: string;
+  company_id: string;
+  content: string;
+}
+
+export async function getCompanyNotes(companyId: string): Promise<CompanyNoteResponse | null> {
+  const { data } = await api.get<CompanyNoteResponse | null>(`/companies/${companyId}/notes`);
+  return data;
+}
+
+export async function upsertCompanyNotes(companyId: string, content: string): Promise<CompanyNoteResponse> {
+  const { data } = await api.put<CompanyNoteResponse>(`/companies/${companyId}/notes`, { content });
+  return data;
+}

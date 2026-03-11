@@ -1,4 +1,16 @@
-from pydantic import BaseModel, field_validator
+from pydantic import AnyHttpUrl, BaseModel, field_validator
+
+
+class UpdateStageRequest(BaseModel):
+    stage: str
+
+    @field_validator("stage")
+    @classmethod
+    def validate_stage(cls, v: str) -> str:
+        valid = {"saved", "applied", "phone_screen", "interview", "offer", "rejected"}
+        if v not in valid:
+            raise ValueError(f"stage must be one of: {', '.join(sorted(valid))}")
+        return v
 
 
 class JobPostingCreateRequest(BaseModel):
@@ -34,6 +46,7 @@ class JobPostingResponse(BaseModel):
     company_id: str | None = None
     url: str | None = None
     status: str
+    application_stage: str = "saved"
     ats_keywords: list[str] | None = None
     parsed_requirements: dict | None = None
 
@@ -48,3 +61,13 @@ class JobPostingResponse(BaseModel):
 class JobPostingListResponse(BaseModel):
     postings: list[JobPostingResponse]
     total: int
+
+
+class ScrapeUrlRequest(BaseModel):
+    url: AnyHttpUrl
+
+
+class ScrapeUrlResponse(BaseModel):
+    raw_text: str
+    title: str | None = None
+    company_name: str | None = None

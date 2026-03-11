@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducer, useEffect, useCallback, useState } from "react";
+import Link from "next/link";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,6 +13,7 @@ interface Notification {
   message: string;
   timestamp: Date;
   read: boolean;
+  href?: string;
 }
 
 type NotificationAction =
@@ -28,6 +30,7 @@ function notificationsReducer(state: Notification[], action: NotificationAction)
         message: eventToMessage(action.event.type, action.event.data),
         timestamp: new Date(),
         read: false,
+        href: eventToHref(action.event.type, action.event.data),
       };
       return [n, ...state].slice(0, 50);
     }
@@ -35,6 +38,20 @@ function notificationsReducer(state: Notification[], action: NotificationAction)
       return state.map((n) => ({ ...n, read: true }));
     case "clear":
       return [];
+  }
+}
+
+function eventToHref(type: string, data: Record<string, unknown>): string | undefined {
+  const companyId = (data as { company_id?: string }).company_id;
+  switch (type) {
+    case "research_completed": return companyId ? `/companies/${companyId}` : "/companies";
+    case "followup_drafted": return "/approvals";
+    case "email_opened":
+    case "email_clicked":
+    case "email_delivered":
+    case "email_sent": return "/outreach";
+    case "resume_parsed": return "/resume";
+    default: return undefined;
   }
 }
 
@@ -92,14 +109,30 @@ export function NotificationCenter({ lastEvent }: { lastEvent: { type: string; d
             <p className="p-4 text-center text-sm text-muted-foreground">No notifications yet</p>
           ) : (
             <div className="divide-y">
-              {notifications.map((n) => (
-                <div key={n.id} className="px-4 py-3">
-                  <p className="text-sm">{n.message}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {n.timestamp.toLocaleTimeString()}
-                  </p>
-                </div>
-              ))}
+              {notifications.map((n) => {
+                const content = (
+                  <>
+                    <p className="text-sm">{n.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {n.timestamp.toLocaleTimeString()}
+                    </p>
+                  </>
+                );
+                return n.href ? (
+                  <Link
+                    key={n.id}
+                    href={n.href}
+                    onClick={() => setOpen(false)}
+                    className="block px-4 py-3 hover:bg-accent transition-colors"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={n.id} className="px-4 py-3">
+                    {content}
+                  </div>
+                );
+              })}
             </div>
           )}
         </ScrollArea>

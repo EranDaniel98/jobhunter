@@ -5,6 +5,7 @@ import pytest_asyncio
 
 from app.config import settings
 from app.graphs.apply_pipeline import build_apply_pipeline
+from app.infrastructure.url_scraper import scrape_job_url
 
 
 class TestApplyGraph:
@@ -79,3 +80,38 @@ class TestApplyAPI:
         assert data["total"] >= 1
         titles = [p["title"] for p in data["postings"]]
         assert "Backend Developer" in titles
+
+
+class TestScrapeUrlAPI:
+    @pytest.mark.asyncio
+    async def test_scrape_url_success(self, client, auth_headers, monkeypatch):
+        fake_text = "# Senior Engineer at Acme\n\nWe need a Python developer..."
+
+        async def mock_scrape(url):
+            return fake_text
+
+        monkeypatch.setattr("app.infrastructure.url_scraper.scrape_job_url", mock_scrape)
+
+        resp = await client.post(
+            f"{settings.API_V1_PREFIX}/apply/scrape-url",
+            json={"url": "https://example.com/job/123"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "Senior Engineer" in data["raw_text"]
+
+    @pytest.mark.asyncio
+    async def test_scrape_url_failure_returns_422(self, client, auth_headers, monkeypatch):
+        async def mock_scrape(url):
+            raise RuntimeError("Connection refused")
+
+        monkeypatch.setattr("app.infrastructure.url_scraper.scrape_job_url", mock_scrape)
+
+        resp = await client.post(
+            f"{settings.API_V1_PREFIX}/apply/scrape-url",
+            json={"url": "https://blocked.com/job"},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+        assert "paste" in resp.json()["detail"].lower()

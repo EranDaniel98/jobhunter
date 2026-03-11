@@ -1,10 +1,10 @@
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -21,7 +21,7 @@ async def create_invite(db: AsyncSession, candidate: Candidate) -> InviteCode:
         id=uuid.uuid4(),
         code=code,
         invited_by_id=candidate.id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.INVITE_EXPIRE_DAYS),
+        expires_at=datetime.now(UTC) + timedelta(days=settings.INVITE_EXPIRE_DAYS),
     )
     db.add(invite)
     await db.commit()
@@ -32,9 +32,7 @@ async def create_invite(db: AsyncSession, candidate: Candidate) -> InviteCode:
 
 async def validate_invite(db: AsyncSession, code: str) -> InviteCode:
     result = await db.execute(
-        select(InviteCode)
-        .options(joinedload(InviteCode.invited_by))
-        .where(InviteCode.code == code)
+        select(InviteCode).options(joinedload(InviteCode.invited_by)).where(InviteCode.code == code)
     )
     invite = result.scalar_one_or_none()
 
@@ -50,7 +48,7 @@ async def validate_invite(db: AsyncSession, code: str) -> InviteCode:
             detail="Invite code has already been used",
         )
 
-    if invite.expires_at < datetime.now(timezone.utc):
+    if invite.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
             detail="Invite code has expired",
@@ -59,15 +57,43 @@ async def validate_invite(db: AsyncSession, code: str) -> InviteCode:
     return invite
 
 
-async def consume_invite(db: AsyncSession, code: str, used_by: Candidate) -> None:
+async def validate_and_consume(db: AsyncSession, code: str, used_by_id) -> InviteCode:
+    """Validate and atomically consume an invite code.
+
+    Uses an atomic UPDATE with WHERE is_used == False to prevent race conditions
+    where two registrations could consume the same invite code.
+    """
     result = await db.execute(
-        select(InviteCode).where(InviteCode.code == code)
+        select(InviteCode).options(joinedload(InviteCode.invited_by)).where(InviteCode.code == code)
     )
     invite = result.scalar_one_or_none()
-    if invite:
-        invite.is_used = True
-        invite.used_by_id = used_by.id
-        logger.info("invite_consumed", code=code, used_by=str(used_by.id))
+
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid invite code",
+        )
+
+    if invite.expires_at < datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Invite code has expired",
+        )
+
+    # Atomic update — only succeeds if is_used is still False
+    rows = await db.execute(
+        update(InviteCode)
+        .where(InviteCode.id == invite.id, ~InviteCode.is_used)
+        .values(is_used=True, used_by_id=used_by_id)
+    )
+    if rows.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Invite code has already been used",
+        )
+
+    logger.info("invite_consumed", code=code, used_by=str(used_by_id))
+    return invite
 
 
 async def list_invites(db: AsyncSession, candidate: Candidate) -> list[InviteCode]:

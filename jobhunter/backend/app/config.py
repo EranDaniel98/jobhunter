@@ -39,12 +39,18 @@ class Settings(BaseSettings):
 
     # Email
     DAILY_EMAIL_LIMIT: int = 50
-    SENDER_EMAIL: str = "outreach@eran-jobs.com"
+    SENDER_EMAIL: str = "outreach@hunter-job.com"
     SENDER_NAME: str = "Eran"
     PHYSICAL_ADDRESS: str = "Tel Aviv, Israel"
 
     # Invites
     INVITE_EXPIRE_DAYS: int = 7
+
+    # Stripe billing
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_EXPLORER: str = ""
+    STRIPE_PRICE_HUNTER: str = ""
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:3000"
@@ -74,9 +80,9 @@ class Settings(BaseSettings):
     R2_BUCKET_NAME: str = ""
 
     # TTLs (seconds)
-    REDIS_APPLY_ANALYSIS_TTL: int = 86400 * 7   # 7 days
-    REDIS_WEBHOOK_DEDUP_TTL: int = 86400         # 24 hours
-    REDIS_QUOTA_TTL: int = 86400                 # 24 hours
+    REDIS_APPLY_ANALYSIS_TTL: int = 86400 * 7  # 7 days
+    REDIS_WEBHOOK_DEDUP_TTL: int = 86400  # 24 hours
+    REDIS_QUOTA_TTL: int = 86400  # 24 hours
     PENDING_ACTION_MAX_AGE_DAYS: int = 30
 
     # Paths

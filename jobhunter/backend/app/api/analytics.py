@@ -2,7 +2,7 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
@@ -66,16 +66,14 @@ async def list_insights(
         .order_by(AnalyticsInsight.created_at.desc())
     )
     if unread_only:
-        query = query.where(AnalyticsInsight.is_read == False)
+        query = query.where(not AnalyticsInsight.is_read)
 
     result = await db.execute(query.offset(skip).limit(limit))
     insights = result.scalars().all()
 
-    count_query = select(func.count(AnalyticsInsight.id)).where(
-        AnalyticsInsight.candidate_id == candidate.id
-    )
+    count_query = select(func.count(AnalyticsInsight.id)).where(AnalyticsInsight.candidate_id == candidate.id)
     if unread_only:
-        count_query = count_query.where(AnalyticsInsight.is_read == False)
+        count_query = count_query.where(not AnalyticsInsight.is_read)
     total = (await db.execute(count_query)).scalar() or 0
 
     return AnalyticsInsightListResponse(
@@ -96,6 +94,7 @@ async def refresh_insights(
 
     async def _run_analytics(candidate_id: str):
         from app.graphs.analytics_pipeline import get_analytics_pipeline
+
         thread_id = f"analytics-{_uuid.uuid4()}"
         state = {
             "candidate_id": candidate_id,

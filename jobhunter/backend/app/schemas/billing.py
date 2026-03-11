@@ -21,3 +21,15 @@ class PlanResponse(BaseModel):
 
 class UpdatePlanRequest(BaseModel):
     plan_tier: str
+
+
+class PortalResponse(BaseModel):
+    status: str = "ok"
+    url: str | None = None
+
+
+class SubscriptionResponse(BaseModel):
+    tier: str
+    status: str
+    current_period_end: str | None = None
+    stripe_subscription_id: str | None = None

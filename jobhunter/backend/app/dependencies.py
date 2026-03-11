@@ -7,7 +7,6 @@ from jwt import PyJWTError as JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.infrastructure.database import get_session
 from app.infrastructure.protocols import (
     EmailClientProtocol,
@@ -15,7 +14,7 @@ from app.infrastructure.protocols import (
     NewsAPIClientProtocol,
     OpenAIClientProtocol,
 )
-from app.infrastructure.redis_client import get_redis, redis_safe_get
+from app.infrastructure.redis_client import redis_safe_get
 from app.models.candidate import Candidate
 from app.utils.security import decode_token
 
@@ -41,6 +40,7 @@ def get_openai() -> OpenAIClientProtocol:
     global _openai_client
     if _openai_client is None:
         from app.infrastructure.openai_client import OpenAIClient
+
         _openai_client = OpenAIClient()
     return _openai_client
 
@@ -49,6 +49,7 @@ def get_hunter() -> HunterClientProtocol:
     global _hunter_client
     if _hunter_client is None:
         from app.infrastructure.hunter_client import HunterClient
+
         _hunter_client = HunterClient()
     return _hunter_client
 
@@ -57,6 +58,7 @@ def get_newsapi() -> NewsAPIClientProtocol:
     global _newsapi_client
     if _newsapi_client is None:
         from app.infrastructure.newsapi_client import NewsAPIClient
+
         _newsapi_client = NewsAPIClient()
     return _newsapi_client
 
@@ -65,6 +67,7 @@ def get_email_client() -> EmailClientProtocol:
     global _email_client
     if _email_client is None:
         from app.infrastructure.resend_client import ResendClient
+
         _email_client = ResendClient()
     return _email_client
 
@@ -80,7 +83,7 @@ async def get_current_candidate(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-        )
+        ) from None
 
     if payload.get("type") != "access":
         raise HTTPException(
@@ -105,9 +108,7 @@ async def get_current_candidate(
             detail="Invalid token payload",
         )
 
-    result = await db.execute(
-        select(Candidate).where(Candidate.id == uuid.UUID(candidate_id))
-    )
+    result = await db.execute(select(Candidate).where(Candidate.id == uuid.UUID(candidate_id)))
     candidate = result.scalar_one_or_none()
 
     if not candidate:

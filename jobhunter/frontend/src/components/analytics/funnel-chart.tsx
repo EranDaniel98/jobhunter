@@ -17,12 +17,12 @@ interface FunnelChartProps {
 }
 
 const COLORS = [
-  "hsl(210, 70%, 55%)",
-  "hsl(200, 65%, 50%)",
-  "hsl(180, 60%, 45%)",
-  "hsl(142, 60%, 45%)",
-  "hsl(120, 55%, 40%)",
-  "hsl(0, 60%, 55%)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--destructive)",
 ];
 
 export function FunnelChart({ data }: FunnelChartProps) {

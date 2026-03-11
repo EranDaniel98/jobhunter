@@ -7,18 +7,18 @@
 
 import json
 import uuid
-from typing_extensions import TypedDict
 
 import structlog
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import END, START, StateGraph
 from sqlalchemy import select
+from typing_extensions import TypedDict
 
-from app.infrastructure import database as _db_mod
 from app.dependencies import get_openai
+from app.infrastructure import database as _db_mod
+from app.infrastructure.websocket_manager import ws_manager
 from app.models.candidate import CandidateDNA
 from app.models.company import Company, CompanyDossier
 from app.models.interview import InterviewPrepSession
-from app.infrastructure.websocket_manager import ws_manager
 
 logger = structlog.get_logger()
 
@@ -60,8 +60,11 @@ INTERVIEW_PREP_PROMPTS = {
         "Culture: {culture_summary}\n"
         "Red flags: {red_flags}\n"
         "Candidate profile: {candidate_summary}\n\n"
-        "Generate culture-fit preparation: company values alignment, questions to expect about culture fit, "
-        "and suggested answers that demonstrate genuine alignment."
+        "Generate culture-fit preparation with:\n"
+        "- 'values': an array of company values, each with 'value' (the value name), "
+        "'description' (what it means at this company), and 'how_to_demonstrate' "
+        "(specific advice for the candidate to show genuine alignment in an interview).\n"
+        "- 'tips': general tips for culture-fit interviews at this company."
     ),
     "salary_negotiation": (
         "You are a salary negotiation coach.\n"
@@ -85,10 +88,10 @@ INTERVIEW_PREP_SCHEMAS = {
                     "type": "object",
                     "properties": {
                         "question": {"type": "string"},
-                        "suggested_answer": {"type": "string"},
+                        "answer": {"type": "string"},
                         "category": {"type": "string"},
                     },
-                    "required": ["question", "suggested_answer", "category"],
+                    "required": ["question", "answer", "category"],
                     "additionalProperties": False,
                 },
             },
@@ -127,7 +130,7 @@ INTERVIEW_PREP_SCHEMAS = {
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string"},
+                        "topic": {"type": "string"},
                         "questions": {
                             "type": "array",
                             "items": {
@@ -142,7 +145,7 @@ INTERVIEW_PREP_SCHEMAS = {
                             },
                         },
                     },
-                    "required": ["name", "questions"],
+                    "required": ["topic", "questions"],
                     "additionalProperties": False,
                 },
             },
@@ -153,41 +156,41 @@ INTERVIEW_PREP_SCHEMAS = {
     "culture_fit": {
         "type": "object",
         "properties": {
-            "values": {"type": "array", "items": {"type": "string"}},
-            "alignment_tips": {"type": "array", "items": {"type": "string"}},
-            "questions": {
+            "values": {
                 "type": "array",
                 "items": {
                     "type": "object",
                     "properties": {
-                        "question": {"type": "string"},
-                        "suggested_answer": {"type": "string"},
+                        "value": {"type": "string"},
+                        "description": {"type": "string"},
+                        "how_to_demonstrate": {"type": "string"},
                     },
-                    "required": ["question", "suggested_answer"],
+                    "required": ["value", "description", "how_to_demonstrate"],
                     "additionalProperties": False,
                 },
             },
+            "tips": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["values", "alignment_tips", "questions"],
+        "required": ["values", "tips"],
         "additionalProperties": False,
     },
     "salary_negotiation": {
         "type": "object",
         "properties": {
-            "range": {
+            "salary_range": {
                 "type": "object",
                 "properties": {
-                    "min": {"type": "string"},
-                    "max": {"type": "string"},
-                    "median": {"type": "string"},
+                    "low": {"type": "number"},
+                    "mid": {"type": "number"},
+                    "high": {"type": "number"},
                 },
-                "required": ["min", "max", "median"],
+                "required": ["low", "mid", "high"],
                 "additionalProperties": False,
             },
+            "strategies": {"type": "array", "items": {"type": "string"}},
             "talking_points": {"type": "array", "items": {"type": "string"}},
-            "counter_strategies": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["range", "talking_points", "counter_strategies"],
+        "required": ["salary_range", "strategies", "talking_points"],
         "additionalProperties": False,
     },
 }
@@ -196,6 +199,7 @@ INTERVIEW_PREP_SCHEMAS = {
 # ---------------------------------------------------------------------------
 # State schema
 # ---------------------------------------------------------------------------
+
 
 class InterviewPrepState(TypedDict):
     candidate_id: str
@@ -211,6 +215,7 @@ class InterviewPrepState(TypedDict):
 # ---------------------------------------------------------------------------
 # Node functions
 # ---------------------------------------------------------------------------
+
 
 async def load_context_node(state: InterviewPrepState) -> dict:
     """Load company dossier and candidate DNA for prep generation."""
@@ -248,7 +253,9 @@ async def load_context_node(state: InterviewPrepState) -> dict:
         "culture_summary": dossier.culture_summary if dossier else "Unknown",
         "red_flags": ", ".join(dossier.red_flags or []) if dossier else "None",
         "interview_format": dossier.interview_format if dossier else "Unknown",
-        "compensation_data": json.dumps(dossier.compensation_data) if dossier and dossier.compensation_data else "Unknown",
+        "compensation_data": json.dumps(dossier.compensation_data)
+        if dossier and dossier.compensation_data
+        else "Unknown",
         "why_hire_me": dossier.why_hire_me if dossier else "Strong candidate fit",
         "candidate_summary": dna.experience_summary if dna else "No candidate profile",
         "strengths": ", ".join(dna.strengths or []) if dna else "Unknown",
@@ -294,7 +301,8 @@ async def save_and_notify_node(state: InterviewPrepState) -> dict:
             await db.commit()
 
     await ws_manager.broadcast(
-        state["candidate_id"], "interview_prep_completed",
+        state["candidate_id"],
+        "interview_prep_completed",
         {"session_id": state["session_id"], "prep_type": state["prep_type"]},
     )
 
@@ -316,7 +324,8 @@ async def mark_failed_node(state: InterviewPrepState) -> dict:
                 await db.commit()
 
     await ws_manager.broadcast(
-        state["candidate_id"], "interview_prep_failed",
+        state["candidate_id"],
+        "interview_prep_failed",
         {"session_id": session_id, "error": state.get("error")},
     )
 
@@ -327,6 +336,7 @@ async def mark_failed_node(state: InterviewPrepState) -> dict:
 # Conditional routing
 # ---------------------------------------------------------------------------
 
+
 def _check_error(state: InterviewPrepState) -> str:
     if state.get("status") == "failed":
         return "mark_failed"
@@ -336,6 +346,7 @@ def _check_error(state: InterviewPrepState) -> str:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_interview_prep_pipeline() -> StateGraph:
     """Build (but don't compile) the interview prep graph."""
@@ -348,11 +359,13 @@ def build_interview_prep_pipeline() -> StateGraph:
 
     builder.add_edge(START, "load_context")
     builder.add_conditional_edges(
-        "load_context", _check_error,
+        "load_context",
+        _check_error,
         {"mark_failed": "mark_failed", "continue": "generate_prep"},
     )
     builder.add_conditional_edges(
-        "generate_prep", _check_error,
+        "generate_prep",
+        _check_error,
         {"mark_failed": "mark_failed", "continue": "save_and_notify"},
     )
     builder.add_edge("save_and_notify", END)
@@ -368,9 +381,11 @@ _builder = build_interview_prep_pipeline()
 # Graph accessors
 # ---------------------------------------------------------------------------
 
+
 def get_interview_prep_pipeline(checkpointer=None):
     """Production: compiled graph with PostgreSQL checkpointer."""
     from app.graphs.resume_pipeline import _checkpointer as shared
+
     return _builder.compile(checkpointer=checkpointer or shared)
 
 

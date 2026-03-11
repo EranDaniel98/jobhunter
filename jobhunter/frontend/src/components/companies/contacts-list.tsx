@@ -144,7 +144,7 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{contact.full_name}</span>
                     {contact.is_decision_maker && (
-                      <Star className="h-3.5 w-3.5 text-yellow-500" />
+                      <Star className="h-3.5 w-3.5 text-chart-3" />
                     )}
                   </div>
                 </TableCell>
@@ -155,11 +155,11 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm">{contact.email || "—"}</span>
                     {contact.email_verified && (
-                      <ShieldCheck className="h-3.5 w-3.5 text-green-500" />
+                      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                     )}
                     {!contact.email_verified && contact.email_confidence !== null && (
                       <Badge variant="secondary" className="text-xs">
-                        {Math.round((contact.email_confidence ?? 0) * 100)}%
+                        {Math.round(contact.email_confidence ?? 0)}%
                       </Badge>
                     )}
                   </div>

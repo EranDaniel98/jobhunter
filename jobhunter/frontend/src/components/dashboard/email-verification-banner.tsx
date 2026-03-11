@@ -58,11 +58,11 @@ export function EmailVerificationBanner() {
   const seconds = cooldownRemaining % 60;
 
   return (
-    <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+    <Card className="border-chart-3/30 bg-accent">
       <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Mail className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-          <p className="text-sm text-amber-800 dark:text-amber-200">
+          <Mail className="h-5 w-5 text-chart-3 shrink-0" />
+          <p className="text-sm text-accent-foreground">
             Please verify your email address. Check your inbox for the verification link.
           </p>
         </div>

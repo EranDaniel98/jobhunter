@@ -36,25 +36,22 @@ async def health_check(
 
     # Migration version check (informational — does not affect healthy/unhealthy)
     try:
-        result = await db.execute(text(
-            "SELECT version_num FROM alembic_version LIMIT 1"
-        ))
+        result = await db.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
         row = result.first()
         current = row[0] if row else "none"
         checks["migration_version"] = current
-    except Exception:
+    except Exception as e:
+        logger.debug("health_check_migration_version_failed", error=str(e))
         checks["migration_version"] = "unknown"
 
-    all_healthy = all(
-        checks.get(k) == "healthy" for k in ("database", "redis")
-    )
+    all_healthy = all(checks.get(k) == "healthy" for k in ("database", "redis"))
     status_code = 200 if all_healthy else 503
 
     return JSONResponse(
         status_code=status_code,
         content={
             "status": "healthy" if all_healthy else "degraded",
-            "version": "0.2.0",
+            "version": "0.3.0",
             "checks": checks,
         },
     )

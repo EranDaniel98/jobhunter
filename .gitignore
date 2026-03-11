@@ -41,6 +41,10 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+*.stackdump
+
+# Build artifacts
+.open-next/
 
 # Logs
 *.log

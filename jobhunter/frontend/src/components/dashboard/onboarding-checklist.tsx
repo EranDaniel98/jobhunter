@@ -62,10 +62,10 @@ export function OnboardingChecklist({ hasResume, hasCompanies, hasSentMessages }
                   <Check className="h-3.5 w-3.5 text-primary-foreground" />
                 </div>
               ) : (
-                <Circle className="h-6 w-6 text-muted-foreground" />
+                <Circle className="h-6 w-6 text-primary/30" />
               )}
               <div className="flex items-center gap-2">
-                <Icon className="h-4 w-4 text-muted-foreground" />
+                <Icon className={`h-4 w-4 ${step.done ? "text-muted-foreground" : "text-primary/50"}`} />
                 <span className={step.done ? "line-through text-muted-foreground" : ""}>{step.label}</span>
               </div>
             </Link>

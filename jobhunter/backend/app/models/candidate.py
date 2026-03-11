@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
@@ -25,14 +24,17 @@ class Candidate(TimestampMixin, Base):
     preferences: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    email_verified: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     plan_tier: Mapped[str] = mapped_column(String(20), default="free", server_default="free", nullable=False)
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), unique=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), unique=True)
+    subscription_status: Mapped[str] = mapped_column(String(50), default="inactive", server_default="inactive")
 
     # Relationships
     resumes: Mapped[list["Resume"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
-    dna: Mapped["CandidateDNA | None"] = relationship(back_populates="candidate", uselist=False, cascade="all, delete-orphan")
+    dna: Mapped["CandidateDNA | None"] = relationship(
+        back_populates="candidate", uselist=False, cascade="all, delete-orphan"
+    )
     skills: Mapped[list["Skill"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
 
 

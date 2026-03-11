@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
@@ -15,12 +14,14 @@ import {
   useInterviewSessions,
   useGeneratePrep,
   useStartMockInterview,
-  useReplyMockInterview,
-  useEndMockInterview,
-  useInterviewSession,
 } from "@/lib/hooks/use-interview";
 import type { InterviewPrepSessionResponse } from "@/lib/types";
-import { GraduationCap, MessageSquare, Send, Loader2, Sparkles, Clock, CheckCircle2, XCircle, User, Bot } from "lucide-react";
+import { GraduationCap, MessageSquare, Loader2, Sparkles, Clock, CheckCircle2, XCircle, Circle, Timer, X, Building2 } from "lucide-react";
+import { PrepContentRenderer } from "@/components/interview/prep-content-renderer";
+import { MockInterviewChat } from "@/components/interview/mock-interview-chat";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import NextLink from "next/link";
 
 const PREP_TYPES = [
   { value: "company_qa", label: "Company Q&A" },
@@ -40,11 +41,11 @@ const MOCK_INTERVIEW_TYPES = [
 function statusIcon(status: string) {
   switch (status) {
     case "completed":
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      return <CheckCircle2 className="h-4 w-4 text-primary" />;
     case "failed":
       return <XCircle className="h-4 w-4 text-destructive" />;
     case "in_progress":
-      return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+      return <Loader2 className="h-4 w-4 animate-spin text-chart-3" />;
     default:
       return <Clock className="h-4 w-4 text-muted-foreground" />;
   }
@@ -61,397 +62,6 @@ function statusLabel(status: string) {
     default:
       return status;
   }
-}
-
-// ---------- Content Renderers ----------
-
-function CompanyQAContent({ content }: { content: Record<string, unknown> }) {
-  const questions = (content.questions as Array<{ question: string; answer: string; tips?: string }>) || [];
-  if (questions.length === 0) {
-    return <p className="text-sm text-muted-foreground">No Q&A content generated yet.</p>;
-  }
-  return (
-    <div className="space-y-4">
-      {questions.map((qa, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Q: {qa.question}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm">{qa.answer}</p>
-            {qa.tips && (
-              <p className="text-xs text-muted-foreground italic">Tip: {qa.tips}</p>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function BehavioralContent({ content }: { content: Record<string, unknown> }) {
-  const stories = (content.stories as Array<{ situation: string; task: string; action: string; result: string; question?: string }>) || [];
-  if (stories.length === 0) {
-    return <p className="text-sm text-muted-foreground">No behavioral stories generated yet.</p>;
-  }
-  return (
-    <div className="space-y-4">
-      {stories.map((story, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-2">
-            {story.question && (
-              <CardDescription className="text-sm font-medium text-foreground">{story.question}</CardDescription>
-            )}
-            <CardTitle className="text-xs text-muted-foreground">STAR Story #{i + 1}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div>
-              <span className="font-semibold text-blue-600 dark:text-blue-400">Situation: </span>
-              {story.situation}
-            </div>
-            <div>
-              <span className="font-semibold text-green-600 dark:text-green-400">Task: </span>
-              {story.task}
-            </div>
-            <div>
-              <span className="font-semibold text-amber-600 dark:text-amber-400">Action: </span>
-              {story.action}
-            </div>
-            <div>
-              <span className="font-semibold text-purple-600 dark:text-purple-400">Result: </span>
-              {story.result}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function TechnicalContent({ content }: { content: Record<string, unknown> }) {
-  const topics = (content.topics as Array<{ topic: string; questions: Array<{ question: string; answer: string; difficulty?: string }> }>) || [];
-  if (topics.length === 0) {
-    return <p className="text-sm text-muted-foreground">No technical content generated yet.</p>;
-  }
-  return (
-    <div className="space-y-6">
-      {topics.map((topic, i) => (
-        <div key={i} className="space-y-3">
-          <h4 className="font-semibold text-sm">{topic.topic}</h4>
-          {topic.questions.map((q, j) => (
-            <Card key={j}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-sm">{q.question}</CardTitle>
-                  {q.difficulty && (
-                    <Badge variant={q.difficulty === "hard" ? "destructive" : q.difficulty === "medium" ? "default" : "secondary"} className="text-xs">
-                      {q.difficulty}
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">{q.answer}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CultureFitContent({ content }: { content: Record<string, unknown> }) {
-  const values = (content.values as Array<{ value: string; description: string; how_to_demonstrate: string }>) || [];
-  const tips = (content.tips as string[]) || [];
-  return (
-    <div className="space-y-4">
-      {values.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="font-semibold text-sm">Company Values & How to Align</h4>
-          {values.map((v, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">{v.value}</CardTitle>
-                <CardDescription className="text-xs">{v.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">{v.how_to_demonstrate}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-      {tips.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">General Tips</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-disc pl-4 space-y-1 text-sm">
-              {tips.map((tip, i) => (
-                <li key={i}>{tip}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-      {values.length === 0 && tips.length === 0 && (
-        <p className="text-sm text-muted-foreground">No culture fit content generated yet.</p>
-      )}
-    </div>
-  );
-}
-
-function SalaryNegotiationContent({ content }: { content: Record<string, unknown> }) {
-  const range = content.salary_range as { low: number; mid: number; high: number } | undefined;
-  const strategies = (content.strategies as string[]) || [];
-  const talking_points = (content.talking_points as string[]) || [];
-  return (
-    <div className="space-y-4">
-      {range && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Estimated Salary Range</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-6 text-sm">
-              <div>
-                <p className="text-xs text-muted-foreground">Low</p>
-                <p className="font-semibold">${range.low?.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Mid</p>
-                <p className="font-semibold text-green-600 dark:text-green-400">${range.mid?.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">High</p>
-                <p className="font-semibold">${range.high?.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {strategies.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Negotiation Strategies</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-disc pl-4 space-y-1 text-sm">
-              {strategies.map((s, i) => (
-                <li key={i}>{s}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-      {talking_points.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Talking Points</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-disc pl-4 space-y-1 text-sm">
-              {talking_points.map((tp, i) => (
-                <li key={i}>{tp}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-      {!range && strategies.length === 0 && talking_points.length === 0 && (
-        <p className="text-sm text-muted-foreground">No salary negotiation content generated yet.</p>
-      )}
-    </div>
-  );
-}
-
-function GenericContent({ content }: { content: Record<string, unknown> }) {
-  return (
-    <Card>
-      <CardContent className="pt-4">
-        <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(content, null, 2)}</pre>
-      </CardContent>
-    </Card>
-  );
-}
-
-function PrepContentRenderer({ prepType, content }: { prepType: string; content: Record<string, unknown> | null }) {
-  if (!content) return <p className="text-sm text-muted-foreground">No content available.</p>;
-
-  switch (prepType) {
-    case "company_qa":
-      return <CompanyQAContent content={content} />;
-    case "behavioral":
-      return <BehavioralContent content={content} />;
-    case "technical":
-      return <TechnicalContent content={content} />;
-    case "culture_fit":
-      return <CultureFitContent content={content} />;
-    case "salary_negotiation":
-      return <SalaryNegotiationContent content={content} />;
-    default:
-      return <GenericContent content={content} />;
-  }
-}
-
-// ---------- Mock Interview Chat ----------
-
-function MockInterviewChat({
-  session,
-  onEnd,
-}: {
-  session: InterviewPrepSessionResponse;
-  onEnd: () => void;
-}) {
-  const [answer, setAnswer] = useState("");
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const replyMutation = useReplyMockInterview();
-  const endMutation = useEndMockInterview();
-  const { data: liveSession } = useInterviewSession(session.id);
-
-  const messages = liveSession?.messages || session.messages || [];
-  const isActive = (liveSession?.status || session.status) === "in_progress";
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
-
-  function handleReply() {
-    if (!answer.trim()) return;
-    replyMutation.mutate(
-      { sessionId: session.id, answer: answer.trim() },
-      {
-        onSuccess: () => setAnswer(""),
-      },
-    );
-  }
-
-  function handleEnd() {
-    endMutation.mutate(session.id, {
-      onSuccess: () => onEnd(),
-    });
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleReply();
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" />
-          <span className="text-sm font-medium">Mock Interview</span>
-          {isActive ? (
-            <Badge variant="default" className="text-xs">Active</Badge>
-          ) : (
-            <Badge variant="secondary" className="text-xs">Ended</Badge>
-          )}
-        </div>
-        {isActive && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEnd}
-            disabled={endMutation.isPending}
-          >
-            {endMutation.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
-            End & Get Feedback
-          </Button>
-        )}
-      </div>
-
-      {/* Chat messages */}
-      <div className="max-h-[500px] overflow-y-auto space-y-3 rounded-lg border p-4 bg-muted/30">
-        {messages.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            The interviewer will ask the first question...
-          </p>
-        )}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex gap-3 ${msg.role === "candidate" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.role !== "candidate" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Bot className="h-4 w-4 text-primary" />
-              </div>
-            )}
-            <div
-              className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm ${
-                msg.role === "candidate"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border"
-              }`}
-            >
-              <p className="whitespace-pre-wrap">{msg.content}</p>
-              {msg.feedback && (
-                <div className="mt-2 pt-2 border-t border-border/50 text-xs opacity-80">
-                  <p className="font-medium mb-1">Feedback:</p>
-                  <p className="whitespace-pre-wrap">{typeof msg.feedback === "string" ? msg.feedback : JSON.stringify(msg.feedback, null, 2)}</p>
-                </div>
-              )}
-            </div>
-            {msg.role === "candidate" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
-                <User className="h-4 w-4" />
-              </div>
-            )}
-          </div>
-        ))}
-        <div ref={chatEndRef} />
-      </div>
-
-      {/* Reply input */}
-      {isActive && (
-        <div className="flex gap-2">
-          <Textarea
-            placeholder="Type your answer..."
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={2}
-            className="flex-1 resize-none"
-            disabled={replyMutation.isPending}
-          />
-          <Button
-            size="icon"
-            onClick={handleReply}
-            disabled={!answer.trim() || replyMutation.isPending}
-            className="shrink-0 self-end"
-            aria-label="Send reply"
-          >
-            {replyMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      )}
-
-      {/* Feedback summary after end */}
-      {!isActive && liveSession?.content && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Interview Feedback Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <GenericContent content={liveSession.content} />
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
 }
 
 // ---------- Session History ----------
@@ -506,6 +116,11 @@ export default function InterviewPrepPage() {
   const [mockInterviewType, setMockInterviewType] = useState<string>("behavioral");
   const [activeMockSession, setActiveMockSession] = useState<InterviewPrepSessionResponse | null>(null);
   const [viewingSession, setViewingSession] = useState<InterviewPrepSessionResponse | null>(null);
+  const [timerMinutes, setTimerMinutes] = useState<number>(0);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerRemaining, setTimerRemaining] = useState(0);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: companiesData, isLoading: companiesLoading } = useCompanies("approved");
   const { data: sessionsData, isLoading: sessionsLoading } = useInterviewSessions(
@@ -520,6 +135,34 @@ export default function InterviewPrepPage() {
   // Filter sessions by current tab prep_type
   const tabSessions = sessions.filter((s) => s.prep_type === activeTab);
   const latestTabSession = tabSessions.length > 0 ? tabSessions[0] : null;
+
+  useEffect(() => {
+    if (timerActive && timerRemaining > 0) {
+      timerRef.current = setInterval(() => {
+        setTimerRemaining(prev => {
+          if (prev <= 1) {
+            setTimerActive(false);
+            toast.info("Time's up!");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }
+  }, [timerActive, timerRemaining]);
+
+  function startTimer(mins: number) {
+    setTimerMinutes(mins);
+    setTimerRemaining(mins * 60);
+    setTimerActive(true);
+  }
+
+  function formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
 
   function handleGenerate() {
     if (!selectedCompanyId) return;
@@ -570,9 +213,83 @@ export default function InterviewPrepPage() {
                 </SelectContent>
               </Select>
             )}
+            {selectedCompanyId && (
+              <NextLink href={`/companies/${selectedCompanyId}`}>
+                <Button variant="outline" size="sm">
+                  <Building2 className="mr-1 h-3.5 w-3.5" />
+                  View Dossier
+                </Button>
+              </NextLink>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Prep Summary */}
+      {selectedCompanyId && !sessionsLoading && (
+        <div className="flex items-center gap-4 rounded-lg border bg-muted/30 px-4 py-3">
+          <GraduationCap className="h-5 w-5 text-primary shrink-0" />
+          <div className="text-sm">
+            <span className="font-medium">
+              {sessions.length > 0
+                ? `${sessions.length} sessions`
+                : "No sessions yet"}
+            </span>
+            <span className="text-muted-foreground">
+              {" "}across {new Set(sessions.map(s => s.prep_type)).size} prep types
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Readiness Tracker */}
+      {selectedCompanyId && !sessionsLoading && (
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium">Prep Readiness</h3>
+              <span className="text-xs text-muted-foreground">
+                {PREP_TYPES.filter(pt => sessions.some(s => s.prep_type === pt.value && s.status === "completed")).length}/{PREP_TYPES.length} completed
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {PREP_TYPES.map(pt => {
+                const hasCompleted = sessions.some(s => s.prep_type === pt.value && s.status === "completed");
+                const hasInProgress = sessions.some(s => s.prep_type === pt.value && s.status === "in_progress");
+                return (
+                  <button
+                    key={pt.value}
+                    onClick={() => setActiveTab(pt.value)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 rounded-lg border p-2 flex-1 min-w-0 transition-colors",
+                      activeTab === pt.value && "ring-2 ring-primary",
+                      hasCompleted && "border-primary/30 bg-primary/5"
+                    )}
+                  >
+                    <div className={cn(
+                      "h-6 w-6 rounded-full flex items-center justify-center",
+                      hasCompleted ? "bg-primary text-primary-foreground" :
+                      hasInProgress ? "bg-chart-3/20 text-chart-3" :
+                      "bg-muted text-muted-foreground"
+                    )}>
+                      {hasCompleted ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : hasInProgress ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-center leading-tight truncate w-full">
+                      {pt.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!selectedCompanyId && (
         <EmptyState
@@ -585,11 +302,19 @@ export default function InterviewPrepPage() {
       {selectedCompanyId && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap h-auto gap-1">
-            {PREP_TYPES.map((pt) => (
-              <TabsTrigger key={pt.value} value={pt.value} className="text-xs sm:text-sm">
-                {pt.label}
-              </TabsTrigger>
-            ))}
+            {PREP_TYPES.map((pt) => {
+              const count = sessions.filter(s => s.prep_type === pt.value).length;
+              return (
+                <TabsTrigger key={pt.value} value={pt.value} className="text-xs sm:text-sm gap-1">
+                  {pt.label}
+                  {count > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-4 min-w-[16px] px-1 text-[10px]">
+                      {count}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           {/* Prep content tabs */}
@@ -604,9 +329,9 @@ export default function InterviewPrepPage() {
                 </div>
                 <Button
                   onClick={handleGenerate}
-                  disabled={generatePrep.isPending}
+                  disabled={generatePrep.isPending || (activeTab === pt.value && latestTabSession?.status === "in_progress")}
                 >
-                  {generatePrep.isPending ? (
+                  {(generatePrep.isPending || (activeTab === pt.value && latestTabSession?.status === "in_progress")) ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Sparkles className="mr-2 h-4 w-4" />
@@ -614,6 +339,14 @@ export default function InterviewPrepPage() {
                   Generate {pt.label}
                 </Button>
               </div>
+
+              {generatePrep.isPending && activeTab === pt.value && (
+                <div className="space-y-3">
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-32 w-full" />
+                  <p className="text-sm text-muted-foreground text-center">Generating {pt.label} content...</p>
+                </div>
+              )}
 
               {sessionsLoading && (
                 <div className="space-y-3">
@@ -713,14 +446,52 @@ export default function InterviewPrepPage() {
                       </Select>
                     </div>
                   </div>
-                  <Button onClick={handleStartMock} disabled={startMock.isPending}>
-                    {startMock.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                    )}
-                    Start Mock Interview
-                  </Button>
+                  <div className="flex flex-col gap-2 items-end">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium">Timer</label>
+                      <div className="flex gap-1">
+                        {[15, 30, 45].map(mins => (
+                          <Button
+                            key={mins}
+                            size="sm"
+                            variant={timerMinutes === mins ? "default" : "outline"}
+                            className="h-7 text-xs"
+                            onClick={() => startTimer(mins)}
+                            type="button"
+                          >
+                            {mins}m
+                          </Button>
+                        ))}
+                        {timerActive && (
+                          <div className="flex items-center gap-2 ml-2">
+                            <Timer className="h-4 w-4 text-primary" />
+                            <span className={cn(
+                              "text-sm font-mono font-bold tabular-nums",
+                              timerRemaining < 60 && "text-destructive animate-pulse"
+                            )}>
+                              {formatTime(timerRemaining)}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-1"
+                              onClick={() => { setTimerActive(false); setTimerRemaining(0); }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <Button onClick={handleStartMock} disabled={startMock.isPending}>
+                      {startMock.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                      )}
+                      Start Mock Interview
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Past mock sessions */}

@@ -1,0 +1,67 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  # Gate deployment on CI passing
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [ci]
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    concurrency:
+      group: deploy-${{ github.event.inputs.environment || 'production' }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy Backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          cd jobhunter/backend
+          railway up --service jobhunter
+
+      - name: Wait for deployment to stabilize
+        run: sleep 30
+
+      - name: Verify deployment health
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf https://api.hunter-job.com/api/v1/health; then
+              echo ""
+              echo "Health check passed on attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 15s..."
+            sleep 15
+          done
+          echo "Health check failed after 10 attempts"
+          exit 1
+        timeout-minutes: 5
+
+      - name: Notify deploy success
+        if: success()
+        run: echo "Deployed ${{ github.sha }} to ${{ github.event.inputs.environment || 'production' }}"
+
+      - name: Notify deploy failure
+        if: failure()
+        run: echo "::error::Deployment failed for ${{ github.sha }}"

@@ -9,6 +9,14 @@ export function useInterviewSessions(companyId?: string) {
   return useQuery({
     queryKey: ["interview-sessions", companyId],
     queryFn: () => interviewApi.listSessions(companyId),
+    refetchInterval: (query) => {
+      const sessions = query.state.data?.sessions;
+      if (!sessions) return false;
+      const hasPending = sessions.some(
+        (s) => s.status === "pending" || s.status === "generating"
+      );
+      return hasPending ? 3000 : false;
+    },
   });
 }
 
@@ -17,6 +25,10 @@ export function useInterviewSession(sessionId: string | null) {
     queryKey: ["interview-session", sessionId],
     queryFn: () => interviewApi.getSession(sessionId!),
     enabled: !!sessionId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "in_progress" ? 3000 : false;
+    },
   });
 }
 

@@ -321,10 +321,10 @@ class ResendStub:
 
     async def send(self, to: str, from_email: str, subject: str, body: str,
                    tags: list[str] | None = None, headers: dict | None = None,
-                   attachments: list[dict] | None = None) -> dict:
+                   attachments: list[dict] | None = None, reply_to: str | None = None) -> dict:
         return {"id": f"test_{uuid.uuid4().hex[:12]}"}
 
-    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+    def verify_webhook(self, payload: bytes, headers: dict) -> dict:
         import json
         return json.loads(payload)
 

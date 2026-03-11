@@ -1,15 +1,16 @@
 import type { SkillResponse } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BadgeCheck, CircleDashed } from "lucide-react";
 
 interface SkillsGridProps {
   skills: SkillResponse[];
 }
 
 const categoryColors: Record<string, string> = {
-  explicit: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  transferable: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  adjacent: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+  explicit: "bg-secondary text-secondary-foreground",
+  transferable: "bg-chart-4/15 text-chart-4",
+  adjacent: "bg-chart-5/15 text-chart-5",
 };
 
 export function SkillsGrid({ skills }: SkillsGridProps) {
@@ -40,8 +41,15 @@ export function SkillsGrid({ skills }: SkillsGridProps) {
                   className="rounded-lg border p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{skill.name}</span>
-                    <Badge className={categoryColors[category] || "bg-gray-100 text-gray-800"}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-sm">{skill.name}</span>
+                      {skill.evidence ? (
+                        <span title="Evidence-backed"><BadgeCheck className="h-3.5 w-3.5 text-primary shrink-0" /></span>
+                      ) : (
+                        <span title="Inferred"><CircleDashed className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" /></span>
+                      )}
+                    </div>
+                    <Badge className={categoryColors[category] || "bg-muted text-muted-foreground"}>
                       {category}
                     </Badge>
                   </div>

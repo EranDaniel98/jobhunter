@@ -29,3 +29,20 @@ export async function getPlans(): Promise<PlanDefinition[]> {
   const { data } = await api.get<PlanDefinition[]>("/plans");
   return data;
 }
+
+export interface ResumeListItem {
+  id: string;
+  file_path: string;
+  is_primary: boolean;
+  parse_status: string;
+  created_at: string;
+}
+
+export async function listResumes(): Promise<ResumeListItem[]> {
+  const { data } = await api.get<ResumeListItem[]>("/candidates/me/resumes");
+  return data;
+}
+
+export async function deleteResume(id: string): Promise<void> {
+  await api.delete(`/candidates/me/resumes/${id}`);
+}

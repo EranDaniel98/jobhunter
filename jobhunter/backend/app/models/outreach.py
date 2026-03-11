@@ -42,7 +42,9 @@ class MessageEvent(TimestampMixin, Base):
     outreach_message_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("outreach_messages.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    event_type: Mapped[str] = mapped_column(String(50), nullable=False)  # delivered, opened, clicked, bounced, complained
+    event_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # delivered, opened, clicked, bounced, complained
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

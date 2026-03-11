@@ -37,6 +37,7 @@ async def seed():
             is_admin=True,
         )
         db.add(candidate)
+        await db.flush()  # Ensure candidate row exists before FK-dependent inserts
 
         # 2. Resume
         resume = Resume(
@@ -175,6 +176,8 @@ async def seed():
                     recent_news=[{"title": "Series C Funding", "date": "2025-11"}],
                 ))
 
+        await db.flush()  # Ensure companies exist before contacts
+
         # 6. Contacts (3 per company)
         contact_roles = [
             ("VP Engineering", "hiring_manager", True, 3),
@@ -200,6 +203,8 @@ async def seed():
                     is_decision_maker=decision_maker,
                     outreach_priority=priority,
                 ))
+
+        await db.flush()  # Ensure contacts exist before outreach messages
 
         # 7. Outreach messages in various statuses
         now = datetime.now(timezone.utc)

@@ -17,7 +17,9 @@ class CompanySignal(TimestampMixin, Base):
     candidate_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    signal_type: Mapped[str] = mapped_column(String(50), nullable=False)  # funding_round, hiring_surge, leadership_change
+    signal_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # funding_round, hiring_surge, leadership_change
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     source_url: Mapped[str | None] = mapped_column(String(1000))

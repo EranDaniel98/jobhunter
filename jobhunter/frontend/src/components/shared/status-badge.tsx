@@ -30,11 +30,11 @@ const labelMaps: Record<BadgeType, Record<string, string>> = {
 };
 
 export function StatusBadge({ type, status, className }: StatusBadgeProps) {
-  const colors = colorMaps[type]?.[status] || "bg-gray-100 text-gray-800";
+  const colors = colorMaps[type]?.[status] || "bg-muted text-muted-foreground";
   const label = labelMaps[type]?.[status] || status;
 
   return (
-    <Badge variant="secondary" className={cn("font-medium", colors, className)}>
+    <Badge variant="outline" className={cn("font-medium border-transparent", colors, className)}>
       {label}
     </Badge>
   );

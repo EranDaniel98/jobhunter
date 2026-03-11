@@ -1,11 +1,9 @@
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
 class OpenAIClientProtocol(Protocol):
-    async def parse_structured(
-        self, system_prompt: str, user_content: str, response_schema: dict
-    ) -> dict:
+    async def parse_structured(self, system_prompt: str, user_content: str, response_schema: dict) -> dict:
         """Send a prompt and get structured JSON output."""
         ...
 
@@ -56,11 +54,12 @@ class EmailClientProtocol(Protocol):
         tags: list[str] | None = None,
         headers: dict | None = None,
         attachments: list[dict] | None = None,
+        reply_to: str | None = None,
     ) -> dict:
         """Send an email. Returns dict with 'id' key."""
         ...
 
-    def verify_webhook(self, payload: bytes, signature: str) -> dict:
+    def verify_webhook(self, payload: bytes, headers: dict) -> dict:
         """Verify and parse a webhook payload. Raises on invalid signature."""
         ...
 

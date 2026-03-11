@@ -1,6 +1,6 @@
 [project]
 name = "jobhunter-backend"
-version = "0.2.0"
+version = "0.3.0"
 description = "JobHunter AI — Intelligent job search automation platform"
 requires-python = ">=3.12"
 dependencies = [
@@ -25,24 +25,31 @@ dependencies = [
     "tenacity>=9.0.0",
     "redis>=5.2.0",
     "numpy>=1.26.0",
-    "pypdf>=5.0.0",
+    "pypdf>=6.7.5",
     "python-docx>=1.1.0",
     "boto3>=1.35.0",
     "sentry-sdk[fastapi]>=2.0.0",
     "arq>=0.26.0",
     "duckduckgo-search>=7.0.0",
-    "langgraph>=0.4.0",
+    "prometheus-client>=0.21.0",
+    "langgraph>=1.0.10",
     "langgraph-checkpoint-postgres>=2.0.0",
     "psycopg[binary,pool]>=3.1.0",
+    "stripe>=11.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
     "httpx>=0.28.0",
     "respx>=0.22.0",
     "coverage>=7.6.0",
+    "ruff>=0.9.0",
+    "mypy>=1.14.0",
+    "pip-audit>=2.7.0",
+    "locust>=2.32.0",
 ]
 
 [build-system]
@@ -55,6 +62,32 @@ asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+warn_return_any = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["*/alembic/*"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

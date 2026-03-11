@@ -95,13 +95,9 @@ async def verify_contact(db: AsyncSession, contact_id: uuid.UUID) -> Contact:
     return contact
 
 
-async def prioritize_contacts(
-    db: AsyncSession, company_id: uuid.UUID
-) -> list[Contact]:
+async def prioritize_contacts(db: AsyncSession, company_id: uuid.UUID) -> list[Contact]:
     """Return contacts ranked by outreach priority."""
     result = await db.execute(
-        select(Contact)
-        .where(Contact.company_id == company_id)
-        .order_by(Contact.outreach_priority.desc())
+        select(Contact).where(Contact.company_id == company_id).order_by(Contact.outreach_priority.desc())
     )
     return list(result.scalars().all())

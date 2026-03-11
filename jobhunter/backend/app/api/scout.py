@@ -6,10 +6,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
-from app.rate_limit import limiter
 from app.models.candidate import Candidate
 from app.models.company import Company
 from app.models.signal import CompanySignal
+from app.rate_limit import limiter
 from app.schemas.scout import CompanySignalResponse, ScoutRunResponse, ScoutSignalListResponse
 
 router = APIRouter(prefix="/scout", tags=["scout"])
@@ -68,9 +68,7 @@ async def list_signals(
     """List company signals discovered by the scout agent."""
     # Count total
     count_result = await db.execute(
-        select(func.count()).select_from(CompanySignal).where(
-            CompanySignal.candidate_id == candidate.id
-        )
+        select(func.count()).select_from(CompanySignal).where(CompanySignal.candidate_id == candidate.id)
     )
     total = count_result.scalar() or 0
 
@@ -89,18 +87,20 @@ async def list_signals(
     signals = []
     for signal, company_name in rows:
         meta = signal.metadata_ or {}
-        signals.append(CompanySignalResponse(
-            id=str(signal.id),
-            company_id=str(signal.company_id),
-            company_name=company_name,
-            signal_type=signal.signal_type,
-            title=signal.title,
-            description=signal.description,
-            source_url=signal.source_url,
-            signal_strength=signal.signal_strength,
-            detected_at=signal.detected_at,
-            funding_round=meta.get("funding_round"),
-            amount=meta.get("amount"),
-        ))
+        signals.append(
+            CompanySignalResponse(
+                id=str(signal.id),
+                company_id=str(signal.company_id),
+                company_name=company_name,
+                signal_type=signal.signal_type,
+                title=signal.title,
+                description=signal.description,
+                source_url=signal.source_url,
+                signal_strength=signal.signal_strength,
+                detected_at=signal.detected_at,
+                funding_round=meta.get("funding_round"),
+                amount=meta.get("amount"),
+            )
+        )
 
     return ScoutSignalListResponse(signals=signals, total=total)
