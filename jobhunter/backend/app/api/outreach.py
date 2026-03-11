@@ -267,8 +267,8 @@ async def send_message(
             )
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-        # Refresh message from DB
-        await db.refresh(msg)
+        # Re-fetch with eager-loaded relationships for response serialization
+        msg = await _get_candidate_message(db, message_id, candidate.id)
         return _message_to_response(msg)
 
     # Legacy path: no graph thread
@@ -290,9 +290,10 @@ async def send_message(
 
                 await approve_action(db, action.id, candidate.id)
 
-            msg = await send_outreach(db, msg.id, attach_resume=attach_resume, plan_tier=candidate.plan_tier)
+            await send_outreach(db, msg.id, attach_resume=attach_resume, plan_tier=candidate.plan_tier)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+        msg = await _get_candidate_message(db, message_id, candidate.id)
         return _message_to_response(msg)
 
     # Otherwise, create a PendingAction for approval
@@ -341,7 +342,7 @@ async def mark_replied(
     msg.status = MessageStatus.REPLIED
     msg.replied_at = datetime.now(UTC)
     await db.commit()
-    await db.refresh(msg)
+    msg = await _get_candidate_message(db, message_id, candidate.id)
     logger.info("outreach_marked_replied", message_id=message_id)
     return _message_to_response(msg)
 
