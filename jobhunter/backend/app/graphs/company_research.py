@@ -71,8 +71,10 @@ async def enrich_company_node(state: CompanyResearchState) -> dict:
             hunter_data = await hunter.domain_search(company.domain)
 
             # Update empty fields from Hunter data
-            # Hunter.io may nest org data under "organization" key
-            org = hunter_data.get("organization") or hunter_data
+            # Hunter.io may nest org data under "organization" key (as a dict)
+            # or return it as a plain string (company name). Fall back to top-level dict.
+            raw_org = hunter_data.get("organization")
+            org = raw_org if isinstance(raw_org, dict) else hunter_data
             if not company.industry and (org.get("industry") or hunter_data.get("industry")):
                 company.industry = org.get("industry") or hunter_data.get("industry")
             if not company.size_range and (org.get("size") or hunter_data.get("size")):
