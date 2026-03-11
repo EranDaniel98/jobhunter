@@ -7,7 +7,7 @@ test.describe("Smoke tests", () => {
     await page.goto("/");
     // Unauthenticated users should be redirected to login
     await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
-    await expect(page.getByText("Sign in")).toBeVisible();
+    await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
   });
 
   test("login page has expected form elements", async ({ page }) => {
