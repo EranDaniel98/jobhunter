@@ -90,7 +90,7 @@ class TestScrapeUrlAPI:
         async def mock_scrape(url):
             return fake_text
 
-        monkeypatch.setattr("app.api.apply.scrape_job_url", mock_scrape)
+        monkeypatch.setattr("app.infrastructure.url_scraper.scrape_job_url", mock_scrape)
 
         resp = await client.post(
             f"{settings.API_V1_PREFIX}/apply/scrape-url",
@@ -106,7 +106,7 @@ class TestScrapeUrlAPI:
         async def mock_scrape(url):
             raise RuntimeError("Connection refused")
 
-        monkeypatch.setattr("app.api.apply.scrape_job_url", mock_scrape)
+        monkeypatch.setattr("app.infrastructure.url_scraper.scrape_job_url", mock_scrape)
 
         resp = await client.post(
             f"{settings.API_V1_PREFIX}/apply/scrape-url",
