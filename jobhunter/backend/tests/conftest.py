@@ -242,7 +242,12 @@ class HunterStub:
     async def domain_search(self, domain: str) -> dict:
         return {
             "domain": domain,
-            "organization": domain.split(".")[0].capitalize(),
+            "organization": {
+                "name": domain.split(".")[0].capitalize(),
+                "industry": "Technology",
+                "size": "51-200",
+                "description": f"{domain.split('.')[0].capitalize()} is a technology company.",
+            },
             "industry": "Technology",
             "emails": [
                 {
