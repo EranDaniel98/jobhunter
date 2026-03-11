@@ -83,7 +83,7 @@ async def validate_and_consume(db: AsyncSession, code: str, used_by_id) -> Invit
     # Atomic update — only succeeds if is_used is still False
     rows = await db.execute(
         update(InviteCode)
-        .where(InviteCode.id == invite.id, not InviteCode.is_used)
+        .where(InviteCode.id == invite.id, ~InviteCode.is_used)
         .values(is_used=True, used_by_id=used_by_id)
     )
     if rows.rowcount == 0:
