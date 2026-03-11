@@ -4,14 +4,14 @@ import uuid
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
-from app.rate_limit import limiter
 from app.models.candidate import Candidate
 from app.models.enums import JobPostingStatus
 from app.models.job_posting import JobPosting
+from app.rate_limit import limiter
 from app.schemas.apply import (
     ApplyAnalysisResponse,
     JobPostingCreateRequest,
@@ -55,7 +55,7 @@ async def scrape_url(
         raise HTTPException(
             status_code=422,
             detail="Could not fetch job posting from URL. Please paste the description manually.",
-        )
+        ) from e
 
     # Try to extract title and company name via LLM (best-effort)
     title = None
@@ -106,10 +106,9 @@ async def _run_apply_pipeline(candidate_id: str, job_posting_id: str):
         logger.error("apply_pipeline_bg_failed", error=str(e))
         try:
             from app.infrastructure.database import async_session_factory
+
             async with async_session_factory() as err_db:
-                result = await err_db.execute(
-                    select(JobPosting).where(JobPosting.id == uuid.UUID(job_posting_id))
-                )
+                result = await err_db.execute(select(JobPosting).where(JobPosting.id == uuid.UUID(job_posting_id)))
                 posting = result.scalar_one_or_none()
                 if posting:
                     posting.status = JobPostingStatus.FAILED
@@ -165,9 +164,7 @@ async def list_postings(
     )
     postings = result.scalars().all()
 
-    count_result = await db.execute(
-        select(func.count(JobPosting.id)).where(JobPosting.candidate_id == candidate.id)
-    )
+    count_result = await db.execute(select(func.count(JobPosting.id)).where(JobPosting.candidate_id == candidate.id))
     total = count_result.scalar() or 0
 
     return JobPostingListResponse(
@@ -217,6 +214,7 @@ async def delete_posting(
     # Clean up cached analysis from Redis
     try:
         from app.infrastructure.redis_client import get_redis
+
         redis = get_redis()
         await redis.delete(f"apply:analysis:{posting_id}")
     except Exception as e:
@@ -252,6 +250,7 @@ async def get_analysis(
 
     # Retrieve from Redis
     from app.infrastructure.redis_client import get_redis
+
     redis = get_redis()
     cached = await redis.get(f"apply:analysis:{posting_id}")
     if not cached:

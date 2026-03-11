@@ -18,6 +18,4 @@ class AnalyticsEvent(TimestampMixin, Base):
     entity_type: Mapped[str | None] = mapped_column(String(50))
     entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB)
-    occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

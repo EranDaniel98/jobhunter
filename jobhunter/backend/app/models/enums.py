@@ -5,7 +5,6 @@ Using StrEnum so values serialize to plain strings — no DB migration needed.
 
 from enum import StrEnum
 
-
 # ── Company ──────────────────────────────────────────────────────────
 
 

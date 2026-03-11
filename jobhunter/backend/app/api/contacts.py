@@ -6,9 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
-from app.rate_limit import limiter
 from app.models.candidate import Candidate
 from app.models.contact import Contact
+from app.rate_limit import limiter
 from app.schemas.contact import ContactFindRequest, ContactResponse
 from app.services import contact_service
 
@@ -44,7 +44,7 @@ async def find_contact(
             db, _uuid.UUID(data.company_id), candidate.id, data.first_name, data.last_name
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _contact_to_response(contact)
 
 
@@ -69,7 +69,7 @@ async def verify_contact(
     try:
         contact = await contact_service.verify_contact(db, contact_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return _contact_to_response(contact)
 
 

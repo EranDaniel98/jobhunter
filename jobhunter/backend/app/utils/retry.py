@@ -1,3 +1,4 @@
+import httpx
 from tenacity import (
     retry,
     retry_if_exception,
@@ -5,14 +6,13 @@ from tenacity import (
     wait_exponential,
 )
 
-import httpx
-
 
 def _is_rate_limit(exc: BaseException) -> bool:
     if isinstance(exc, httpx.HTTPStatusError):
         return exc.response.status_code == 429
     try:
         from openai import RateLimitError
+
         return isinstance(exc, RateLimitError)
     except ImportError:
         pass
@@ -22,9 +22,7 @@ def _is_rate_limit(exc: BaseException) -> bool:
 def _is_server_error(exc: BaseException) -> bool:
     if isinstance(exc, httpx.HTTPStatusError):
         return exc.response.status_code >= 500
-    if isinstance(exc, (httpx.ConnectError, httpx.ReadTimeout)):
-        return True
-    return False
+    return bool(isinstance(exc, (httpx.ConnectError, httpx.ReadTimeout)))
 
 
 retry_on_rate_limit = retry(

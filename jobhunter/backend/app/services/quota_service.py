@@ -1,9 +1,12 @@
 """Per-user daily API quota tracking via Redis, tier-aware."""
+
+from datetime import UTC, datetime, timedelta
+
 import structlog
-from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, status
-from app.plans import PlanTier, get_limits_for_tier
+
 from app.infrastructure.redis_client import get_redis
+from app.plans import PlanTier, get_limits_for_tier
 
 logger = structlog.get_logger()
 
@@ -21,7 +24,9 @@ return count
 USER_FACING_QUOTAS = ["discovery", "research", "hunter", "email"]
 
 
-async def check_and_increment(candidate_id: str, quota_type: str, plan_tier: str = "free", is_admin: bool = False) -> int:
+async def check_and_increment(
+    candidate_id: str, quota_type: str, plan_tier: str = "free", is_admin: bool = False
+) -> int:
     """Atomically increment quota counter. Raises HTTP 429 if limit exceeded."""
     if is_admin:
         return 0
@@ -32,17 +37,23 @@ async def check_and_increment(candidate_id: str, quota_type: str, plan_tier: str
         return 0
 
     redis = get_redis()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     key = QUOTA_KEY.format(candidate_id=candidate_id, quota_type=quota_type, date=today)
 
     from app.config import settings
+
     count = await redis.eval(_LUA_INCR_EXPIRE, 1, key, settings.REDIS_QUOTA_TTL)
 
     if count > limit:
         await redis.decr(key)
-        logger.warning("quota_exceeded", candidate_id=candidate_id,
-                       quota_type=quota_type, limit=limit, current=count,
-                       plan_tier=plan_tier)
+        logger.warning(
+            "quota_exceeded",
+            candidate_id=candidate_id,
+            quota_type=quota_type,
+            limit=limit,
+            current=count,
+            plan_tier=plan_tier,
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={
@@ -58,12 +69,9 @@ async def check_and_increment(candidate_id: str, quota_type: str, plan_tier: str
 
 async def get_usage(candidate_id: str, plan_tier: str = "free", is_admin: bool = False) -> dict:
     """Return current usage across user-facing quota types (daily, weekly, monthly)."""
-    if is_admin:
-        # Admin sees hunter-tier limits so usage cards show generous caps
-        limits = get_limits_for_tier(PlanTier("hunter"))
-    else:
-        limits = get_limits_for_tier(PlanTier(plan_tier))
-    now = datetime.now(timezone.utc)
+    # Admin sees hunter-tier limits so usage cards show generous caps
+    limits = get_limits_for_tier(PlanTier("hunter")) if is_admin else get_limits_for_tier(PlanTier(plan_tier))
+    now = datetime.now(UTC)
     week_dates = [(now - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
     month_dates = [(now - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(30)]
 

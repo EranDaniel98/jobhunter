@@ -1,16 +1,15 @@
 import uuid
-
-import structlog
 from typing import Literal
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_admin, get_db, get_email_client
-from app.rate_limit import limiter
 from app.infrastructure.protocols import EmailClientProtocol
 from app.models.candidate import Candidate
+from app.rate_limit import limiter
 from app.schemas.admin import (
     ActivityFeedItem,
     AuditLogItem,
@@ -147,9 +146,7 @@ async def broadcast_email(
     db: AsyncSession = Depends(get_db),
     email_client: EmailClientProtocol = Depends(get_email_client),
 ):
-    return await admin_service.broadcast_email(
-        db, admin.id, body.subject, body.body, email_client
-    )
+    return await admin_service.broadcast_email(db, admin.id, body.subject, body.body, email_client)
 
 
 @router.patch("/users/{user_id}/plan", response_model=UserDetail)
@@ -160,17 +157,18 @@ async def update_user_plan(
     db: AsyncSession = Depends(get_db),
 ):
     """Admin endpoint to change a user's plan tier."""
-    from app.plans import PlanTier
     from app.models.audit import AdminAuditLog
+    from app.plans import PlanTier
 
     # Validate tier
     try:
         PlanTier(body.plan_tier)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid plan tier: {body.plan_tier}")
+        raise HTTPException(status_code=400, detail=f"Invalid plan tier: {body.plan_tier}") from None
 
     # Find user
     from sqlalchemy import select
+
     result = await db.execute(select(Candidate).where(Candidate.id == user_id))
     candidate = result.scalar_one_or_none()
     if not candidate:
@@ -190,7 +188,9 @@ async def update_user_plan(
     db.add(audit)
     await db.commit()
 
-    logger.info("plan_changed", user_id=str(user_id), old_tier=old_tier, new_tier=body.plan_tier, admin_id=str(admin.id))
+    logger.info(
+        "plan_changed", user_id=str(user_id), old_tier=old_tier, new_tier=body.plan_tier, admin_id=str(admin.id)
+    )
     user = await admin_service.get_user_detail(db, user_id)
     return user
 

@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
 
     if settings.SENTRY_DSN:
         import sentry_sdk
+
         sentry_sdk.init(
             dsn=settings.SENTRY_DSN,
             environment=settings.SENTRY_ENVIRONMENT,
@@ -41,7 +42,7 @@ async def lifespan(app: FastAPI):
         logger.critical(
             "jwt_secret_not_configured",
             msg="JWT_SECRET is still set to the default placeholder. "
-                "Set a strong random secret in .env before running in production.",
+            "Set a strong random secret in .env before running in production.",
         )
         raise SystemExit("FATAL: JWT_SECRET must be changed from the default value.")
 
@@ -49,17 +50,20 @@ async def lifespan(app: FastAPI):
         logger.warning("UNSUBSCRIBE_SECRET is empty — unsubscribe tokens are insecure")
 
     import os
+
     if "localhost" in settings.FRONTEND_URL and os.getenv("RAILWAY_ENVIRONMENT"):
         logger.error("FRONTEND_URL is localhost in production — CORS will block the real frontend")
 
     logger.info("starting_up", app=settings.APP_NAME)
     await init_redis()
-    from app.graphs.resume_pipeline import init_checkpointer, close_checkpointer
+    from app.graphs.resume_pipeline import close_checkpointer, init_checkpointer
+
     await init_checkpointer(settings.DATABASE_URL)
 
     # Initialize event bus and register handlers
     from app.events.bus import get_event_bus
     from app.events.handlers import log_event, on_company_approved, on_outreach_sent, on_resume_parsed
+
     bus = get_event_bus()
     bus.subscribe("company_approved", log_event)
     bus.subscribe("company_approved", on_company_approved)
@@ -72,21 +76,20 @@ async def lifespan(app: FastAPI):
     # Warn if migrations are behind
     try:
         from sqlalchemy import text as sa_text
+
         async with engine.connect() as conn:
-            result = await conn.execute(sa_text(
-                "SELECT version_num FROM alembic_version LIMIT 1"
-            ))
+            result = await conn.execute(sa_text("SELECT version_num FROM alembic_version LIMIT 1"))
             row = result.first()
             current_rev = row[0] if row else "none"
         from alembic.config import Config as AlembicConfig
         from alembic.script import ScriptDirectory
+
         alembic_cfg = AlembicConfig(str(BASE_DIR / "alembic.ini"))
         alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
         script = ScriptDirectory.from_config(alembic_cfg)
         head = script.get_current_head()
         if current_rev != head:
-            logger.warning("migrations_behind", current=current_rev, head=head,
-                           msg="Run: alembic upgrade head")
+            logger.warning("migrations_behind", current=current_rev, head=head, msg="Run: alembic upgrade head")
         else:
             logger.info("migrations_current", revision=current_rev)
     except Exception as e:
@@ -129,23 +132,23 @@ app.add_middleware(
 )
 
 # Routers — imported here to avoid circular imports
-from app.api.health import router as health_router  # noqa: E402
+from app.api.admin import router as admin_router  # noqa: E402
+from app.api.analytics import router as analytics_router  # noqa: E402
+from app.api.apply import router as apply_router  # noqa: E402
+from app.api.approvals import router as approvals_router  # noqa: E402
 from app.api.auth import router as auth_router  # noqa: E402
 from app.api.candidates import router as candidates_router  # noqa: E402
 from app.api.companies import router as companies_router  # noqa: E402
 from app.api.contacts import router as contacts_router  # noqa: E402
-from app.api.outreach import router as outreach_router  # noqa: E402
-from app.api.analytics import router as analytics_router  # noqa: E402
-from app.api.webhooks import router as webhooks_router  # noqa: E402
-from app.api.invites import router as invites_router  # noqa: E402
-from app.api.admin import router as admin_router  # noqa: E402
-from app.api.approvals import router as approvals_router  # noqa: E402
-from app.api.plans import router as plans_router  # noqa: E402
-from app.api.ws import router as ws_router  # noqa: E402
-from app.api.scout import router as scout_router  # noqa: E402
+from app.api.health import router as health_router  # noqa: E402
 from app.api.interview import router as interview_router  # noqa: E402
-from app.api.apply import router as apply_router  # noqa: E402
+from app.api.invites import router as invites_router  # noqa: E402
+from app.api.outreach import router as outreach_router  # noqa: E402
+from app.api.plans import router as plans_router  # noqa: E402
+from app.api.scout import router as scout_router  # noqa: E402
 from app.api.waitlist import router as waitlist_router  # noqa: E402
+from app.api.webhooks import router as webhooks_router  # noqa: E402
+from app.api.ws import router as ws_router  # noqa: E402
 
 app.include_router(health_router, prefix=settings.API_V1_PREFIX)
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)

@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
@@ -33,7 +32,9 @@ class Candidate(TimestampMixin, Base):
 
     # Relationships
     resumes: Mapped[list["Resume"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
-    dna: Mapped["CandidateDNA | None"] = relationship(back_populates="candidate", uselist=False, cascade="all, delete-orphan")
+    dna: Mapped["CandidateDNA | None"] = relationship(
+        back_populates="candidate", uselist=False, cascade="all, delete-orphan"
+    )
     skills: Mapped[list["Skill"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
 
 

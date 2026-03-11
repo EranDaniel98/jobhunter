@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import case, func, select
@@ -29,7 +29,7 @@ async def log_event(
         entity_type=entity_type,
         entity_id=entity_id,
         metadata_=metadata,
-        occurred_at=datetime.now(timezone.utc),
+        occurred_at=datetime.now(UTC),
     )
     db.add(event)
     await db.commit()
@@ -62,15 +62,9 @@ async def get_outreach_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     result = await db.execute(
         select(
             OutreachMessage.channel,
-            func.count(
-                case((OutreachMessage.status.in_(sent_statuses), 1))
-            ).label("sent"),
-            func.count(
-                case((OutreachMessage.status.in_(opened_statuses), 1))
-            ).label("opened"),
-            func.count(
-                case((OutreachMessage.status == MessageStatus.REPLIED, 1))
-            ).label("replied"),
+            func.count(case((OutreachMessage.status.in_(sent_statuses), 1))).label("sent"),
+            func.count(case((OutreachMessage.status.in_(opened_statuses), 1))).label("opened"),
+            func.count(case((OutreachMessage.status == MessageStatus.REPLIED, 1))).label("replied"),
         )
         .where(OutreachMessage.candidate_id == candidate_id)
         .group_by(OutreachMessage.channel)
@@ -81,10 +75,7 @@ async def get_outreach_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
     total_opened = sum(r.opened for r in rows)
     total_replied = sum(r.replied for r in rows)
 
-    by_channel = {
-        r.channel: {"sent": r.sent, "opened": r.opened, "replied": r.replied}
-        for r in rows
-    }
+    by_channel = {r.channel: {"sent": r.sent, "opened": r.opened, "replied": r.replied} for r in rows}
 
     return {
         "total_sent": total_sent,
@@ -138,8 +129,7 @@ async def get_pipeline_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
             func.count(case((Company.status == CompanyStatus.APPROVED, 1))).label("approved"),
             func.count(case((Company.status == CompanyStatus.REJECTED, 1))).label("rejected"),
             func.count(case((Company.research_status == ResearchStatus.COMPLETED, 1))).label("researched"),
-        )
-        .where(Company.candidate_id == candidate_id)
+        ).where(Company.candidate_id == candidate_id)
     )
     row = result.one()
 
@@ -151,7 +141,9 @@ async def get_pipeline_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
         .join(OutreachMessage, OutreachMessage.contact_id == Contact.id)
         .where(
             Company.candidate_id == candidate_id,
-            OutreachMessage.status.in_([MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.OPENED, MessageStatus.REPLIED]),
+            OutreachMessage.status.in_(
+                [MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.OPENED, MessageStatus.REPLIED]
+            ),
         )
     )
     contacted_count = contacted.scalar() or 0

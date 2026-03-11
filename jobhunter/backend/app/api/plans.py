@@ -35,13 +35,15 @@ async def list_plans():
     for plan in PLANS.values():
         # Exclude openai from user-visible limits
         user_limits = {k: v for k, v in plan.limits.items() if k != "openai"}
-        result.append(PlanResponse(
-            tier=plan.tier.value,
-            display_name=plan.display_name,
-            price_monthly_cents=plan.price_monthly_cents,
-            description=plan.description,
-            limits=user_limits,
-        ))
+        result.append(
+            PlanResponse(
+                tier=plan.tier.value,
+                display_name=plan.display_name,
+                price_monthly_cents=plan.price_monthly_cents,
+                description=plan.description,
+                limits=user_limits,
+            )
+        )
     return result
 
 
@@ -57,7 +59,7 @@ async def create_checkout_session(
     try:
         PlanTier(data.tier)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid tier: {data.tier}")
+        raise HTTPException(status_code=400, detail=f"Invalid tier: {data.tier}") from None
 
     if data.tier == PlanTier.free:
         raise HTTPException(status_code=400, detail="Cannot checkout for the free tier")
@@ -66,10 +68,10 @@ async def create_checkout_session(
         url = await billing_service.create_checkout_session(candidate, data.tier, db)
         return CheckoutResponse(status="ok", url=url)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error("checkout_session_failed", error=str(e), candidate_id=str(candidate.id))
-        raise HTTPException(status_code=500, detail="Failed to create checkout session")
+        raise HTTPException(status_code=500, detail="Failed to create checkout session") from e
 
 
 @router.get("/billing/portal", response_model=PortalResponse)
@@ -83,10 +85,10 @@ async def billing_portal(
         url = await billing_service.create_portal_session(candidate)
         return PortalResponse(url=url)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error("portal_session_failed", error=str(e), candidate_id=str(candidate.id))
-        raise HTTPException(status_code=500, detail="Failed to create portal session")
+        raise HTTPException(status_code=500, detail="Failed to create portal session") from e
 
 
 @router.get("/billing/subscription", response_model=SubscriptionResponse)
@@ -112,7 +114,7 @@ async def stripe_webhook(
         return {"status": "ok"}
     except stripe.SignatureVerificationError:
         logger.warning("stripe_webhook_invalid_signature")
-        raise HTTPException(status_code=400, detail="Invalid signature")
+        raise HTTPException(status_code=400, detail="Invalid signature") from None
     except Exception as e:
         logger.error("stripe_webhook_failed", error=str(e))
-        raise HTTPException(status_code=400, detail="Webhook processing failed")
+        raise HTTPException(status_code=400, detail="Webhook processing failed") from e

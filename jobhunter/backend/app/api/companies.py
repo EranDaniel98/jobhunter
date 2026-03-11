@@ -4,13 +4,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
-from app.rate_limit import limiter
 from app.models.candidate import Candidate
-from app.models.enums import CompanyStatus, ResearchStatus
 from app.models.company import Company, CompanyDossier
-from app.models.contact import Contact
 from app.models.company_note import CompanyNote
-from app.schemas.company_note import CompanyNoteResponse, CompanyNoteUpsertRequest
+from app.models.contact import Contact
+from app.models.enums import CompanyStatus, ResearchStatus
+from app.rate_limit import limiter
 from app.schemas.company import (
     CompanyAddRequest,
     CompanyDiscoverRequest,
@@ -19,6 +18,7 @@ from app.schemas.company import (
     CompanyRejectRequest,
     CompanyResponse,
 )
+from app.schemas.company_note import CompanyNoteResponse, CompanyNoteUpsertRequest
 from app.schemas.contact import ContactResponse
 from app.services import company_service
 from app.services.quota_service import check_and_increment
@@ -82,7 +82,7 @@ async def add_company(
         background_tasks.add_task(_research_background, company.id)
         return _company_to_response(company)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("", response_model=CompanyListResponse)
@@ -97,16 +97,10 @@ async def list_companies(
     if status:
         base_filter.append(Company.status == status)
 
-    total = (await db.execute(
-        select(func.count(Company.id)).where(*base_filter)
-    )).scalar() or 0
+    total = (await db.execute(select(func.count(Company.id)).where(*base_filter))).scalar() or 0
 
     query = (
-        select(Company)
-        .where(*base_filter)
-        .order_by(Company.fit_score.desc().nulls_last())
-        .offset(skip)
-        .limit(limit)
+        select(Company).where(*base_filter).order_by(Company.fit_score.desc().nulls_last()).offset(skip).limit(limit)
     )
     result = await db.execute(query)
     companies = result.scalars().all()
@@ -125,15 +119,14 @@ async def get_suggested(
 ):
     suggested_filter = [Company.candidate_id == candidate.id, Company.status == CompanyStatus.SUGGESTED]
 
-    total = (await db.execute(
-        select(func.count(Company.id)).where(*suggested_filter)
-    )).scalar() or 0
+    total = (await db.execute(select(func.count(Company.id)).where(*suggested_filter))).scalar() or 0
 
     result = await db.execute(
         select(Company)
         .where(*suggested_filter)
         .order_by(Company.fit_score.desc().nulls_last())
-        .offset(skip).limit(limit)
+        .offset(skip)
+        .limit(limit)
     )
     companies = result.scalars().all()
     return CompanyListResponse(
@@ -158,11 +151,10 @@ async def approve_company(
     if old_status != CompanyStatus.APPROVED:
         if old_research_status not in (ResearchStatus.COMPLETED, ResearchStatus.IN_PROGRESS):
             background_tasks.add_task(_research_background, company.id)
-        background_tasks.add_task(
-            _auto_interview_prep, str(company.candidate_id), str(company.id)
-        )
+        background_tasks.add_task(_auto_interview_prep, str(company.candidate_id), str(company.id))
 
         from app.events.bus import get_event_bus
+
         await get_event_bus().publish(
             "company_approved",
             {"company_id": str(company.id), "candidate_id": str(company.candidate_id)},
@@ -200,9 +192,7 @@ async def get_dossier(
     db: AsyncSession = Depends(get_db),
 ):
     company = await _get_candidate_company(db, company_id, candidate.id)
-    result = await db.execute(
-        select(CompanyDossier).where(CompanyDossier.company_id == company.id)
-    )
+    result = await db.execute(select(CompanyDossier).where(CompanyDossier.company_id == company.id))
     dossier = result.scalar_one_or_none()
     if not dossier:
         raise HTTPException(status_code=404, detail="Dossier not yet generated. Approve the company first.")
@@ -229,9 +219,7 @@ async def get_contacts(
 ):
     company = await _get_candidate_company(db, company_id, candidate.id)
     result = await db.execute(
-        select(Contact)
-        .where(Contact.company_id == company.id)
-        .order_by(Contact.outreach_priority.desc())
+        select(Contact).where(Contact.company_id == company.id).order_by(Contact.outreach_priority.desc())
     )
     contacts = result.scalars().all()
     return [
@@ -282,18 +270,23 @@ async def upsert_company_notes(
     db: AsyncSession = Depends(get_db),
 ):
     import uuid as _uuid
+
     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     company = await _get_candidate_company(db, company_id, candidate.id)
 
-    stmt = pg_insert(CompanyNote).values(
-        id=_uuid.uuid4(),
-        candidate_id=candidate.id,
-        company_id=company.id,
-        content=data.content,
-    ).on_conflict_do_update(
-        constraint="uq_company_notes_candidate_company",
-        set_={"content": data.content, "updated_at": func.now()},
+    stmt = (
+        pg_insert(CompanyNote)
+        .values(
+            id=_uuid.uuid4(),
+            candidate_id=candidate.id,
+            company_id=company.id,
+            content=data.content,
+        )
+        .on_conflict_do_update(
+            constraint="uq_company_notes_candidate_company",
+            set_={"content": data.content, "updated_at": func.now()},
+        )
     )
     await db.execute(stmt)
     await db.commit()
@@ -313,10 +306,9 @@ async def upsert_company_notes(
     )
 
 
-async def _get_candidate_company(
-    db: AsyncSession, company_id: str, candidate_id
-) -> Company:
+async def _get_candidate_company(db: AsyncSession, company_id: str, candidate_id) -> Company:
     import uuid as _uuid
+
     result = await db.execute(
         select(Company).where(
             Company.id == _uuid.UUID(company_id),
@@ -333,6 +325,7 @@ async def _auto_interview_prep(candidate_id: str, company_id: str):
     """Auto-generate interview prep (company_qa, behavioral, technical) on company approval."""
     import asyncio
     import uuid as _uuid
+
     from app.graphs.interview_prep import get_interview_prep_pipeline
 
     async def _run_one(prep_type: str):
@@ -376,9 +369,8 @@ async def _research_background(company_id):
 
             candidate_id = str(company.candidate_id)
             from app.models.candidate import Candidate as _Candidate
-            cand_result = await db.execute(
-                select(_Candidate).where(_Candidate.id == company.candidate_id)
-            )
+
+            cand_result = await db.execute(select(_Candidate).where(_Candidate.id == company.candidate_id))
             cand = cand_result.scalar_one_or_none()
             tier = cand.plan_tier if cand else "free"
             is_admin = cand.is_admin if cand else False

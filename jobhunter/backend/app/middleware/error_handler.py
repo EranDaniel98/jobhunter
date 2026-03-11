@@ -8,14 +8,13 @@ logger = structlog.get_logger()
 
 
 class ErrorHandlerMiddleware(BaseHTTPMiddleware):
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         try:
             return await call_next(request)
         except Exception as exc:
             try:
                 import sentry_sdk
+
                 sentry_sdk.capture_exception(exc)
             except Exception as e:
                 logger.debug("sentry_capture_failed", error=str(e))

@@ -3,15 +3,14 @@ import uuid
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from jwt import PyJWTError as JWTError
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_current_candidate, get_db, get_email_client
-from app.infrastructure.redis_client import get_redis, redis_safe_get, redis_safe_setex
+from app.infrastructure.redis_client import redis_safe_get, redis_safe_setex
 from app.models.candidate import Candidate
-from pydantic import BaseModel
-
 from app.schemas.auth import (
     CandidateResponse,
     ChangePasswordRequest,
@@ -27,6 +26,7 @@ from app.utils.security import create_verification_token, decode_token, hash_pas
 
 class LogoutRequest(BaseModel):
     refresh_token: str | None = None
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = structlog.get_logger()
@@ -132,15 +132,13 @@ async def verify_email(token: str = Query(...), db: AsyncSession = Depends(get_d
     try:
         payload = decode_token(token)
     except JWTError:
-        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link") from None
 
     if payload.get("type") != "verify":
         raise HTTPException(status_code=400, detail="Invalid token type")
 
     candidate_id = payload.get("sub")
-    result = await db.execute(
-        select(Candidate).where(Candidate.id == uuid.UUID(candidate_id))
-    )
+    result = await db.execute(select(Candidate).where(Candidate.id == uuid.UUID(candidate_id)))
     candidate = result.scalar_one_or_none()
     if not candidate:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -177,7 +175,10 @@ async def resend_verification(
         to=candidate.email,
         from_email=settings.SENDER_EMAIL,
         subject=f"Verify your {settings.APP_NAME} account",
-        body=f"Hi {candidate.full_name},\n\nPlease verify your email by clicking: {verify_url}\n\nThis link expires in 24 hours.",
+        body=(
+            f"Hi {candidate.full_name},\n\nPlease verify your email by clicking: {verify_url}"
+            "\n\nThis link expires in 24 hours."
+        ),
     )
     logger.info("verification_email_resent", candidate_id=str(candidate.id))
     return {"message": "Verification email sent"}

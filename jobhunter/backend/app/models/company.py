@@ -29,12 +29,16 @@ class Company(TimestampMixin, Base):
     fit_score: Mapped[float | None] = mapped_column(Float)
     embedding = mapped_column(Vector(1536))
     status: Mapped[str] = mapped_column(String(20), default="suggested", index=True)  # suggested, approved, rejected
-    research_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, in_progress, completed, failed
+    research_status: Mapped[str] = mapped_column(
+        String(20), default="pending"
+    )  # pending, in_progress, completed, failed
     source: Mapped[str] = mapped_column(String(50), default="manual")  # manual, discover, scout_funding
     last_enriched: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
-    dossier: Mapped["CompanyDossier | None"] = relationship(back_populates="company", uselist=False, cascade="all, delete-orphan")
+    dossier: Mapped["CompanyDossier | None"] = relationship(
+        back_populates="company", uselist=False, cascade="all, delete-orphan"
+    )
     contacts: Mapped[list["Contact"]] = relationship(back_populates="company", cascade="all, delete-orphan")  # noqa: F821
 
 

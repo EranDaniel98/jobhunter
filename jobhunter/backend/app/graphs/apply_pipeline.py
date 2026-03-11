@@ -7,18 +7,18 @@
 
 import json
 import uuid
-from typing_extensions import TypedDict
 
 import structlog
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import END, START, StateGraph
 from sqlalchemy import select
+from typing_extensions import TypedDict
 
-from app.infrastructure import database as _db_mod
 from app.dependencies import get_openai
+from app.infrastructure import database as _db_mod
+from app.infrastructure.websocket_manager import ws_manager
 from app.models.candidate import CandidateDNA, Skill
 from app.models.company import Company, CompanyDossier
 from app.models.job_posting import JobPosting
-from app.infrastructure.websocket_manager import ws_manager
 
 logger = structlog.get_logger()
 
@@ -45,7 +45,14 @@ PARSE_JOB_SCHEMA = {
         "responsibilities": {"type": "array", "items": {"type": "string"}},
         "ats_keywords": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["required_skills", "preferred_skills", "experience_years", "education", "responsibilities", "ats_keywords"],
+    "required": [
+        "required_skills",
+        "preferred_skills",
+        "experience_years",
+        "education",
+        "responsibilities",
+        "ats_keywords",
+    ],
     "additionalProperties": False,
 }
 
@@ -112,6 +119,7 @@ COVER_LETTER_SCHEMA = {
 # State schema
 # ---------------------------------------------------------------------------
 
+
 class ApplyState(TypedDict):
     candidate_id: str
     job_posting_id: str
@@ -131,6 +139,7 @@ class ApplyState(TypedDict):
 # ---------------------------------------------------------------------------
 # Node functions
 # ---------------------------------------------------------------------------
+
 
 async def parse_job_node(state: ApplyState) -> dict:
     """Parse job posting and extract requirements."""
@@ -161,9 +170,7 @@ async def parse_job_node(state: ApplyState) -> dict:
                 if dossier:
                     why_hire_me = dossier.why_hire_me or ""
 
-    prompt = PARSE_JOB_PROMPT.format(
-        title=posting.title, company_name=company_name, raw_text=posting.raw_text
-    )
+    prompt = PARSE_JOB_PROMPT.format(title=posting.title, company_name=company_name, raw_text=posting.raw_text)
 
     try:
         client = get_openai()
@@ -267,8 +274,9 @@ async def save_and_notify_node(state: ApplyState) -> dict:
             await db.commit()
 
     # Cache analysis to Redis BEFORE broadcasting WebSocket to avoid race condition
-    from app.infrastructure.redis_client import get_redis
     from app.config import settings
+    from app.infrastructure.redis_client import get_redis
+
     redis = get_redis()
     analysis = {
         "job_posting_id": job_posting_id_str,
@@ -287,7 +295,8 @@ async def save_and_notify_node(state: ApplyState) -> dict:
     )
 
     await ws_manager.broadcast(
-        state["candidate_id"], "apply_analysis_completed",
+        state["candidate_id"],
+        "apply_analysis_completed",
         {"job_posting_id": job_posting_id_str, "readiness_score": state.get("readiness_score", 0)},
     )
 
@@ -306,7 +315,8 @@ async def mark_failed_node(state: ApplyState) -> dict:
                 await db.commit()
 
     await ws_manager.broadcast(
-        state["candidate_id"], "apply_analysis_failed",
+        state["candidate_id"],
+        "apply_analysis_failed",
         {"job_posting_id": job_posting_id, "error": state.get("error")},
     )
 
@@ -317,6 +327,7 @@ async def mark_failed_node(state: ApplyState) -> dict:
 # Conditional routing
 # ---------------------------------------------------------------------------
 
+
 def _check_error(state: ApplyState) -> str:
     if state.get("status") == "failed":
         return "mark_failed"
@@ -326,6 +337,7 @@ def _check_error(state: ApplyState) -> str:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_apply_pipeline() -> StateGraph:
     """Build (but don't compile) the apply graph."""
@@ -340,16 +352,19 @@ def build_apply_pipeline() -> StateGraph:
 
     builder.add_edge(START, "parse_job")
     builder.add_conditional_edges(
-        "parse_job", _check_error,
+        "parse_job",
+        _check_error,
         {"mark_failed": "mark_failed", "continue": "match_skills"},
     )
     builder.add_edge("match_skills", "generate_tips")
     builder.add_conditional_edges(
-        "generate_tips", _check_error,
+        "generate_tips",
+        _check_error,
         {"mark_failed": "mark_failed", "continue": "generate_cover_letter"},
     )
     builder.add_conditional_edges(
-        "generate_cover_letter", _check_error,
+        "generate_cover_letter",
+        _check_error,
         {"mark_failed": "mark_failed", "continue": "save_and_notify"},
     )
     builder.add_edge("save_and_notify", END)
@@ -365,9 +380,11 @@ _builder = build_apply_pipeline()
 # Graph accessors
 # ---------------------------------------------------------------------------
 
+
 def get_apply_pipeline(checkpointer=None):
     """Production: compiled graph with PostgreSQL checkpointer."""
     from app.graphs.resume_pipeline import _checkpointer as shared
+
     return _builder.compile(checkpointer=checkpointer or shared)
 
 

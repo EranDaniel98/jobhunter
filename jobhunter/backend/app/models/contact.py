@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,4 +30,6 @@ class Contact(TimestampMixin, Base):
 
     # Relationships
     company: Mapped["Company"] = relationship(back_populates="contacts")  # noqa: F821
-    outreach_messages: Mapped[list["OutreachMessage"]] = relationship(back_populates="contact", cascade="all, delete-orphan")  # noqa: F821
+    outreach_messages: Mapped[list["OutreachMessage"]] = relationship(  # noqa: F821
+        back_populates="contact", cascade="all, delete-orphan"
+    )

@@ -1,12 +1,11 @@
 import asyncio
 import csv
 import io
-import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.redis_client import redis_safe_get, redis_safe_setex
@@ -15,8 +14,8 @@ from app.models.audit import AdminAuditLog
 from app.models.candidate import Candidate
 from app.models.company import Company
 from app.models.contact import Contact
-from app.models.invite import InviteCode
 from app.models.enums import MessageStatus
+from app.models.invite import InviteCode
 from app.models.outreach import OutreachMessage
 from app.schemas.admin import (
     ActivityFeedItem,
@@ -44,32 +43,30 @@ async def get_system_overview(db: AsyncSession) -> SystemOverview:
     if cached:
         return SystemOverview.model_validate_json(cached)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     total_users = (await db.execute(select(func.count(Candidate.id)))).scalar() or 0
     total_companies = (await db.execute(select(func.count(Company.id)))).scalar() or 0
     total_contacts = (await db.execute(select(func.count(Contact.id)))).scalar() or 0
 
-    total_messages_sent = (await db.execute(
-        select(func.count(OutreachMessage.id)).where(OutreachMessage.status != MessageStatus.DRAFT)
-    )).scalar() or 0
+    total_messages_sent = (
+        await db.execute(select(func.count(OutreachMessage.id)).where(OutreachMessage.status != MessageStatus.DRAFT))
+    ).scalar() or 0
 
-    total_invites_used = (await db.execute(
-        select(func.count(InviteCode.id)).where(InviteCode.is_used == True)  # noqa: E712
-    )).scalar() or 0
+    total_invites_used = (
+        await db.execute(
+            select(func.count(InviteCode.id)).where(InviteCode.is_used == True)  # noqa: E712
+        )
+    ).scalar() or 0
 
     # Active users = users who have updated_at within N days (proxy for activity)
-    active_7d = (await db.execute(
-        select(func.count(Candidate.id)).where(
-            Candidate.updated_at >= now - timedelta(days=7)
-        )
-    )).scalar() or 0
+    active_7d = (
+        await db.execute(select(func.count(Candidate.id)).where(Candidate.updated_at >= now - timedelta(days=7)))
+    ).scalar() or 0
 
-    active_30d = (await db.execute(
-        select(func.count(Candidate.id)).where(
-            Candidate.updated_at >= now - timedelta(days=30)
-        )
-    )).scalar() or 0
+    active_30d = (
+        await db.execute(select(func.count(Candidate.id)).where(Candidate.updated_at >= now - timedelta(days=30)))
+    ).scalar() or 0
 
     overview = SystemOverview(
         total_users=total_users,
@@ -87,16 +84,12 @@ async def get_system_overview(db: AsyncSession) -> SystemOverview:
     return overview
 
 
-async def list_users(
-    db: AsyncSession, skip: int = 0, limit: int = 20, search: str | None = None
-) -> UserListResponse:
+async def list_users(db: AsyncSession, skip: int = 0, limit: int = 20, search: str | None = None) -> UserListResponse:
     # Count query
     count_q = select(func.count(Candidate.id))
     if search:
         pattern = f"%{search}%"
-        count_q = count_q.where(
-            Candidate.email.ilike(pattern) | Candidate.full_name.ilike(pattern)
-        )
+        count_q = count_q.where(Candidate.email.ilike(pattern) | Candidate.full_name.ilike(pattern))
     total = (await db.execute(count_q)).scalar() or 0
 
     # Correlated scalar subqueries to avoid Cartesian product
@@ -136,9 +129,7 @@ async def list_users(
 
     if search:
         pattern = f"%{search}%"
-        q = q.where(
-            Candidate.email.ilike(pattern) | Candidate.full_name.ilike(pattern)
-        )
+        q = q.where(Candidate.email.ilike(pattern) | Candidate.full_name.ilike(pattern))
 
     rows = (await db.execute(q)).all()
 
@@ -166,17 +157,19 @@ async def get_user_detail(db: AsyncSession, user_id: uuid.UUID) -> UserDetail | 
         return None
 
     # Get company count
-    companies_count = (await db.execute(
-        select(func.count(Company.id)).where(Company.candidate_id == user_id)
-    )).scalar() or 0
+    companies_count = (
+        await db.execute(select(func.count(Company.id)).where(Company.candidate_id == user_id))
+    ).scalar() or 0
 
     # Get messages sent count
-    messages_sent_count = (await db.execute(
-        select(func.count(OutreachMessage.id)).where(
-            OutreachMessage.candidate_id == user_id,
-            OutreachMessage.status != MessageStatus.DRAFT,
+    messages_sent_count = (
+        await db.execute(
+            select(func.count(OutreachMessage.id)).where(
+                OutreachMessage.candidate_id == user_id,
+                OutreachMessage.status != MessageStatus.DRAFT,
+            )
         )
-    )).scalar() or 0
+    ).scalar() or 0
 
     # Get invite info (which invite code was used to register this user)
     invite_result = await db.execute(
@@ -207,7 +200,7 @@ async def get_user_detail(db: AsyncSession, user_id: uuid.UUID) -> UserDetail | 
 
 
 async def get_registration_trend(db: AsyncSession, days: int = 30) -> list[RegistrationTrend]:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     result = await db.execute(
         select(
             func.date_trunc("day", Candidate.created_at).label("day"),
@@ -217,10 +210,7 @@ async def get_registration_trend(db: AsyncSession, days: int = 30) -> list[Regis
         .group_by("day")
         .order_by("day")
     )
-    return [
-        RegistrationTrend(date=row.day.strftime("%Y-%m-%d"), count=row.count)
-        for row in result.all()
-    ]
+    return [RegistrationTrend(date=row.day.strftime("%Y-%m-%d"), count=row.count) for row in result.all()]
 
 
 async def get_invite_chain(db: AsyncSession) -> list[InviteChainItem]:
@@ -255,9 +245,7 @@ async def get_invite_chain(db: AsyncSession) -> list[InviteChainItem]:
     ]
 
 
-async def get_top_users(
-    db: AsyncSession, metric: str = "messages_sent", limit: int = 10
-) -> list[TopUserItem]:
+async def get_top_users(db: AsyncSession, metric: str = "messages_sent", limit: int = 10) -> list[TopUserItem]:
     if metric == "messages_sent":
         q = (
             select(
@@ -314,9 +302,7 @@ async def toggle_user_admin(
     return candidate
 
 
-async def delete_user(
-    db: AsyncSession, user_id: uuid.UUID, admin_id: uuid.UUID | None = None
-) -> bool:
+async def delete_user(db: AsyncSession, user_id: uuid.UUID, admin_id: uuid.UUID | None = None) -> bool:
     result = await db.execute(select(Candidate).where(Candidate.id == user_id))
     candidate = result.scalar_one_or_none()
     if not candidate:
@@ -393,35 +379,34 @@ async def export_users_csv(db: AsyncSession) -> str:
         .scalar_subquery()
         .label("messages_sent_count")
     )
-    q = (
-        select(
-            Candidate.id,
-            Candidate.email,
-            Candidate.full_name,
-            Candidate.is_admin,
-            Candidate.is_active,
-            Candidate.created_at,
-            companies_sub,
-            messages_sub,
-        )
-        .order_by(Candidate.created_at.desc())
-    )
+    q = select(
+        Candidate.id,
+        Candidate.email,
+        Candidate.full_name,
+        Candidate.is_admin,
+        Candidate.is_active,
+        Candidate.created_at,
+        companies_sub,
+        messages_sub,
+    ).order_by(Candidate.created_at.desc())
     rows = (await db.execute(q)).all()
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["ID", "Email", "Full Name", "Is Admin", "Is Active", "Created At", "Companies", "Messages Sent"])
     for row in rows:
-        writer.writerow([
-            str(row.id),
-            row.email,
-            row.full_name,
-            row.is_admin,
-            row.is_active,
-            row.created_at.isoformat(),
-            row.companies_count or 0,
-            row.messages_sent_count or 0,
-        ])
+        writer.writerow(
+            [
+                str(row.id),
+                row.email,
+                row.full_name,
+                row.is_admin,
+                row.is_active,
+                row.created_at.isoformat(),
+                row.companies_count or 0,
+                row.messages_sent_count or 0,
+            ]
+        )
     return output.getvalue()
 
 
@@ -535,7 +520,9 @@ async def broadcast_email(
     skipped_count += sum(1 for r in results if not r)
 
     await create_audit_log(
-        db, admin_id, "broadcast_sent",
+        db,
+        admin_id,
+        "broadcast_sent",
         details={"subject": subject, "sent_count": sent_count, "skipped_count": skipped_count},
     )
 

@@ -19,7 +19,9 @@ LANGUAGE_NAMES = {"en": "English", "he": "Hebrew"}
 
 MESSAGE_SEQUENCE = ["initial", "followup_1", "followup_2", "breakup"]
 
-OUTREACH_PROMPT = """You are a career outreach specialist. Draft a personalized {message_type} email from a job candidate to a potential contact at a target company.
+OUTREACH_PROMPT = """
+You are a career outreach specialist. Draft a personalized {message_type} email
+from a job candidate to a potential contact at a target company.
 
 CANDIDATE PROFILE:
 {candidate_summary}
@@ -63,9 +65,17 @@ OUTREACH_SCHEMA = {
 }
 
 MESSAGE_TYPE_INSTRUCTIONS = {
-    "initial": "This is the first outreach. Make a strong first impression. Reference something specific about the company.",
-    "followup_1": "This is a follow-up to an unanswered initial email. Add new value — share a relevant insight or accomplishment. Don't guilt-trip.",
-    "followup_2": "Second follow-up. Keep it very brief. Reference a new angle or recent company news. Last chance before the breakup.",
+    "initial": (
+        "This is the first outreach. Make a strong first impression. Reference something specific about the company."
+    ),
+    "followup_1": (
+        "This is a follow-up to an unanswered initial email."
+        " Add new value — share a relevant insight or accomplishment. Don't guilt-trip."
+    ),
+    "followup_2": (
+        "Second follow-up. Keep it very brief."
+        " Reference a new angle or recent company news. Last chance before the breakup."
+    ),
     "breakup": "Final message. Very short. Let them know this is the last email. Leave the door open with grace.",
 }
 
@@ -74,7 +84,9 @@ VARIANT_INSTRUCTIONS = {
     "conversational": "Use a warm, casual tone. Lead with genuine curiosity about the company. Friendly and authentic.",
 }
 
-LINKEDIN_PROMPT = """Draft a short LinkedIn message (max 300 characters for connection request, or ~100 words for InMail) from a job candidate to a contact.
+LINKEDIN_PROMPT = """
+Draft a short LinkedIn message (max 300 characters for connection request, or ~100 words for InMail)
+from a job candidate to a contact.
 
 CANDIDATE: {candidate_summary}
 COMPANY: {company_name} — {culture_summary}
@@ -87,8 +99,7 @@ Return JSON with subject (for InMail, null for connection) and body."""
 
 
 async def draft_message(
-    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID,
-    language: str = "en", variant: str | None = None
+    db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID, language: str = "en", variant: str | None = None
 ) -> OutreachMessage:
     """Draft a personalized outreach email."""
     # Load contact+company and DNA in parallel; dossier depends on company
@@ -101,11 +112,13 @@ async def draft_message(
 
     # Determine message type (check existing messages for this contact)
     existing = await db.execute(
-        select(OutreachMessage).where(
+        select(OutreachMessage)
+        .where(
             OutreachMessage.contact_id == contact_id,
             OutreachMessage.candidate_id == candidate_id,
             OutreachMessage.channel == "email",
-        ).order_by(OutreachMessage.created_at.desc())
+        )
+        .order_by(OutreachMessage.created_at.desc())
     )
     existing_messages = existing.scalars().all()
     message_type = _next_message_type(existing_messages)
@@ -240,11 +253,7 @@ async def _get_contact(db: AsyncSession, contact_id: uuid.UUID) -> Contact:
 
 
 async def _get_contact_with_company(db: AsyncSession, contact_id: uuid.UUID) -> Contact:
-    result = await db.execute(
-        select(Contact)
-        .where(Contact.id == contact_id)
-        .options(selectinload(Contact.company))
-    )
+    result = await db.execute(select(Contact).where(Contact.id == contact_id).options(selectinload(Contact.company)))
     contact = result.scalar_one_or_none()
     if not contact:
         raise ValueError("Contact not found")

@@ -28,7 +28,7 @@ async def resend_webhook(
         payload = email_client.verify_webhook(body, svix_headers)
     except Exception as e:
         logger.warning("webhook_verification_failed", error=str(e))
-        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+        raise HTTPException(status_code=400, detail="Invalid webhook signature") from e
 
     await handle_resend_webhook(db, payload)
     return {"status": "ok"}

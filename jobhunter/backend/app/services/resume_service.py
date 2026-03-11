@@ -65,7 +65,8 @@ RESUME_PARSE_SCHEMA = {
 }
 
 
-SKILLS_EXTRACTION_PROMPT = """You are a skills extraction specialist. Analyze the following resume text and extract all skills.
+SKILLS_EXTRACTION_PROMPT = """
+You are a skills extraction specialist. Analyze the following resume text and extract all skills.
 
 For each skill, provide:
 - name: the skill name
@@ -100,7 +101,8 @@ SKILLS_SCHEMA = {
     "additionalProperties": False,
 }
 
-DNA_SUMMARY_PROMPT = """You are a career analyst. Based on the following parsed resume data, generate a candidate DNA profile.
+DNA_SUMMARY_PROMPT = """
+You are a career analyst. Based on the following parsed resume data, generate a candidate DNA profile.
 
 Provide:
 - experience_summary: 2-3 sentence summary of their career trajectory
@@ -124,8 +126,10 @@ DNA_SCHEMA = {
 
 
 def _extract_text_from_pdf(file_bytes: bytes) -> str:
-    from pypdf import PdfReader
     import io
+
+    from pypdf import PdfReader
+
     reader = PdfReader(io.BytesIO(file_bytes))
     text = ""
     for page in reader.pages:
@@ -134,15 +138,15 @@ def _extract_text_from_pdf(file_bytes: bytes) -> str:
 
 
 def _extract_text_from_docx(file_bytes: bytes) -> str:
-    from docx import Document
     import io
+
+    from docx import Document
+
     doc = Document(io.BytesIO(file_bytes))
     return "\n".join(p.text for p in doc.paragraphs).strip()
 
 
-async def upload_resume(
-    db: AsyncSession, candidate_id: uuid.UUID, file_bytes: bytes, filename: str
-) -> Resume:
+async def upload_resume(db: AsyncSession, candidate_id: uuid.UUID, file_bytes: bytes, filename: str) -> Resume:
     # Determine file type
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in ("pdf", "docx"):
@@ -151,22 +155,19 @@ async def upload_resume(
     # Compute hash and save file via storage abstraction
     file_hash = hashlib.sha256(file_bytes).hexdigest()
     storage_key = f"resumes/{candidate_id}/{file_hash}.{ext}"
-    content_type = "application/pdf" if ext == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    content_type = (
+        "application/pdf" if ext == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
     storage = get_storage()
     await storage.upload(storage_key, file_bytes, content_type)
 
     # Extract text
-    if ext == "pdf":
-        raw_text = _extract_text_from_pdf(file_bytes)
-    else:
-        raw_text = _extract_text_from_docx(file_bytes)
+    raw_text = _extract_text_from_pdf(file_bytes) if ext == "pdf" else _extract_text_from_docx(file_bytes)
 
     # Mark previous resumes as non-primary (atomic single UPDATE)
     await db.execute(
-        update(Resume)
-        .where(Resume.candidate_id == candidate_id, Resume.is_primary == True)
-        .values(is_primary=False)
+        update(Resume).where(Resume.candidate_id == candidate_id, Resume.is_primary).values(is_primary=False)
     )
 
     resume = Resume(
@@ -194,14 +195,10 @@ async def parse_resume(db: AsyncSession, resume_id: uuid.UUID) -> Resume:
         raise ValueError("Resume has no extracted text")
 
     client = get_openai()
-    parsed = await client.parse_structured(
-        RESUME_PARSE_PROMPT, resume.raw_text, RESUME_PARSE_SCHEMA
-    )
+    parsed = await client.parse_structured(RESUME_PARSE_PROMPT, resume.raw_text, RESUME_PARSE_SCHEMA)
 
     resume.parsed_data = parsed
     await db.commit()
     await db.refresh(resume)
     logger.info("resume_parsed", resume_id=str(resume_id))
     return resume
-
-

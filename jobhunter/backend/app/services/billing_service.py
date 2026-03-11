@@ -1,6 +1,6 @@
 """Stripe billing service — checkout sessions, portal, webhook handling."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import stripe
 import structlog
@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.candidate import Candidate
-from app.plans import PLANS, PlanTier
+from app.plans import PlanTier
 
 logger = structlog.get_logger()
 
@@ -90,9 +90,7 @@ async def handle_webhook_event(payload: bytes, sig_header: str, db: AsyncSession
     """Process Stripe webhook events and update candidate billing state."""
     _get_stripe()
 
-    event = stripe.Webhook.construct_event(
-        payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-    )
+    event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_WEBHOOK_SECRET)
 
     handler = _WEBHOOK_HANDLERS.get(event.type)
     if handler:
@@ -191,9 +189,7 @@ async def get_subscription(candidate: Candidate) -> dict:
         try:
             _get_stripe()
             sub = stripe.Subscription.retrieve(candidate.stripe_subscription_id)
-            result["current_period_end"] = datetime.fromtimestamp(
-                sub.current_period_end, tz=timezone.utc
-            ).isoformat()
+            result["current_period_end"] = datetime.fromtimestamp(sub.current_period_end, tz=UTC).isoformat()
         except Exception as e:
             logger.warning("stripe_subscription_fetch_failed", error=str(e))
 

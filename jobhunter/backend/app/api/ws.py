@@ -1,5 +1,5 @@
 import structlog
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.infrastructure.redis_client import redis_safe_get
 from app.infrastructure.websocket_manager import ws_manager

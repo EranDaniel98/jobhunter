@@ -1,6 +1,5 @@
 import asyncio
 import os
-from functools import lru_cache
 
 import structlog
 
@@ -62,9 +61,7 @@ class R2Storage:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
-            lambda: self._client.put_object(
-                Bucket=self._bucket, Key=key, Body=data, **extra
-            ),
+            lambda: self._client.put_object(Bucket=self._bucket, Key=key, Body=data, **extra),
         )
         logger.info("r2_storage_upload", key=key, bucket=self._bucket)
         return key

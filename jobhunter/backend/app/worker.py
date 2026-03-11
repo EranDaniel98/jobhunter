@@ -5,13 +5,15 @@ Handles:
 - Approved message sending: sends outreach after approval
 - Stale action expiration: expires old pending actions daily
 """
+
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import ClassVar
 
 import structlog
 from arq import cron
 from arq.connections import RedisSettings
-from sqlalchemy import and_, exists, select
+from sqlalchemy import exists, select
 
 from app.config import settings
 from app.models.enums import ActionStatus, MessageStatus
@@ -50,7 +52,7 @@ async def check_followup_due(ctx):
     from app.models.pending_action import PendingAction
 
     logger.info("followup_check_started")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     drafted_count = 0
 
     async with async_session_factory() as db:
@@ -63,14 +65,11 @@ async def check_followup_due(ctx):
             # Per-message dedup (newer message check, pending action check)
             # happens in the loop below — kept out of the query to avoid
             # a broken self-join that compared columns to themselves.
-            query = (
-                select(OutreachMessage)
-                .where(
-                    OutreachMessage.status.in_([MessageStatus.SENT, MessageStatus.DELIVERED]),
-                    OutreachMessage.channel == "email",
-                    OutreachMessage.message_type == prev_type,
-                    OutreachMessage.sent_at <= cutoff,
-                )
+            query = select(OutreachMessage).where(
+                OutreachMessage.status.in_([MessageStatus.SENT, MessageStatus.DELIVERED]),
+                OutreachMessage.channel == "email",
+                OutreachMessage.message_type == prev_type,
+                OutreachMessage.sent_at <= cutoff,
             )
 
             result = await db.execute(query)
@@ -80,22 +79,26 @@ async def check_followup_due(ctx):
                 try:
                     # Check there's no newer message for this contact (proper subquery)
                     newer_check = await db.execute(
-                        select(OutreachMessage.id).where(
+                        select(OutreachMessage.id)
+                        .where(
                             OutreachMessage.contact_id == msg.contact_id,
                             OutreachMessage.candidate_id == msg.candidate_id,
                             OutreachMessage.channel == "email",
                             OutreachMessage.created_at > msg.created_at,
-                        ).limit(1)
+                        )
+                        .limit(1)
                     )
                     if newer_check.scalar_one_or_none():
                         continue  # Skip — newer message exists
 
                     # Skip if a pending action already exists for this message
                     pending_check = await db.execute(
-                        select(PendingAction.id).where(
+                        select(PendingAction.id)
+                        .where(
                             PendingAction.entity_id == msg.id,
                             PendingAction.status == ActionStatus.PENDING,
-                        ).limit(1)
+                        )
+                        .limit(1)
                     )
                     if pending_check.scalar_one_or_none():
                         continue  # Skip — pending action already exists
@@ -106,9 +109,8 @@ async def check_followup_due(ctx):
 
                     # Look up candidate plan_tier
                     from app.models.candidate import Candidate
-                    cand_result = await db.execute(
-                        select(Candidate).where(Candidate.id == msg.candidate_id)
-                    )
+
+                    cand_result = await db.execute(select(Candidate).where(Candidate.id == msg.candidate_id))
                     cand = cand_result.scalar_one_or_none()
                     plan_tier = cand.plan_tier if cand else "free"
 
@@ -164,21 +166,19 @@ async def send_approved_message(ctx, outreach_id: str):
         try:
             # Look up candidate plan_tier for quota enforcement
             from sqlalchemy import select
-            from app.models.outreach import OutreachMessage
+
             from app.models.candidate import Candidate
-            result = await db.execute(
-                select(OutreachMessage).where(OutreachMessage.id == uuid.UUID(outreach_id))
-            )
+            from app.models.outreach import OutreachMessage
+
+            result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == uuid.UUID(outreach_id)))
             outreach_msg = result.scalar_one_or_none()
             plan_tier = "free"
             if outreach_msg:
-                cand_result = await db.execute(
-                    select(Candidate).where(Candidate.id == outreach_msg.candidate_id)
-                )
+                cand_result = await db.execute(select(Candidate).where(Candidate.id == outreach_msg.candidate_id))
                 cand = cand_result.scalar_one_or_none()
                 if cand:
                     plan_tier = cand.plan_tier
-            msg = await send_outreach(db, uuid.UUID(outreach_id), plan_tier=plan_tier)
+            await send_outreach(db, uuid.UUID(outreach_id), plan_tier=plan_tier)
             logger.info("approved_message_sent", message_id=outreach_id)
         except Exception as e:
             logger.error("approved_message_send_failed", message_id=outreach_id, error=str(e))
@@ -197,12 +197,8 @@ async def run_daily_scout(ctx):
         # Find all active candidates that have DNA
         result = await db.execute(
             select(Candidate).where(
-                Candidate.is_active == True,
-                exists(
-                    select(CandidateDNA.id).where(
-                        CandidateDNA.candidate_id == Candidate.id
-                    )
-                ),
+                Candidate.is_active,
+                exists(select(CandidateDNA.id).where(CandidateDNA.candidate_id == Candidate.id)),
             )
         )
         candidates = result.scalars().all()
@@ -259,12 +255,8 @@ async def run_weekly_analytics(ctx):
     async with async_session_factory() as db:
         result = await db.execute(
             select(Candidate).where(
-                Candidate.is_active == True,
-                exists(
-                    select(CandidateDNA.id).where(
-                        CandidateDNA.candidate_id == Candidate.id
-                    )
-                ),
+                Candidate.is_active,
+                exists(select(CandidateDNA.id).where(CandidateDNA.candidate_id == Candidate.id)),
             )
         )
         candidates = result.scalars().all()
@@ -294,8 +286,8 @@ async def run_weekly_analytics(ctx):
 
 
 class WorkerSettings:
-    functions = [send_approved_message]
-    cron_jobs = [
+    functions: ClassVar[list] = [send_approved_message]
+    cron_jobs: ClassVar[list] = [
         cron(check_followup_due, minute={0, 15, 30, 45}),
         cron(expire_stale_actions, hour={3}, minute={0}),  # Daily at 3 AM
         cron(run_daily_scout, hour={9}, minute={0}),  # Daily at 9 AM UTC

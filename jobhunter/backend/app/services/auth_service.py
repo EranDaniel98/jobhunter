@@ -62,7 +62,11 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
             to=candidate.email,
             from_email=settings.SENDER_EMAIL,
             subject=f"Verify your {settings.APP_NAME} account",
-            body=f"Hi {candidate.full_name},\n\nPlease verify your email by clicking: {verify_url}\n\nThis link expires in 24 hours.",
+            body=(
+                f"Hi {candidate.full_name},\n\n"
+                f"Please verify your email by clicking: {verify_url}\n\n"
+                "This link expires in 24 hours."
+            ),
         )
         logger.info("verification_email_sent", candidate_id=str(candidate.id))
     except Exception as e:
@@ -101,7 +105,7 @@ async def refresh_token(token: str) -> TokenPair:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
-        )
+        ) from None
 
     if payload.get("type") != "refresh":
         raise HTTPException(

@@ -1,11 +1,9 @@
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
 class OpenAIClientProtocol(Protocol):
-    async def parse_structured(
-        self, system_prompt: str, user_content: str, response_schema: dict
-    ) -> dict:
+    async def parse_structured(self, system_prompt: str, user_content: str, response_schema: dict) -> dict:
         """Send a prompt and get structured JSON output."""
         ...
 

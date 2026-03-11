@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from sqlalchemy import func, select
@@ -43,9 +43,7 @@ async def _enrich_context(db: AsyncSession, action: PendingAction) -> dict:
     if action.entity_type != "outreach_message":
         return {}
 
-    result = await db.execute(
-        select(OutreachMessage).where(OutreachMessage.id == action.entity_id)
-    )
+    result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == action.entity_id))
     msg = result.scalar_one_or_none()
     if not msg:
         return {}
@@ -125,8 +123,7 @@ async def list_pending_actions(
         )
         .outerjoin(
             OutreachMessage,
-            (PendingAction.entity_id == OutreachMessage.id)
-            & (PendingAction.entity_type == "outreach_message"),
+            (PendingAction.entity_id == OutreachMessage.id) & (PendingAction.entity_type == "outreach_message"),
         )
         .outerjoin(Contact, OutreachMessage.contact_id == Contact.id)
         .outerjoin(Company, Contact.company_id == Company.id)
@@ -170,8 +167,7 @@ async def get_pending_action(
         )
         .outerjoin(
             OutreachMessage,
-            (PendingAction.entity_id == OutreachMessage.id)
-            & (PendingAction.entity_type == "outreach_message"),
+            (PendingAction.entity_id == OutreachMessage.id) & (PendingAction.entity_type == "outreach_message"),
         )
         .outerjoin(Contact, OutreachMessage.contact_id == Contact.id)
         .outerjoin(Company, Contact.company_id == Company.id)
@@ -196,9 +192,7 @@ async def get_pending_action(
     return _action_to_response(action, ctx)
 
 
-async def approve_action(
-    db: AsyncSession, action_id: uuid.UUID, candidate_id: uuid.UUID
-) -> PendingAction | None:
+async def approve_action(db: AsyncSession, action_id: uuid.UUID, candidate_id: uuid.UUID) -> PendingAction | None:
     result = await db.execute(
         select(PendingAction).where(
             PendingAction.id == action_id,
@@ -212,16 +206,14 @@ async def approve_action(
         return action
 
     action.status = ActionStatus.APPROVED
-    action.reviewed_at = datetime.now(timezone.utc)
+    action.reviewed_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(action)
     logger.info("pending_action_approved", action_id=str(action.id))
     return action
 
 
-async def reject_action(
-    db: AsyncSession, action_id: uuid.UUID, candidate_id: uuid.UUID
-) -> PendingAction | None:
+async def reject_action(db: AsyncSession, action_id: uuid.UUID, candidate_id: uuid.UUID) -> PendingAction | None:
     result = await db.execute(
         select(PendingAction).where(
             PendingAction.id == action_id,
@@ -235,7 +227,7 @@ async def reject_action(
         return action
 
     action.status = ActionStatus.REJECTED
-    action.reviewed_at = datetime.now(timezone.utc)
+    action.reviewed_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(action)
     logger.info("pending_action_rejected", action_id=str(action.id))
@@ -244,7 +236,9 @@ async def reject_action(
 
 async def count_pending(db: AsyncSession, candidate_id: uuid.UUID) -> int:
     result = await db.execute(
-        select(func.count()).select_from(PendingAction).where(
+        select(func.count())
+        .select_from(PendingAction)
+        .where(
             PendingAction.candidate_id == candidate_id,
             PendingAction.status == ActionStatus.PENDING,
         )
@@ -253,7 +247,7 @@ async def count_pending(db: AsyncSession, candidate_id: uuid.UUID) -> int:
 
 
 async def expire_stale_actions(db: AsyncSession, max_age_days: int = 30) -> int:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
     result = await db.execute(
         select(PendingAction).where(
             PendingAction.status == ActionStatus.PENDING,
@@ -264,7 +258,7 @@ async def expire_stale_actions(db: AsyncSession, max_age_days: int = 30) -> int:
     count = 0
     for action in actions:
         action.status = ActionStatus.EXPIRED
-        action.reviewed_at = datetime.now(timezone.utc)
+        action.reviewed_at = datetime.now(UTC)
         count += 1
     if count:
         await db.commit()

@@ -1,10 +1,10 @@
 """Tenant isolation middleware — extracts candidate_id from JWT and sets request state."""
 
+import jwt
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-import jwt
 
 from app.config import settings
 

@@ -1,11 +1,10 @@
 """Waitlist API — public signup endpoint."""
 
+import structlog
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import structlog
 
 from app.dependencies import get_db
 from app.models.waitlist import WaitlistEntry
@@ -27,12 +26,8 @@ class WaitlistResponse(BaseModel):
 
 @router.post("", response_model=WaitlistResponse)
 @limiter.limit("10/minute")
-async def join_waitlist(
-    request: Request, body: WaitlistRequest, db: AsyncSession = Depends(get_db)
-):
-    existing = await db.execute(
-        select(WaitlistEntry).where(WaitlistEntry.email == body.email)
-    )
+async def join_waitlist(request: Request, body: WaitlistRequest, db: AsyncSession = Depends(get_db)):
+    existing = await db.execute(select(WaitlistEntry).where(WaitlistEntry.email == body.email))
     if existing.scalar_one_or_none():
         return WaitlistResponse(message="You're already on the waitlist!")
 

@@ -1,5 +1,6 @@
 from pydantic import AnyHttpUrl, BaseModel, field_validator
 
+
 class UpdateStageRequest(BaseModel):
     stage: str
 

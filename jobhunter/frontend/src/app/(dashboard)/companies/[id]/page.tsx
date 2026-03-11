@@ -62,6 +62,7 @@ export default function CompanyDetailPage({
 
   useEffect(() => {
     if (notesQuery.data?.content !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync server state to local draft
       setNoteContent(notesQuery.data.content);
     }
   }, [notesQuery.data?.content]);

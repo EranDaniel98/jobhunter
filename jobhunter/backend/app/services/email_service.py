@@ -1,20 +1,20 @@
 import hashlib
 import hmac
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_email_client
 from app.infrastructure.redis_client import get_redis
 from app.models.analytics import AnalyticsEvent
+from app.models.candidate import Candidate, Resume
 from app.models.contact import Contact
 from app.models.enums import MessageStatus
 from app.models.outreach import MessageEvent, OutreachMessage
-from app.models.candidate import Candidate, Resume
 from app.models.suppression import EmailSuppression
 
 logger = structlog.get_logger()
@@ -34,8 +34,8 @@ WARMUP_DAILY_KEY = "email_warmup:{domain}:daily:{date}"
 
 # Ramp-up schedule: (day_threshold, max_sends_per_day)
 WARMUP_SCHEDULE = [
-    (3, 5),    # Day 1-3:  max 5 emails/day
-    (7, 15),   # Day 4-7:  max 15 emails/day
+    (3, 5),  # Day 1-3:  max 5 emails/day
+    (7, 15),  # Day 4-7:  max 15 emails/day
     (14, 30),  # Day 8-14: max 30 emails/day
 ]
 WARMUP_GRADUATED_LIMIT = 50  # Day 15+: full limit (or plan limit, whichever is lower)
@@ -48,7 +48,7 @@ async def get_warmup_limit(domain: str) -> int:
     automatically and the most conservative limit is returned.
     """
     redis = get_redis()
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     start_key = WARMUP_START_KEY.format(domain=domain)
 
     start_date_str = await redis.get(start_key)
@@ -71,7 +71,7 @@ async def get_warmup_limit(domain: str) -> int:
 async def check_warmup_quota(domain: str) -> None:
     """Raise ValueError if the domain has hit its warm-up daily limit."""
     redis = get_redis()
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_str = datetime.now(UTC).strftime("%Y-%m-%d")
     daily_key = WARMUP_DAILY_KEY.format(domain=domain, date=today_str)
 
     current = await redis.get(daily_key)
@@ -95,7 +95,7 @@ async def check_warmup_quota(domain: str) -> None:
 async def increment_warmup_count(domain: str) -> None:
     """Increment the daily warm-up counter for *domain*."""
     redis = get_redis()
-    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_str = datetime.now(UTC).strftime("%Y-%m-%d")
     daily_key = WARMUP_DAILY_KEY.format(domain=domain, date=today_str)
 
     await redis.incr(daily_key)
@@ -107,7 +107,10 @@ def _extract_domain(email: str) -> str:
     """Extract the domain part from an email address."""
     return email.rsplit("@", 1)[-1].lower()
 
-async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume: bool = False, plan_tier: str = "free") -> OutreachMessage:
+
+async def send_outreach(
+    db: AsyncSession, outreach_id: uuid.UUID, attach_resume: bool = False, plan_tier: str = "free"
+) -> OutreachMessage:
     """Send an outreach email with full compliance checks."""
     result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == outreach_id))
     message = result.scalar_one_or_none()
@@ -133,7 +136,12 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
             .limit(1)
         )
         prev_msg = prev_msgs.scalar_one_or_none()
-        if prev_msg and prev_msg.status not in (MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.OPENED, MessageStatus.REPLIED):
+        if prev_msg and prev_msg.status not in (
+            MessageStatus.SENT,
+            MessageStatus.DELIVERED,
+            MessageStatus.OPENED,
+            MessageStatus.REPLIED,
+        ):
             raise ValueError(
                 f"Cannot send followup: previous message (id={prev_msg.id}) has status '{prev_msg.status}'"
             )
@@ -145,23 +153,23 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
         raise ValueError("Contact has no email address")
 
     # 1. Check suppression list
-    suppressed = await db.execute(
-        select(EmailSuppression).where(EmailSuppression.email == contact.email)
-    )
+    suppressed = await db.execute(select(EmailSuppression).where(EmailSuppression.email == contact.email))
     if suppressed.scalar_one_or_none():
         raise ValueError(f"Email {contact.email} is on the suppression list")
 
     # 2. Check daily email limit via unified quota service
     from app.services.quota_service import check_and_increment
+
     try:
         await check_and_increment(str(message.candidate_id), "email", plan_tier)
     except Exception as e:
         # Convert HTTPException from quota service to ValueError for email service callers
         from fastapi import HTTPException as _HTTPException
+
         if isinstance(e, _HTTPException) and e.status_code == 429:
             detail = e.detail
             msg_text = detail.get("message", str(detail)) if isinstance(detail, dict) else str(detail)
-            raise ValueError(msg_text)
+            raise ValueError(msg_text) from e
         raise
 
     # 2b. Check domain warm-up limit
@@ -181,10 +189,7 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
     # 4. Append compliance footer
     unsubscribe_link = generate_unsubscribe_link(contact.email)
     body_with_footer = (
-        f"{message.body}\n\n"
-        f"---\n"
-        f"{settings.SENDER_NAME} | {settings.PHYSICAL_ADDRESS}\n"
-        f"Unsubscribe: {unsubscribe_link}"
+        f"{message.body}\n\n---\n{settings.SENDER_NAME} | {settings.PHYSICAL_ADDRESS}\nUnsubscribe: {unsubscribe_link}"
     )
 
     # 5. Build attachments (resume PDF if requested)
@@ -193,20 +198,23 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
         resume_result = await db.execute(
             select(Resume).where(
                 Resume.candidate_id == message.candidate_id,
-                Resume.is_primary == True,
+                Resume.is_primary,
             )
         )
         resume = resume_result.scalar_one_or_none()
         if resume and resume.file_path:
             from app.infrastructure.storage import get_storage
+
             try:
                 storage = get_storage()
                 file_data = await storage.download(resume.file_path)
                 filename = resume.file_path.rsplit("/", 1)[-1]
-                attachments = [{
-                    "filename": filename,
-                    "content": list(file_data),
-                }]
+                attachments = [
+                    {
+                        "filename": filename,
+                        "content": list(file_data),
+                    }
+                ]
                 logger.info("attaching_resume", key=resume.file_path)
             except Exception as e:
                 logger.warning("resume_download_failed", key=resume.file_path, error=str(e))
@@ -216,9 +224,7 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
     from_email = f"{settings.SENDER_NAME} <{settings.SENDER_EMAIL}>"
 
     # Get candidate's email for Reply-To (so replies go to the actual person)
-    candidate_result = await db.execute(
-        select(Candidate.email).where(Candidate.id == message.candidate_id)
-    )
+    candidate_result = await db.execute(select(Candidate.email).where(Candidate.id == message.candidate_id))
     candidate_email = candidate_result.scalar_one_or_none()
 
     # Build headers — threading for follow-ups
@@ -248,14 +254,14 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
         # 6. Update message
         message.external_message_id = result.get("id")
         message.status = MessageStatus.SENT
-        message.sent_at = datetime.now(timezone.utc)
+        message.sent_at = datetime.now(UTC)
 
         # 7. Create events
         event = MessageEvent(
             id=uuid.uuid4(),
             outreach_message_id=message.id,
             event_type="sent",
-            occurred_at=datetime.now(timezone.utc),
+            occurred_at=datetime.now(UTC),
         )
         db.add(event)
 
@@ -266,7 +272,7 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
             entity_type="outreach_message",
             entity_id=message.id,
             metadata_={"to": contact.email, "channel": message.channel},
-            occurred_at=datetime.now(timezone.utc),
+            occurred_at=datetime.now(UTC),
         )
         db.add(analytics)
 
@@ -275,15 +281,22 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
 
         # Notify via WebSocket
         from app.infrastructure.websocket_manager import ws_manager
+
         await ws_manager.broadcast(
-            str(message.candidate_id), "email_sent",
+            str(message.candidate_id),
+            "email_sent",
             {"message_id": str(message.id), "contact_email": contact.email},
         )
 
         from app.events.bus import get_event_bus
+
         await get_event_bus().publish(
             "outreach_sent",
-            {"candidate_id": str(message.candidate_id), "contact_id": str(message.contact_id), "message_id": str(message.id)},
+            {
+                "candidate_id": str(message.candidate_id),
+                "contact_id": str(message.contact_id),
+                "message_id": str(message.id),
+            },
             source="email_service.send_outreach",
         )
 
@@ -302,22 +315,21 @@ async def send_outreach(db: AsyncSession, outreach_id: uuid.UUID, attach_resume:
         # Restore quota — email was never sent
         try:
             from app.services.quota_service import QUOTA_KEY
-            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
             key = QUOTA_KEY.format(candidate_id=str(message.candidate_id), quota_type="email", date=today)
             redis = get_redis()
             await redis.decr(key)
         except Exception as e:
             logger.warning("quota_decr_failed_after_send_error", message_id=str(message.id), error=str(e))
         logger.error("email_send_failed", error=str(e), message_id=str(message.id))
-        raise ValueError(f"Failed to send email: {e}")
+        raise ValueError(f"Failed to send email: {e}") from e
 
 
 WEBHOOK_DEDUP_PREFIX = "webhook:seen:"
 
 
-async def handle_resend_webhook(
-    db: AsyncSession, payload: dict
-) -> None:
+async def handle_resend_webhook(db: AsyncSession, payload: dict) -> None:
     """Process a Resend webhook event."""
     event_type = payload.get("type", "")
     data = payload.get("data", {})
@@ -332,21 +344,20 @@ async def handle_resend_webhook(
     redis = get_redis()
     dedup_key = f"{WEBHOOK_DEDUP_PREFIX}{event_id}"
     from app.config import settings
+
     already_seen = await redis.set(dedup_key, "1", ex=settings.REDIS_WEBHOOK_DEDUP_TTL, nx=True)
     if not already_seen:
         logger.info("webhook_duplicate_skipped", event_id=event_id)
         return
 
     # Find the outreach message
-    result = await db.execute(
-        select(OutreachMessage).where(OutreachMessage.external_message_id == external_id)
-    )
+    result = await db.execute(select(OutreachMessage).where(OutreachMessage.external_message_id == external_id))
     message = result.scalar_one_or_none()
     if not message:
         logger.warning("webhook_message_not_found", external_id=external_id)
         return
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Map Resend event types
     event_map = {
@@ -381,18 +392,24 @@ async def handle_resend_webhook(
     elif mapped_type == "bounced":
         message.status = MessageStatus.BOUNCED
         # Auto-suppress bounced emails
-        await _auto_suppress(db, data.get("to", [None])[0] if isinstance(data.get("to"), list) else data.get("to"), "bounce")
+        await _auto_suppress(
+            db, data.get("to", [None])[0] if isinstance(data.get("to"), list) else data.get("to"), "bounce"
+        )
     elif mapped_type == "complained":
         message.status = MessageStatus.FAILED
-        await _auto_suppress(db, data.get("to", [None])[0] if isinstance(data.get("to"), list) else data.get("to"), "complaint")
+        await _auto_suppress(
+            db, data.get("to", [None])[0] if isinstance(data.get("to"), list) else data.get("to"), "complaint"
+        )
 
     await db.commit()
 
     # Notify via WebSocket
     from app.infrastructure.websocket_manager import ws_manager
+
     ws_event = f"email_{mapped_type}"  # email_delivered, email_opened, etc.
     await ws_manager.broadcast(
-        str(message.candidate_id), ws_event,
+        str(message.candidate_id),
+        ws_event,
         {"message_id": str(message.id), "event_type": mapped_type},
     )
 
@@ -404,15 +421,13 @@ async def _auto_suppress(db: AsyncSession, email: str | None, reason: str) -> No
     if not email:
         return
 
-    existing = await db.execute(
-        select(EmailSuppression).where(EmailSuppression.email == email)
-    )
+    existing = await db.execute(select(EmailSuppression).where(EmailSuppression.email == email))
     if not existing.scalar_one_or_none():
         suppression = EmailSuppression(
             id=uuid.uuid4(),
             email=email,
             reason=reason,
-            suppressed_at=datetime.now(timezone.utc),
+            suppressed_at=datetime.now(UTC),
         )
         db.add(suppression)
         logger.info("email_auto_suppressed", email=email, reason=reason)
@@ -426,11 +441,9 @@ def generate_unsubscribe_link(email: str) -> str:
 
 def _sign_email(email: str) -> str:
     """Create an HMAC signature for email unsubscribe verification (with timestamp)."""
-    ts = str(int(datetime.now(timezone.utc).timestamp()))
+    ts = str(int(datetime.now(UTC).timestamp()))
     msg = f"{ts}:{email}"
-    sig = hmac.new(
-        settings.UNSUBSCRIBE_SECRET.encode(), msg.encode(), hashlib.sha256
-    ).hexdigest()
+    sig = hmac.new(settings.UNSUBSCRIBE_SECRET.encode(), msg.encode(), hashlib.sha256).hexdigest()
     return f"{sig}:{ts}:{email}"
 
 
@@ -441,20 +454,16 @@ def verify_unsubscribe_token(token: str) -> str | None:
         sig, ts, email = parts
         # Reject tokens older than 90 days
         try:
-            if int(ts) < int(datetime.now(timezone.utc).timestamp()) - 90 * 86400:
+            if int(ts) < int(datetime.now(UTC).timestamp()) - 90 * 86400:
                 return None
         except ValueError:
             return None
-        expected = hmac.new(
-            settings.UNSUBSCRIBE_SECRET.encode(), f"{ts}:{email}".encode(), hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(settings.UNSUBSCRIBE_SECRET.encode(), f"{ts}:{email}".encode(), hashlib.sha256).hexdigest()
         return email if hmac.compare_digest(sig, expected) else None
     elif len(parts) == 2:
         # Legacy format — accept but log deprecation
         sig, email = parts
-        expected = hmac.new(
-            settings.UNSUBSCRIBE_SECRET.encode(), email.encode(), hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(settings.UNSUBSCRIBE_SECRET.encode(), email.encode(), hashlib.sha256).hexdigest()
         if hmac.compare_digest(sig, expected):
             logger.info("legacy_unsubscribe_token_used", email=email)
             return email
@@ -467,15 +476,13 @@ async def process_unsubscribe(db: AsyncSession, token: str) -> bool:
     if not email:
         return False
 
-    existing = await db.execute(
-        select(EmailSuppression).where(EmailSuppression.email == email)
-    )
+    existing = await db.execute(select(EmailSuppression).where(EmailSuppression.email == email))
     if not existing.scalar_one_or_none():
         suppression = EmailSuppression(
             id=uuid.uuid4(),
             email=email,
             reason="unsubscribe",
-            suppressed_at=datetime.now(timezone.utc),
+            suppressed_at=datetime.now(UTC),
         )
         db.add(suppression)
         await db.commit()

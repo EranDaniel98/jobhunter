@@ -12,26 +12,25 @@ import json
 import uuid
 
 import structlog
+from langgraph.graph import END, START, StateGraph
+from sqlalchemy import select
 from typing_extensions import TypedDict
-from langgraph.graph import StateGraph, START, END
 
-from app.infrastructure import database as _db_mod
 from app.dependencies import get_openai
-from app.models.enums import ParseStatus
+from app.infrastructure import database as _db_mod
+from app.infrastructure.websocket_manager import ws_manager
 from app.models.candidate import CandidateDNA, Resume, Skill
+from app.models.enums import ParseStatus
+from app.services.company_service import recalculate_fit_scores
+from app.services.embedding_service import batch_embed, embed_text
 from app.services.resume_service import (
+    DNA_SCHEMA,
+    DNA_SUMMARY_PROMPT,
     RESUME_PARSE_PROMPT,
     RESUME_PARSE_SCHEMA,
     SKILLS_EXTRACTION_PROMPT,
     SKILLS_SCHEMA,
-    DNA_SUMMARY_PROMPT,
-    DNA_SCHEMA,
 )
-from app.services.embedding_service import batch_embed, embed_text
-from app.services.company_service import recalculate_fit_scores
-from app.infrastructure.websocket_manager import ws_manager
-
-from sqlalchemy import select
 
 logger = structlog.get_logger()
 
@@ -39,6 +38,7 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # State schema
 # ---------------------------------------------------------------------------
+
 
 class ResumeProcessingState(TypedDict):
     resume_id: str
@@ -50,13 +50,14 @@ class ResumeProcessingState(TypedDict):
     embedding: list[float] | None
     skills_vector: list[float] | None
     fit_scores_updated: int
-    status: str        # "pending" | "completed" | "failed"
+    status: str  # "pending" | "completed" | "failed"
     error: str | None
 
 
 # ---------------------------------------------------------------------------
 # Node functions
 # ---------------------------------------------------------------------------
+
 
 async def parse_resume_node(state: ResumeProcessingState) -> dict:
     """Load resume from DB, call OpenAI structured parse, save parsed_data."""
@@ -73,9 +74,7 @@ async def parse_resume_node(state: ResumeProcessingState) -> dict:
 
         try:
             client = get_openai()
-            parsed = await client.parse_structured(
-                RESUME_PARSE_PROMPT, resume.raw_text, RESUME_PARSE_SCHEMA
-            )
+            parsed = await client.parse_structured(RESUME_PARSE_PROMPT, resume.raw_text, RESUME_PARSE_SCHEMA)
             resume.parsed_data = parsed
             await db.commit()
         except Exception as e:
@@ -93,9 +92,7 @@ async def extract_skills_node(state: ResumeProcessingState) -> dict:
         return {"status": "failed", "error": "No raw_text available for skills extraction"}
     try:
         client = get_openai()
-        skills_data = await client.parse_structured(
-            SKILLS_EXTRACTION_PROMPT, raw_text, SKILLS_SCHEMA
-        )
+        skills_data = await client.parse_structured(SKILLS_EXTRACTION_PROMPT, raw_text, SKILLS_SCHEMA)
     except Exception as e:
         logger.error("graph_extract_skills_failed", error=str(e))
         return {"status": "failed", "error": f"Skills extraction failed: {e}"}
@@ -121,9 +118,7 @@ async def generate_dna_node(state: ResumeProcessingState) -> dict:
         embedding = await embed_text(resume_text)
 
         # Generate DNA summary
-        dna_data = await client.parse_structured(
-            DNA_SUMMARY_PROMPT, json.dumps(parsed_data), DNA_SCHEMA
-        )
+        dna_data = await client.parse_structured(DNA_SUMMARY_PROMPT, json.dumps(parsed_data), DNA_SCHEMA)
 
         # Generate skills vector
         skill_names = [s["name"] for s in skills_data.get("skills", [])]
@@ -134,16 +129,12 @@ async def generate_dna_node(state: ResumeProcessingState) -> dict:
 
     async with _db_mod.async_session_factory() as db:
         # Delete existing DNA and skills
-        existing = await db.execute(
-            select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id)
-        )
+        existing = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
         old_dna = existing.scalar_one_or_none()
         if old_dna:
             await db.delete(old_dna)
 
-        existing_skills = await db.execute(
-            select(Skill).where(Skill.candidate_id == candidate_id)
-        )
+        existing_skills = await db.execute(select(Skill).where(Skill.candidate_id == candidate_id))
         for s in existing_skills.scalars():
             await db.delete(s)
 
@@ -170,7 +161,7 @@ async def generate_dna_node(state: ResumeProcessingState) -> dict:
         skill_names_for_embed = [s["name"] for s in skills_list]
         skill_embeddings = await batch_embed(skill_names_for_embed) if skill_names_for_embed else []
 
-        for skill_data_item, skill_embedding in zip(skills_list, skill_embeddings):
+        for skill_data_item, skill_embedding in zip(skills_list, skill_embeddings, strict=False):
             skill = Skill(
                 id=uuid.uuid4(),
                 candidate_id=candidate_id,
@@ -212,11 +203,13 @@ async def notify_node(state: ResumeProcessingState) -> dict:
             await db.commit()
 
     await ws_manager.broadcast(
-        str(candidate_id), "resume_parsed",
+        str(candidate_id),
+        "resume_parsed",
         {"resume_id": str(resume_id), "status": "completed", "fit_scores_updated": fit_scores_updated},
     )
 
     from app.events.bus import get_event_bus
+
     skills = state.get("skills_data", {}).get("skills", []) if state.get("skills_data") else []
     await get_event_bus().publish(
         "resume_parsed",
@@ -242,7 +235,8 @@ async def mark_failed_node(state: ResumeProcessingState) -> dict:
             await db.commit()
 
     await ws_manager.broadcast(
-        str(candidate_id), "resume_parsed",
+        str(candidate_id),
+        "resume_parsed",
         {"resume_id": str(resume_id), "status": "failed", "error": error},
     )
     logger.error("graph_mark_failed", resume_id=str(resume_id), error=error)
@@ -252,6 +246,7 @@ async def mark_failed_node(state: ResumeProcessingState) -> dict:
 # ---------------------------------------------------------------------------
 # Conditional routing
 # ---------------------------------------------------------------------------
+
 
 def _check_error(state: ResumeProcessingState) -> str:
     """Route to mark_failed if status is 'failed', otherwise continue."""
@@ -263,6 +258,7 @@ def _check_error(state: ResumeProcessingState) -> str:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_resume_pipeline() -> StateGraph:
     """Build (but don't compile) the resume processing graph."""
@@ -276,7 +272,8 @@ def build_resume_pipeline() -> StateGraph:
     builder.add_node("notify", notify_node)
     builder.add_node("mark_failed", mark_failed_node)
 
-    # Wire: START → parse_resume →(check)→ extract_skills →(check)→ generate_dna →(check)→ recalculate_fits → notify → END
+    # Wire: START → parse_resume →(check)→ extract_skills →(check)→
+    #        generate_dna →(check)→ recalculate_fits → notify → END
     builder.add_edge(START, "parse_resume")
 
     builder.add_conditional_edges(
@@ -318,6 +315,7 @@ async def init_checkpointer(db_url: str) -> None:
     # langgraph-checkpoint-postgres uses psycopg (sync driver), not asyncpg
     raw_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
     _checkpointer_cm = AsyncPostgresSaver.from_conn_string(raw_url)
     _checkpointer = await _checkpointer_cm.__aenter__()
     await _checkpointer.setup()

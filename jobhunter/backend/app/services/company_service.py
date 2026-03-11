@@ -1,4 +1,3 @@
-import json
 import uuid
 
 import structlog
@@ -14,7 +13,8 @@ from app.services.embedding_service import cosine_similarity, embed_text
 
 logger = structlog.get_logger()
 
-DOSSIER_PROMPT = """You are a company research analyst. Based on the following company data, generate a comprehensive dossier.
+DOSSIER_PROMPT = """
+You are a company research analyst. Based on the following company data, generate a comprehensive dossier.
 
 Company: {company_name} ({domain})
 Industry: {industry}
@@ -36,8 +36,14 @@ Generate a JSON dossier with:
 - key_people: array of {{name, title}} for leadership
 - why_hire_me: 2-3 sentences explaining why THIS candidate would be valuable to THIS company
 - recent_news: array of {{title, date}} for notable events
-- resume_bullets: array of 3-5 specific bullet points the candidate should add or emphasize on their resume to be a stronger match for THIS company. Reference specific skills, technologies, or experiences that align with the company's needs. Each bullet should be actionable (e.g. "Highlight your experience with distributed systems — their tech stack relies heavily on microservices").
-- fit_score_tips: array of 3-5 tips explaining what gaps exist between the candidate's profile and this company's ideal hire, and how to close them. Focus on skills, technologies, domain knowledge, or experience gaps. Example: "Learn Kubernetes basics — this company heavily uses container orchestration" or "Their stack is Python-heavy, which aligns well with your experience — emphasize this"."""
+- resume_bullets: array of 3-5 specific bullet points the candidate should add or emphasize on their resume
+  to be a stronger match for THIS company. Reference specific skills, technologies, or experiences that align
+  with the company's needs. Each bullet should be actionable
+  (e.g. "Highlight your experience with distributed systems — their tech stack relies heavily on microservices").
+- fit_score_tips: array of 3-5 tips explaining what gaps exist between the candidate's profile and this
+  company's ideal hire, and how to close them. Focus on skills, technologies, domain knowledge, or experience
+  gaps. Example: "Learn Kubernetes basics — this company heavily uses container orchestration" or
+  "Their stack is Python-heavy, which aligns well with your experience — emphasize this"."""
 
 DOSSIER_SCHEMA = {
     "type": "object",
@@ -91,12 +97,26 @@ DOSSIER_SCHEMA = {
             },
         },
     },
-    "required": ["culture_summary", "culture_score", "red_flags", "interview_format", "interview_questions", "compensation_data", "key_people", "why_hire_me", "resume_bullets", "fit_score_tips", "recent_news"],
+    "required": [
+        "culture_summary",
+        "culture_score",
+        "red_flags",
+        "interview_format",
+        "interview_questions",
+        "compensation_data",
+        "key_people",
+        "why_hire_me",
+        "resume_bullets",
+        "fit_score_tips",
+        "recent_news",
+    ],
     "additionalProperties": False,
 }
 
 
-DISCOVERY_PROMPT = """You are a company discovery assistant for job seekers. Based on the candidate's profile, suggest 5-8 real companies they should target.
+DISCOVERY_PROMPT = """
+You are a company discovery assistant for job seekers. Based on the candidate's profile,
+suggest 5-8 real companies they should target.
 
 CANDIDATE PROFILE:
 {candidate_summary}
@@ -116,7 +136,8 @@ INSTRUCTIONS:
 - Prefer companies that are actively hiring or growing
 - Include a mix of well-known and emerging companies
 - Each suggestion must have a real, working company website domain
-- For each company include its primary industry, approximate employee size range (e.g. "51-200", "201-500"), and known tech stack
+- For each company include its primary industry, approximate employee size range
+  (e.g. "51-200", "201-500"), and known tech stack
 - Strictly follow the LOCATION REQUIREMENT above"""
 
 DISCOVERY_SCHEMA = {
@@ -150,9 +171,7 @@ DISCOVERY_SCHEMA = {
 async def recalculate_fit_scores(db: AsyncSession, candidate_id: uuid.UUID) -> int:
     """Recalculate fit scores for all pending/approved companies after a new resume upload."""
     # Get the new DNA embedding
-    dna_result = await db.execute(
-        select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id)
-    )
+    dna_result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
     dna = dna_result.scalar_one_or_none()
     if not dna or dna.embedding is None:
         logger.warning("recalculate_fit_scores_skipped", candidate_id=str(candidate_id), reason="no_dna")
@@ -219,9 +238,7 @@ async def discover_companies(
     hunter = get_hunter()
 
     # Gather existing company domains to exclude
-    existing_result = await db.execute(
-        select(Company.domain).where(Company.candidate_id == candidate_id)
-    )
+    existing_result = await db.execute(select(Company.domain).where(Company.candidate_id == candidate_id))
     existing_domains = [row[0] for row in existing_result.all()]
 
     # Use filter overrides or fall back to candidate profile
@@ -308,16 +325,10 @@ async def discover_companies(
     return companies
 
 
-async def add_company_manual(
-    db: AsyncSession, candidate_id: uuid.UUID, domain: str
-) -> Company:
+async def add_company_manual(db: AsyncSession, candidate_id: uuid.UUID, domain: str) -> Company:
     """Manually add a company by domain."""
     # Check if already exists
-    existing = await db.execute(
-        select(Company).where(
-            Company.candidate_id == candidate_id, Company.domain == domain
-        )
-    )
+    existing = await db.execute(select(Company).where(Company.candidate_id == candidate_id, Company.domain == domain))
     if existing.scalar_one_or_none():
         raise ValueError(f"Company {domain} already exists")
 
@@ -351,9 +362,7 @@ async def approve_company(db: AsyncSession, company_id: uuid.UUID) -> Company:
     return company
 
 
-async def reject_company(
-    db: AsyncSession, company_id: uuid.UUID, reason: str
-) -> Company:
+async def reject_company(db: AsyncSession, company_id: uuid.UUID, reason: str) -> Company:
     result = await db.execute(select(Company).where(Company.id == company_id))
     company = result.scalar_one_or_none()
     if not company:
