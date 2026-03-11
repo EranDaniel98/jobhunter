@@ -33,19 +33,22 @@ def _make_candidate(**overrides) -> Candidate:
     return c
 
 
+class _DictNamespace(SimpleNamespace):
+    """SimpleNamespace that also supports dict-style access like Stripe objects."""
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+
 def _fake_subscription(price_id="price_explorer", status="active", sub_id="sub_123"):
-    """Return a dict-like SimpleNamespace that also supports subscription['items']."""
-    sub = {
-        "id": sub_id,
-        "customer": "cus_test123",
-        "status": status,
-        "current_period_end": 1740000000,
-        "items": {"data": [{"price": {"id": price_id}}]},
-    }
-    # Make it accessible both as attribute and dict
-    ns = SimpleNamespace(**sub)
-    ns.__getitem__ = lambda self, key: sub[key]
-    return ns
+    """Return a dict-like object that supports both attribute and subscript access."""
+    return _DictNamespace(
+        id=sub_id,
+        customer="cus_test123",
+        status=status,
+        current_period_end=1740000000,
+        items={"data": [{"price": {"id": price_id}}]},
+    )
 
 
 # ---------------------------------------------------------------------------
