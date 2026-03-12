@@ -209,3 +209,119 @@ def test_rls_listener_skips_when_disabled():
 
     # Should not have installed any event listener
     mock_engine.sync_engine.assert_not_called()
+
+
+def test_rls_listener_installs_when_enabled():
+    """install_rls_listener should register an event listener when ENABLE_RLS=True."""
+    from unittest.mock import MagicMock
+
+    from app.middleware.tenant import install_rls_listener
+
+    mock_engine = MagicMock()
+
+    with (
+        patch("app.middleware.tenant.settings") as mock_settings,
+        patch("app.middleware.tenant.event") as mock_event,
+    ):
+        mock_settings.ENABLE_RLS = True
+        install_rls_listener(mock_engine)
+
+    mock_event.listens_for.assert_called_once_with(
+        mock_engine.sync_engine, "do_orm_execute"
+    )
+
+
+def test_has_candidate_id_column_true():
+    """_has_candidate_id_column should return True for models with candidate_id."""
+    from unittest.mock import MagicMock
+
+    from app.middleware.tenant import _has_candidate_id_column
+
+    mock_mapper = MagicMock()
+    col1 = MagicMock()
+    col1.key = "id"
+    col2 = MagicMock()
+    col2.key = "candidate_id"
+    mock_mapper.columns = [col1, col2]
+
+    assert _has_candidate_id_column(mock_mapper) is True
+
+
+def test_has_candidate_id_column_false():
+    """_has_candidate_id_column should return False for models without candidate_id."""
+    from unittest.mock import MagicMock
+
+    from app.middleware.tenant import _has_candidate_id_column
+
+    mock_mapper = MagicMock()
+    col1 = MagicMock()
+    col1.key = "id"
+    col2 = MagicMock()
+    col2.key = "name"
+    mock_mapper.columns = [col1, col2]
+
+    assert _has_candidate_id_column(mock_mapper) is False
+
+
+def test_has_candidate_id_column_handles_exception():
+    """_has_candidate_id_column should return False on exception."""
+    from unittest.mock import MagicMock, PropertyMock
+
+    from app.middleware.tenant import _has_candidate_id_column
+
+    mock_mapper = MagicMock()
+    type(mock_mapper).columns = PropertyMock(side_effect=Exception("broken"))
+
+    assert _has_candidate_id_column(mock_mapper) is False
+
+
+def test_current_tenant_id_set_and_get():
+    """current_tenant_id contextvar should support set/get."""
+    from app.middleware.tenant import current_tenant_id
+
+    assert current_tenant_id.get() is None
+    token = current_tenant_id.set("test-tenant-123")
+    assert current_tenant_id.get() == "test-tenant-123"
+    current_tenant_id.reset(token)
+    assert current_tenant_id.get() is None
+
+
+def test_forgot_password_public_path():
+    """Forgot-password and reset-password should be in PUBLIC_PATHS."""
+    from app.middleware.tenant import PUBLIC_PATHS
+
+    assert "/api/v1/auth/forgot-password" in PUBLIC_PATHS
+    assert "/api/v1/auth/reset-password" in PUBLIC_PATHS
+
+
+def test_create_reset_token():
+    """create_reset_token should produce a valid JWT with type=reset."""
+    import jwt as pyjwt
+
+    from app.utils.security import create_reset_token
+
+    with patch("app.utils.security.settings") as mock_settings:
+        mock_settings.JWT_SECRET = "test-secret"
+        mock_settings.JWT_ALGORITHM = "HS256"
+        token = create_reset_token("candidate-abc")
+
+    payload = pyjwt.decode(token, "test-secret", algorithms=["HS256"])
+    assert payload["sub"] == "candidate-abc"
+    assert payload["type"] == "reset"
+    assert "exp" in payload
+
+
+def test_config_has_new_settings():
+    """Config should have DAILY_OPENAI_COST_LIMIT_CENTS and ENABLE_RLS."""
+    from app.config import Settings
+
+    s = Settings(
+        DATABASE_URL="postgresql+asyncpg://x:x@localhost/x",
+        REDIS_URL="redis://localhost",
+        JWT_SECRET="not-default",
+        OPENAI_API_KEY="sk-test",
+    )
+    assert hasattr(s, "DAILY_OPENAI_COST_LIMIT_CENTS")
+    assert hasattr(s, "ENABLE_RLS")
+    assert s.DAILY_OPENAI_COST_LIMIT_CENTS == 5000
+    assert s.ENABLE_RLS is False
