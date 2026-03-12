@@ -21,7 +21,9 @@ from app.schemas.company import (
 from app.schemas.company_note import CompanyNoteResponse, CompanyNoteUpsertRequest
 from app.schemas.contact import ContactResponse
 from app.services import company_service
+from app.services.concurrency import acquire_ai_slot
 from app.services.quota_service import check_and_increment
+from app.utils.http import safe_400
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 logger = structlog.get_logger()
@@ -45,7 +47,7 @@ def _company_to_response(c: Company) -> CompanyResponse:
 
 
 @router.post("/discover", response_model=CompanyListResponse)
-@limiter.limit("3/hour")
+@limiter.limit("2/hour")
 async def discover_companies(
     request: Request,
     data: CompanyDiscoverRequest | None = None,
@@ -53,14 +55,15 @@ async def discover_companies(
     db: AsyncSession = Depends(get_db),
 ):
     await check_and_increment(str(candidate.id), "discovery", candidate.plan_tier, is_admin=candidate.is_admin)
-    companies = await company_service.discover_companies(
-        db,
-        candidate.id,
-        industries=data.industries if data else None,
-        locations=data.locations if data else None,
-        company_size=data.company_size if data else None,
-        keywords=data.keywords if data else None,
-    )
+    async with acquire_ai_slot(str(candidate.id)):
+        companies = await company_service.discover_companies(
+            db,
+            candidate.id,
+            industries=data.industries if data else None,
+            locations=data.locations if data else None,
+            company_size=data.company_size if data else None,
+            keywords=data.keywords if data else None,
+        )
     return CompanyListResponse(
         companies=[_company_to_response(c) for c in companies],
         total=len(companies),
@@ -82,7 +85,7 @@ async def add_company(
         background_tasks.add_task(_research_background, company.id)
         return _company_to_response(company)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise safe_400(e, "Failed to add company") from e
 
 
 @router.get("", response_model=CompanyListResponse)
@@ -214,12 +217,18 @@ async def get_dossier(
 @router.get("/{company_id}/contacts", response_model=list[ContactResponse])
 async def get_contacts(
     company_id: str,
+    skip: int = 0,
+    limit: int = Query(default=50, le=100),
     candidate: Candidate = Depends(get_current_candidate),
     db: AsyncSession = Depends(get_db),
 ):
     company = await _get_candidate_company(db, company_id, candidate.id)
     result = await db.execute(
-        select(Contact).where(Contact.company_id == company.id).order_by(Contact.outreach_priority.desc())
+        select(Contact)
+        .where(Contact.company_id == company.id)
+        .order_by(Contact.outreach_priority.desc())
+        .offset(skip)
+        .limit(limit)
     )
     contacts = result.scalars().all()
     return [

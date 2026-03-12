@@ -22,6 +22,8 @@ from app.schemas.interview import (
     MockInterviewStartRequest,
     MockMessageResponse,
 )
+from app.services.concurrency import acquire_ai_slot
+from app.services.quota_service import check_and_increment
 
 logger = structlog.get_logger()
 
@@ -83,17 +85,21 @@ async def generate_prep(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate interview prep material for a company."""
-    if req.prep_type not in VALID_PREP_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid prep_type. Must be one of: {sorted(VALID_PREP_TYPES)}")
+    await check_and_increment(str(candidate.id), "openai", candidate.plan_tier, is_admin=candidate.is_admin)
 
-    # Verify company belongs to candidate
-    result = await db.execute(
-        select(Company).where(Company.id == uuid.UUID(req.company_id), Company.candidate_id == candidate.id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Company not found")
+    async with acquire_ai_slot(str(candidate.id)):
+        if req.prep_type not in VALID_PREP_TYPES:
+            valid = sorted(VALID_PREP_TYPES)
+            raise HTTPException(status_code=400, detail=f"Invalid prep_type. Must be one of: {valid}")
 
-    background_tasks.add_task(_run_interview_prep, str(candidate.id), req.company_id, req.prep_type)
+        # Verify company belongs to candidate
+        result = await db.execute(
+            select(Company).where(Company.id == uuid.UUID(req.company_id), Company.candidate_id == candidate.id)
+        )
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Company not found")
+
+        background_tasks.add_task(_run_interview_prep, str(candidate.id), req.company_id, req.prep_type)
 
     return InterviewPrepSessionResponse(
         id="pending", company_id=req.company_id, prep_type=req.prep_type, status="pending"
@@ -166,67 +172,70 @@ async def start_mock_interview(
     db: AsyncSession = Depends(get_db),
 ):
     """Start a mock interview session."""
-    if req.interview_type not in VALID_INTERVIEW_TYPES:
-        raise HTTPException(
-            status_code=400, detail=f"Invalid interview_type. Must be one of: {sorted(VALID_INTERVIEW_TYPES)}"
+    await check_and_increment(str(candidate.id), "openai", candidate.plan_tier, is_admin=candidate.is_admin)
+
+    async with acquire_ai_slot(str(candidate.id)):
+        if req.interview_type not in VALID_INTERVIEW_TYPES:
+            raise HTTPException(
+                status_code=400, detail=f"Invalid interview_type. Must be one of: {sorted(VALID_INTERVIEW_TYPES)}"
+            )
+
+        # Verify company
+        result = await db.execute(
+            select(Company).where(Company.id == uuid.UUID(req.company_id), Company.candidate_id == candidate.id)
+        )
+        company = result.scalar_one_or_none()
+        if not company:
+            raise HTTPException(status_code=404, detail="Company not found")
+
+        # Load DNA
+        dna_result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate.id))
+        dna = dna_result.scalar_one_or_none()
+
+        # Create session
+        session = InterviewPrepSession(
+            id=uuid.uuid4(),
+            candidate_id=candidate.id,
+            company_id=company.id,
+            prep_type=PrepType.MOCK_INTERVIEW,
+            content={"interview_type": req.interview_type, "status": SessionStatus.IN_PROGRESS, "score": None},
+            status=SessionStatus.IN_PROGRESS,
+        )
+        db.add(session)
+
+        # Generate first interviewer question
+        system_prompt = MOCK_SYSTEM_PROMPT.format(
+            interview_type=req.interview_type,
+            company_name=company.name,
+            industry=company.industry or "Technology",
+            candidate_summary=dna.experience_summary if dna else "Software engineer",
         )
 
-    # Verify company
-    result = await db.execute(
-        select(Company).where(Company.id == uuid.UUID(req.company_id), Company.candidate_id == candidate.id)
-    )
-    company = result.scalar_one_or_none()
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
+        client = get_openai()
+        first_question = await client.chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "Begin the interview. Ask your first question."},
+            ]
+        )
 
-    # Load DNA
-    dna_result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate.id))
-    dna = dna_result.scalar_one_or_none()
+        msg = MockInterviewMessage(
+            id=uuid.uuid4(),
+            session_id=session.id,
+            role="interviewer",
+            content=first_question,
+            turn_number=1,
+        )
+        db.add(msg)
+        await db.commit()
 
-    # Create session
-    session = InterviewPrepSession(
-        id=uuid.uuid4(),
-        candidate_id=candidate.id,
-        company_id=company.id,
-        prep_type=PrepType.MOCK_INTERVIEW,
-        content={"interview_type": req.interview_type, "status": SessionStatus.IN_PROGRESS, "score": None},
-        status=SessionStatus.IN_PROGRESS,
-    )
-    db.add(session)
-
-    # Generate first interviewer question
-    system_prompt = MOCK_SYSTEM_PROMPT.format(
-        interview_type=req.interview_type,
-        company_name=company.name,
-        industry=company.industry or "Technology",
-        candidate_summary=dna.experience_summary if dna else "Software engineer",
-    )
-
-    client = get_openai()
-    first_question = await client.chat(
-        [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": "Begin the interview. Ask your first question."},
-        ]
-    )
-
-    msg = MockInterviewMessage(
-        id=uuid.uuid4(),
-        session_id=session.id,
-        role="interviewer",
-        content=first_question,
-        turn_number=1,
-    )
-    db.add(msg)
-    await db.commit()
-
-    # Reload with messages
-    result = await db.execute(
-        select(InterviewPrepSession)
-        .where(InterviewPrepSession.id == session.id)
-        .options(selectinload(InterviewPrepSession.messages))
-    )
-    session = result.scalar_one()
+        # Reload with messages
+        result = await db.execute(
+            select(InterviewPrepSession)
+            .where(InterviewPrepSession.id == session.id)
+            .options(selectinload(InterviewPrepSession.messages))
+        )
+        session = result.scalar_one()
 
     return InterviewPrepSessionResponse.model_validate(session)
 
@@ -240,66 +249,69 @@ async def reply_mock_interview(
     db: AsyncSession = Depends(get_db),
 ):
     """Reply to a mock interview question. Returns interviewer's next response."""
-    result = await db.execute(
-        select(InterviewPrepSession)
-        .where(
-            InterviewPrepSession.id == uuid.UUID(req.session_id),
-            InterviewPrepSession.candidate_id == candidate.id,
-            InterviewPrepSession.prep_type == PrepType.MOCK_INTERVIEW,
+    await check_and_increment(str(candidate.id), "openai", candidate.plan_tier, is_admin=candidate.is_admin)
+
+    async with acquire_ai_slot(str(candidate.id)):
+        result = await db.execute(
+            select(InterviewPrepSession)
+            .where(
+                InterviewPrepSession.id == uuid.UUID(req.session_id),
+                InterviewPrepSession.candidate_id == candidate.id,
+                InterviewPrepSession.prep_type == PrepType.MOCK_INTERVIEW,
+            )
+            .options(selectinload(InterviewPrepSession.messages))
         )
-        .options(selectinload(InterviewPrepSession.messages))
-    )
-    session = result.scalar_one_or_none()
-    if not session:
-        raise HTTPException(status_code=404, detail="Mock interview session not found")
+        session = result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Mock interview session not found")
 
-    content_data = session.content or {}
-    if content_data.get("status") == SessionStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail="This mock interview is already completed")
+        content_data = session.content or {}
+        if content_data.get("status") == SessionStatus.COMPLETED:
+            raise HTTPException(status_code=400, detail="This mock interview is already completed")
 
-    # Save candidate's answer
-    max_turn = max((m.turn_number for m in session.messages), default=0)
-    candidate_msg = MockInterviewMessage(
-        id=uuid.uuid4(),
-        session_id=session.id,
-        role="candidate",
-        content=req.answer,
-        turn_number=max_turn + 1,
-    )
-    db.add(candidate_msg)
+        # Save candidate's answer
+        max_turn = max((m.turn_number for m in session.messages), default=0)
+        candidate_msg = MockInterviewMessage(
+            id=uuid.uuid4(),
+            session_id=session.id,
+            role="candidate",
+            content=req.answer,
+            turn_number=max_turn + 1,
+        )
+        db.add(candidate_msg)
 
-    # Build chat history
-    dna_result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate.id))
-    dna = dna_result.scalar_one_or_none()
+        # Build chat history
+        dna_result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate.id))
+        dna = dna_result.scalar_one_or_none()
 
-    company_result = await db.execute(select(Company).where(Company.id == session.company_id))
-    company = company_result.scalar_one()
+        company_result = await db.execute(select(Company).where(Company.id == session.company_id))
+        company = company_result.scalar_one()
 
-    system_prompt = MOCK_SYSTEM_PROMPT.format(
-        interview_type=content_data.get("interview_type", "mixed"),
-        company_name=company.name,
-        industry=company.industry or "Technology",
-        candidate_summary=dna.experience_summary if dna else "Software engineer",
-    )
+        system_prompt = MOCK_SYSTEM_PROMPT.format(
+            interview_type=content_data.get("interview_type", "mixed"),
+            company_name=company.name,
+            industry=company.industry or "Technology",
+            candidate_summary=dna.experience_summary if dna else "Software engineer",
+        )
 
-    messages = [{"role": "system", "content": system_prompt}]
-    for m in session.messages:
-        role = "assistant" if m.role == "interviewer" else "user"
-        messages.append({"role": role, "content": m.content})
-    messages.append({"role": "user", "content": req.answer})
+        messages = [{"role": "system", "content": system_prompt}]
+        for m in session.messages:
+            role = "assistant" if m.role == "interviewer" else "user"
+            messages.append({"role": role, "content": m.content})
+        messages.append({"role": "user", "content": req.answer})
 
-    client = get_openai()
-    response = await client.chat(messages)
+        client = get_openai()
+        response = await client.chat(messages)
 
-    interviewer_msg = MockInterviewMessage(
-        id=uuid.uuid4(),
-        session_id=session.id,
-        role="interviewer",
-        content=response,
-        turn_number=max_turn + 2,
-    )
-    db.add(interviewer_msg)
-    await db.commit()
+        interviewer_msg = MockInterviewMessage(
+            id=uuid.uuid4(),
+            session_id=session.id,
+            role="interviewer",
+            content=response,
+            turn_number=max_turn + 2,
+        )
+        db.add(interviewer_msg)
+        await db.commit()
 
     return MockMessageResponse.model_validate(interviewer_msg)
 
@@ -313,59 +325,63 @@ async def end_mock_interview(
     db: AsyncSession = Depends(get_db),
 ):
     """End a mock interview and get final feedback."""
-    result = await db.execute(
-        select(InterviewPrepSession)
-        .where(
-            InterviewPrepSession.id == uuid.UUID(req.session_id),
-            InterviewPrepSession.candidate_id == candidate.id,
-            InterviewPrepSession.prep_type == PrepType.MOCK_INTERVIEW,
+    await check_and_increment(str(candidate.id), "openai", candidate.plan_tier, is_admin=candidate.is_admin)
+
+    async with acquire_ai_slot(str(candidate.id)):
+        result = await db.execute(
+            select(InterviewPrepSession)
+            .where(
+                InterviewPrepSession.id == uuid.UUID(req.session_id),
+                InterviewPrepSession.candidate_id == candidate.id,
+                InterviewPrepSession.prep_type == PrepType.MOCK_INTERVIEW,
+            )
+            .options(selectinload(InterviewPrepSession.messages))
         )
-        .options(selectinload(InterviewPrepSession.messages))
-    )
-    session = result.scalar_one_or_none()
-    if not session:
-        raise HTTPException(status_code=404, detail="Mock interview session not found")
+        session = result.scalar_one_or_none()
+        if not session:
+            raise HTTPException(status_code=404, detail="Mock interview session not found")
 
-    # Build transcript
-    transcript = "\n".join(
-        f"{'Interviewer' if m.role == 'interviewer' else 'Candidate'}: {m.content}" for m in session.messages
-    )
+        # Build transcript
+        transcript = "\n".join(
+            f"{'Interviewer' if m.role == 'interviewer' else 'Candidate'}: {m.content}" for m in session.messages
+        )
 
-    prompt = (
-        "You are an interview coach. Review this mock interview transcript and provide final feedback.\n\n"
-        f"Transcript:\n{transcript}\n\n"
-        "Provide a JSON response with: overall_score (0-10), strengths (list), improvements (list), summary (string)."
-    )
-    client = get_openai()
-    feedback = await client.parse_structured(prompt, "", MOCK_FEEDBACK_SCHEMA)
+        prompt = (
+            "You are an interview coach. Review this mock interview transcript and provide final feedback.\n\n"
+            f"Transcript:\n{transcript}\n\n"
+            "Provide a JSON response with: overall_score (0-10), strengths (list), "
+            "improvements (list), summary (string)."
+        )
+        client = get_openai()
+        feedback = await client.parse_structured(prompt, "", MOCK_FEEDBACK_SCHEMA)
 
-    # Save feedback as final message
-    max_turn = max((m.turn_number for m in session.messages), default=0)
-    feedback_msg = MockInterviewMessage(
-        id=uuid.uuid4(),
-        session_id=session.id,
-        role="feedback",
-        content=feedback.get("summary", "Interview complete."),
-        turn_number=max_turn + 1,
-        feedback=feedback,
-    )
-    db.add(feedback_msg)
+        # Save feedback as final message
+        max_turn = max((m.turn_number for m in session.messages), default=0)
+        feedback_msg = MockInterviewMessage(
+            id=uuid.uuid4(),
+            session_id=session.id,
+            role="feedback",
+            content=feedback.get("summary", "Interview complete."),
+            turn_number=max_turn + 1,
+            feedback=feedback,
+        )
+        db.add(feedback_msg)
 
-    # Update session content (copy dict to ensure SQLAlchemy detects the change)
-    content_data = dict(session.content or {})
-    content_data["status"] = SessionStatus.COMPLETED
-    content_data["score"] = feedback.get("overall_score")
-    session.content = content_data
-    flag_modified(session, "content")
-    session.status = SessionStatus.COMPLETED
-    await db.commit()
+        # Update session content (copy dict to ensure SQLAlchemy detects the change)
+        content_data = dict(session.content or {})
+        content_data["status"] = SessionStatus.COMPLETED
+        content_data["score"] = feedback.get("overall_score")
+        session.content = content_data
+        flag_modified(session, "content")
+        session.status = SessionStatus.COMPLETED
+        await db.commit()
 
-    # Reload with updated messages
-    result = await db.execute(
-        select(InterviewPrepSession)
-        .where(InterviewPrepSession.id == session.id)
-        .options(selectinload(InterviewPrepSession.messages))
-    )
-    session = result.scalar_one()
+        # Reload with updated messages
+        result = await db.execute(
+            select(InterviewPrepSession)
+            .where(InterviewPrepSession.id == session.id)
+            .options(selectinload(InterviewPrepSession.messages))
+        )
+        session = result.scalar_one()
 
     return InterviewPrepSessionResponse.model_validate(session)

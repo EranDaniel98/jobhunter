@@ -10,15 +10,18 @@ from fastapi import HTTPException
 
 from app.services.auth_service import (
     TOKEN_BLACKLIST_PREFIX,
+    forgot_password,
     login,
     logout,
     refresh_token,
     register,
+    reset_password,
 )
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenPair
 from app.utils.security import (
     create_access_token,
     create_refresh_token as create_refresh,
+    create_reset_token,
     decode_token,
     hash_password,
     verify_password,
@@ -247,3 +250,117 @@ class TestLogout:
             await logout("invalid.token.here")
             # Should not crash, and should not call redis
             mock_redis.setex.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# forgot_password
+# ---------------------------------------------------------------------------
+
+class TestForgotPassword:
+    @pytest.mark.asyncio
+    async def test_forgot_password_existing_user_sends_email(self):
+        """Should send reset email when user exists."""
+        candidate = MagicMock()
+        candidate.id = uuid.uuid4()
+        candidate.email = "user@example.com"
+        candidate.full_name = "Test User"
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = candidate
+        db = AsyncMock()
+        db.execute.return_value = mock_result
+
+        mock_email = AsyncMock()
+        with patch("app.services.auth_service.get_email_client", return_value=mock_email):
+            await forgot_password(db, "user@example.com")
+
+        mock_email.send.assert_awaited_once()
+        call_kwargs = mock_email.send.call_args.kwargs
+        assert "reset-password" in call_kwargs["body"]
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_nonexistent_user_no_error(self):
+        """Should silently succeed when user doesn't exist (no enumeration)."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db = AsyncMock()
+        db.execute.return_value = mock_result
+
+        # Should not raise
+        await forgot_password(db, "nobody@example.com")
+
+    @pytest.mark.asyncio
+    async def test_forgot_password_email_failure_no_crash(self):
+        """Should not crash if email sending fails."""
+        candidate = MagicMock()
+        candidate.id = uuid.uuid4()
+        candidate.email = "user@example.com"
+        candidate.full_name = "Test User"
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = candidate
+        db = AsyncMock()
+        db.execute.return_value = mock_result
+
+        mock_email = AsyncMock()
+        mock_email.send.side_effect = Exception("SMTP down")
+        with patch("app.services.auth_service.get_email_client", return_value=mock_email):
+            await forgot_password(db, "user@example.com")  # Should not raise
+
+
+# ---------------------------------------------------------------------------
+# reset_password
+# ---------------------------------------------------------------------------
+
+class TestResetPassword:
+    @pytest.mark.asyncio
+    async def test_reset_password_success(self):
+        """Valid reset token should update password."""
+        cand_id = uuid.uuid4()
+        token = create_reset_token(str(cand_id))
+
+        candidate = MagicMock()
+        candidate.id = cand_id
+        candidate.password_hash = "old_hash"
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = candidate
+        db = AsyncMock()
+        db.execute.return_value = mock_result
+
+        await reset_password(db, token, "NewPassword1")
+        # Password hash should have been updated
+        assert candidate.password_hash != "old_hash"
+        db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_token_raises(self):
+        """Invalid token should raise 400."""
+        db = AsyncMock()
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_password(db, "invalid.jwt.token", "NewPassword1")
+        assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_reset_password_wrong_token_type_raises(self):
+        """Using an access token for reset should fail."""
+        token, _ = create_access_token("cand-123")
+        db = AsyncMock()
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_password(db, token, "NewPassword1")
+        assert exc_info.value.status_code == 400
+        assert "token type" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_reset_password_nonexistent_user_raises(self):
+        """Reset token for deleted user should raise 400."""
+        token = create_reset_token(str(uuid.uuid4()))
+
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        db = AsyncMock()
+        db.execute.return_value = mock_result
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reset_password(db, token, "NewPassword1")
+        assert exc_info.value.status_code == 400

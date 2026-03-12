@@ -54,7 +54,7 @@ async def get_warmup_limit(domain: str) -> int:
     start_date_str = await redis.get(start_key)
     if start_date_str is None:
         # First send ever for this domain — record today as day-0
-        await redis.set(start_key, today.isoformat())
+        await redis.set(start_key, today.isoformat(), ex=90 * 86400)  # 90-day TTL
         start_date_str = today.isoformat()
         logger.info("warmup_domain_registered", domain=domain, start_date=start_date_str)
 

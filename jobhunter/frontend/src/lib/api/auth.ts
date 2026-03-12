@@ -60,3 +60,16 @@ export async function resendVerification(): Promise<{ message: string }> {
   const { data } = await api.post<{ message: string }>("/auth/resend-verification");
   return data;
 }
+
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>("/auth/forgot-password", { email });
+  return data;
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>("/auth/reset-password", {
+    token,
+    new_password: newPassword,
+  });
+  return data;
+}

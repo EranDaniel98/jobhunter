@@ -345,7 +345,7 @@ export default function ApprovalsPage() {
         open={!!selectedAction}
         onOpenChange={(open) => !open && setSelectedAction(null)}
       >
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
           {selectedAction && (
             <>
               <SheetHeader>
@@ -354,7 +354,7 @@ export default function ApprovalsPage() {
                   Action Details
                 </SheetTitle>
               </SheetHeader>
-              <div className="mt-6 space-y-4">
+              <div className="px-4 pb-6 space-y-4">
                 <div className="flex items-center gap-2">
                   <StatusBadge type="message" status={selectedAction.status} />
                   <Badge variant="secondary">
@@ -402,7 +402,7 @@ export default function ApprovalsPage() {
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Body</p>
                     <div
-                      className="whitespace-pre-wrap rounded-md bg-muted p-3 text-sm"
+                      className="whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed"
                       dir={detectDir(selectedAction.message_body)}
                     >
                       {selectedAction.message_body}

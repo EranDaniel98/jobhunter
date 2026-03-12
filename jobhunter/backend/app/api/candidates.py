@@ -33,9 +33,23 @@ async def upload_resume(
     if ext not in ("pdf", "docx"):
         raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported")
 
+    # Validate MIME type
+    allowed_mimes = {
+        "pdf": "application/pdf",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+    if file.content_type not in allowed_mimes.values():
+        raise HTTPException(status_code=400, detail="Invalid file type. Only PDF and DOCX files are supported")
+
     contents = await file.read()
     if len(contents) > 10 * 1024 * 1024:  # 10MB
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+
+    # Validate magic bytes
+    if ext == "pdf" and not contents[:4] == b"%PDF":
+        raise HTTPException(status_code=400, detail="File content does not match PDF format")
+    if ext == "docx" and not contents[:2] == b"PK":
+        raise HTTPException(status_code=400, detail="File content does not match DOCX format")
 
     resume = await resume_service.upload_resume(db, candidate.id, contents, file.filename)
 
