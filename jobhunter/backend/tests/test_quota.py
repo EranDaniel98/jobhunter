@@ -43,15 +43,15 @@ async def test_quota_enforced_returns_429(client: AsyncClient, auth_headers: dic
     assert resp.status_code == 429
 
 
-def test_discovery_rate_limit_is_3_per_hour():
-    """Verify the rate-limit decorator is set to 3/hour (not 1000/hour)."""
+def test_discovery_rate_limit_is_2_per_hour():
+    """Verify the rate-limit decorator is set to 2/hour (aligned with free tier quota)."""
     import inspect
     from app.api import companies
 
     source = inspect.getsource(companies)
-    # The decorator should be @limiter.limit("3/hour"), NOT "1000/hour"
-    assert '"3/hour"' in source or "'3/hour'" in source, (
-        "discover endpoint should have 3/hour rate limit"
+    # The decorator should be @limiter.limit("2/hour"), aligned with daily quota
+    assert '"2/hour"' in source or "'2/hour'" in source, (
+        "discover endpoint should have 2/hour rate limit"
     )
     assert "1000/hour" not in source, (
         "discover endpoint still has debug 1000/hour rate limit"
