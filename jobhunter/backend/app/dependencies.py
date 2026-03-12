@@ -36,6 +36,12 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
         yield session
 
 
+async def get_admin_db() -> AsyncSession:  # type: ignore[misc]
+    """Admin database session that bypasses RLS filtering."""
+    async for session in get_session():
+        yield session.execution_options(_bypass_rls=True)
+
+
 def get_openai() -> OpenAIClientProtocol:
     global _openai_client
     if _openai_client is None:

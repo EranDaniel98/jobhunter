@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
+from app.middleware.tenant import install_rls_listener
 
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -11,6 +12,9 @@ engine = create_async_engine(
     pool_pre_ping=True,
     echo=False,
 )
+
+# Install RLS listener if enabled (must be done before sessions are created)
+install_rls_listener(engine)
 
 async_session_factory = async_sessionmaker(
     engine,
