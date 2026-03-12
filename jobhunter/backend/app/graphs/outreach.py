@@ -25,7 +25,7 @@ from app.infrastructure import database as _db_mod
 from app.infrastructure.websocket_manager import ws_manager
 from app.models.analytics import AnalyticsEvent
 from app.models.candidate import CandidateDNA, Resume
-from app.models.company import Company, CompanyDossier
+from app.models.company import CompanyDossier
 from app.models.contact import Contact
 from app.models.enums import MessageStatus
 from app.models.outreach import MessageEvent, OutreachMessage
@@ -79,32 +79,30 @@ class OutreachGraphState(TypedDict):
 
 async def gather_context_node(state: OutreachGraphState) -> dict:
     """Load Contact, Company, CompanyDossier, CandidateDNA, determine message_type."""
+    import asyncio as _asyncio
+
     contact_id = uuid.UUID(state["contact_id"])
     candidate_id = uuid.UUID(state["candidate_id"])
 
     async with _db_mod.async_session_factory() as db:
-        # Load contact
-        result = await db.execute(select(Contact).where(Contact.id == contact_id))
+        # Load contact with company eagerly loaded
+        from sqlalchemy.orm import selectinload
+
+        result = await db.execute(
+            select(Contact).where(Contact.id == contact_id).options(selectinload(Contact.company))
+        )
         contact = result.scalar_one_or_none()
         if not contact:
             return {"status": "failed", "error": f"Contact {contact_id} not found"}
 
-        # Load company
-        result = await db.execute(select(Company).where(Company.id == contact.company_id))
-        company = result.scalar_one_or_none()
+        company = contact.company
         if not company:
             return {"status": "failed", "error": f"Company for contact {contact_id} not found"}
 
-        # Load dossier (optional)
-        result = await db.execute(select(CompanyDossier).where(CompanyDossier.company_id == company.id))
-        dossier = result.scalar_one_or_none()
-
-        # Load candidate DNA (optional)
-        result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
-        dna = result.scalar_one_or_none()
-
-        # Determine message type from existing messages
-        existing = await db.execute(
+        # Load dossier, DNA, and existing messages in parallel
+        dossier_coro = db.execute(select(CompanyDossier).where(CompanyDossier.company_id == company.id))
+        dna_coro = db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
+        existing_coro = db.execute(
             select(OutreachMessage)
             .where(
                 OutreachMessage.contact_id == contact_id,
@@ -113,7 +111,11 @@ async def gather_context_node(state: OutreachGraphState) -> dict:
             )
             .order_by(OutreachMessage.created_at.desc())
         )
-        existing_messages = existing.scalars().all()
+        dossier_result, dna_result, existing_result = await _asyncio.gather(dossier_coro, dna_coro, existing_coro)
+
+        dossier = dossier_result.scalar_one_or_none()
+        dna = dna_result.scalar_one_or_none()
+        existing_messages = existing_result.scalars().all()
         message_type = _next_message_type(existing_messages)
 
         # Build recent_news, injecting funding context for scout-sourced companies

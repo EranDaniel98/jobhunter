@@ -11,6 +11,7 @@ from app.models.contact import Contact
 from app.rate_limit import limiter
 from app.schemas.contact import ContactFindRequest, ContactResponse
 from app.services import contact_service
+from app.utils.http import safe_400
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 logger = structlog.get_logger()
@@ -44,7 +45,7 @@ async def find_contact(
             db, _uuid.UUID(data.company_id), candidate.id, data.first_name, data.last_name
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise safe_400(e, "Failed to find contact") from e
     return _contact_to_response(contact)
 
 
@@ -69,7 +70,7 @@ async def verify_contact(
     try:
         contact = await contact_service.verify_contact(db, contact_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise safe_400(e, "Failed to verify contact") from e
     return _contact_to_response(contact)
 
 

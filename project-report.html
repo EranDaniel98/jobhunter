@@ -771,7 +771,7 @@
   <div class="hero">
     <h1>JobHunter AI</h1>
     <p class="subtitle">AI-powered job search automation platform &mdash; intelligent company discovery, personalized outreach, and career intelligence</p>
-    <p class="date">v1.0.0 &bull; Project Report &bull; March 8, 2026</p>
+    <p class="date">v1.1.0 &bull; Project Report &bull; March 12, 2026</p>
   </div>
 
   <!-- Perfect Score Banner -->
@@ -823,7 +823,7 @@
     </div>
     <div class="overall-details">
       <h2>Project Health: Perfect</h2>
-      <p>A production-deployed full-stack AI SaaS platform with 7 LangGraph pipelines, Stripe billing, public landing page, 400+ tests, multi-stage Docker, CD pipeline, Prometheus metrics, event-driven architecture, and comprehensive security scanning. Live on Railway with Cloudflare R2, PostgreSQL (pgvector), and Redis.</p>
+      <p>A production-deployed full-stack AI SaaS platform with 7 LangGraph pipelines, Stripe billing, public landing page, 400+ tests, multi-stage Docker, CD pipeline, Prometheus metrics, event-driven architecture, comprehensive security scanning, per-user cost tracking, multi-tenant RLS, and concurrency control. Live on Railway with Cloudflare R2, PostgreSQL (pgvector), and Redis.</p>
       <div class="grade-bar">
         <span class="label">Architecture</span>
         <div class="bar"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,var(--green),var(--gold))"></div></div>
@@ -910,7 +910,7 @@
 
   <!-- v1.0 Upgrade Summary -->
   <div class="section">
-    <h3 class="section-title"><span class="icon">&#9889;</span> v1.0.0 Upgrade Summary (7 Batches)</h3>
+    <h3 class="section-title"><span class="icon">&#9889;</span> Upgrade Summary (8 Batches)</h3>
     <div class="upgrade-grid">
       <div class="upgrade-card">
         <h5>Batch 1: Code Quality Tooling</h5>
@@ -977,6 +977,19 @@
           <li>Locust load testing</li>
         </ul>
       </div>
+      <div class="upgrade-card">
+        <h5>Batch 8: Cost, Auth, Multi-Tenant (v0.4.0)</h5>
+        <ul>
+          <li>Zod + React Hook Form validation on all auth forms</li>
+          <li>Per-user concurrency semaphore (3 AI slots)</li>
+          <li>Daily spending circuit breaker (Redis-backed)</li>
+          <li>Per-user API cost tracking (api_usage table)</li>
+          <li>Password reset flow (forgot + reset endpoints)</li>
+          <li>Multi-tenant RLS via SQLAlchemy event listener</li>
+          <li>Rate limit alignment with daily quotas</li>
+          <li>Accessibility: aria-live, aria-describedby, aria-expanded</li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -993,11 +1006,11 @@
         <div class="stat-label">Source Files</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">90+</div>
+        <div class="stat-number">95+</div>
         <div class="stat-label">API Endpoints</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">23</div>
+        <div class="stat-number">24</div>
         <div class="stat-label">DB Models</div>
       </div>
       <div class="stat-item">
@@ -1009,11 +1022,11 @@
         <div class="stat-label">Git Commits</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">20</div>
+        <div class="stat-number">21</div>
         <div class="stat-label">DB Migrations</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">20+</div>
+        <div class="stat-number">22+</div>
         <div class="stat-label">Frontend Pages</div>
       </div>
       <div class="stat-item">
@@ -1047,6 +1060,7 @@
           <li><span>TypeScript</span> <span class="version">5.x</span></li>
           <li><span>Tailwind CSS</span> <span class="version">4.x</span></li>
           <li><span>React Query</span> <span class="version">5.90</span></li>
+          <li><span>Zod + React Hook Form</span> <span class="version">Schema validation</span></li>
           <li><span>Radix UI + shadcn/ui</span> <span class="version">24 components</span></li>
           <li><span>Vitest + Testing Library</span> <span class="version">48 tests</span></li>
           <li><span>Playwright</span> <span class="version">8 E2E specs</span></li>
@@ -1072,7 +1086,7 @@
           <li><span>GitHub Actions</span> <span class="version">6 workflows</span></li>
           <li><span>Railway</span> <span class="version">CD pipeline</span></li>
           <li><span>Cloudflare (OpenNext)</span> <span class="version">Frontend</span></li>
-          <li><span>Alembic</span> <span class="version">20 migrations</span></li>
+          <li><span>Alembic</span> <span class="version">21 migrations</span></li>
           <li><span>Trivy + Dependabot</span> <span class="version">Security scan</span></li>
         </ul>
       </div>
@@ -1106,7 +1120,7 @@
         <tr>
           <td>Frontend</td>
           <td>Next.js App Router</td>
-          <td>20+ pages (dashboard + marketing), SSR, auth guards, responsive sidebar</td>
+          <td>22+ pages (dashboard + marketing + auth recovery), SSR, auth guards, responsive sidebar</td>
           <td><span class="badge badge-green">Complete</span></td>
         </tr>
         <tr>
@@ -1124,7 +1138,7 @@
         <tr>
           <td>API</td>
           <td>REST + WebSocket</td>
-          <td>90+ endpoints across 17 routers, JWT auth, rate limiting</td>
+          <td>95+ endpoints across 17 routers, JWT auth, rate limiting, password reset</td>
           <td><span class="badge badge-green">Complete</span></td>
         </tr>
         <tr>
@@ -1141,9 +1155,9 @@
         </tr>
         <tr>
           <td>Arch</td>
-          <td>Tenant Middleware</td>
-          <td>JWT &rarr; tenant_id on request.state, structlog context enrichment</td>
-          <td><span class="badge badge-gold">New</span></td>
+          <td>Tenant Middleware + RLS</td>
+          <td>JWT &rarr; tenant_id, structlog context, SQLAlchemy auto-filter on SELECTs (feature-flagged)</td>
+          <td><span class="badge badge-green">Complete</span></td>
         </tr>
         <tr>
           <td>AI</td>
@@ -1172,7 +1186,7 @@
         <tr>
           <td>Data</td>
           <td>PostgreSQL + pgvector</td>
-          <td>23 models, multi-tenant, HNSW indexes, CHECK constraints</td>
+          <td>24 models (incl. api_usage), multi-tenant, HNSW indexes, CHECK constraints</td>
           <td><span class="badge badge-green">Complete</span></td>
         </tr>
         <tr>
@@ -1222,6 +1236,42 @@
           <td>Database Backups</td>
           <td>Daily pg_dump to R2, 30-day retention, automated cleanup</td>
           <td><span class="badge badge-gold">New</span></td>
+        </tr>
+        <tr>
+          <td>Auth</td>
+          <td>Password Reset Flow</td>
+          <td>Forgot + reset endpoints, 2h JWT tokens, rate-limited 5/hr, no email enumeration</td>
+          <td><span class="badge badge-gold">v0.4</span></td>
+        </tr>
+        <tr>
+          <td>Frontend</td>
+          <td>Zod Form Validation</td>
+          <td>Schema-based validation on login, register, settings, password reset with react-hook-form</td>
+          <td><span class="badge badge-gold">v0.4</span></td>
+        </tr>
+        <tr>
+          <td>Arch</td>
+          <td>Concurrency Semaphore</td>
+          <td>Per-user asyncio.Semaphore(3), 5s timeout &rarr; 429 on interview, research, apply</td>
+          <td><span class="badge badge-gold">v0.4</span></td>
+        </tr>
+        <tr>
+          <td>Arch</td>
+          <td>Cost Circuit Breaker</td>
+          <td>Redis-backed daily OpenAI spend tracker, atomic INCR, 503 at configurable limit</td>
+          <td><span class="badge badge-gold">v0.4</span></td>
+        </tr>
+        <tr>
+          <td>Billing</td>
+          <td>Per-User API Cost Tracking</td>
+          <td>api_usage table, per-request token metering, admin + user endpoints</td>
+          <td><span class="badge badge-gold">v0.4</span></td>
+        </tr>
+        <tr>
+          <td>Security</td>
+          <td>Multi-Tenant RLS</td>
+          <td>SQLAlchemy do_orm_execute auto-filter, contextvars tenant propagation, feature-flagged</td>
+          <td><span class="badge badge-gold">v0.4</span></td>
         </tr>
       </tbody>
     </table>
@@ -1358,6 +1408,56 @@
           <p>Open Graph, Twitter cards, sitemap, robots.txt, pricing page</p>
         </div>
       </div>
+      <!-- New in v0.4.0 -->
+      <div class="feature-item">
+        <div class="fi-icon new">&#9733;</div>
+        <div class="fi-text">
+          <h5>Zod Form Validation <span class="new-badge">v0.4</span></h5>
+          <p>Schema-enforced validation on all auth forms with react-hook-form + aria attributes</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon new">&#9733;</div>
+        <div class="fi-text">
+          <h5>Per-User Concurrency Limiter <span class="new-badge">v0.4</span></h5>
+          <p>asyncio.Semaphore(3) per user, 5s timeout, 429 on overflow</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon new">&#9733;</div>
+        <div class="fi-text">
+          <h5>Daily Cost Circuit Breaker <span class="new-badge">v0.4</span></h5>
+          <p>Redis-backed daily OpenAI spend cap, atomic tracking, 503 at limit</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon new">&#9733;</div>
+        <div class="fi-text">
+          <h5>Per-User API Cost Tracking <span class="new-badge">v0.4</span></h5>
+          <p>api_usage table, per-request metering, admin + user cost endpoints</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon new">&#9733;</div>
+        <div class="fi-text">
+          <h5>Password Reset Flow <span class="new-badge">v0.4</span></h5>
+          <p>Forgot + reset pages, 2h JWT tokens, no email enumeration, rate-limited</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon new">&#9733;</div>
+        <div class="fi-text">
+          <h5>Multi-Tenant Row-Level Security <span class="new-badge">v0.4</span></h5>
+          <p>SQLAlchemy auto-filter on SELECTs, contextvars propagation, feature-flagged</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-icon new">&#9733;</div>
+        <div class="fi-text">
+          <h5>Accessibility Hardening <span class="new-badge">v0.4</span></h5>
+          <p>aria-live on dashboard stats, aria-describedby on form errors, aria-expanded on collapsibles</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1441,7 +1541,23 @@
         </div>
       </div>
       <div class="phase">
-        <div class="phase-dot upcoming">5</div>
+        <div class="phase-dot done">&#10003;</div>
+        <div class="phase-content">
+          <h4>Phase 4.5: Cost, Auth &amp; Multi-Tenant &mdash; v0.4.0</h4>
+          <p>Cost protection, password recovery, form validation, concurrency control, row-level security</p>
+          <div class="items">
+            <span class="chip done">Zod Validation</span>
+            <span class="chip done">Concurrency Semaphore</span>
+            <span class="chip done">Cost Circuit Breaker</span>
+            <span class="chip done">API Cost Tracking</span>
+            <span class="chip done">Password Reset</span>
+            <span class="chip done">Multi-Tenant RLS</span>
+            <span class="chip done">Accessibility</span>
+          </div>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot upcoming">6</div>
         <div class="phase-content">
           <h4>Phase 5: Growth & Scale</h4>
           <p>Multi-channel outreach, advanced analytics, team features</p>
@@ -1464,7 +1580,7 @@
       <div class="card strengths">
         <h3 style="color:var(--green)">Strengths</h3>
         <ul>
-          <li><strong>Production-grade SaaS</strong> &mdash; Stripe billing, tenant isolation, event-driven architecture, multi-stage Docker, CD pipeline, Prometheus metrics</li>
+          <li><strong>Production-grade SaaS</strong> &mdash; Stripe billing, multi-tenant RLS, event-driven architecture, per-user cost tracking, concurrency control, Prometheus metrics</li>
           <li><strong>Security-hardened</strong> &mdash; CSP, SSRF prevention, Dependabot, Trivy scans, SBOM, pip-audit, rate limiting on all sensitive endpoints</li>
           <li><strong>AI-native design</strong> &mdash; 7 LangGraph pipelines, vector embeddings, proactive discovery, structured output, email warm-up</li>
           <li><strong>Comprehensive testing</strong> &mdash; 400+ tests (backend unit, service, graph, API, infrastructure, frontend Vitest, Playwright E2E, Locust load)</li>
@@ -1553,12 +1669,12 @@
         <tr>
           <td>Multi-tenant data isolation</td>
           <td><span class="badge badge-green">Ready</span></td>
-          <td>candidate_id on all tables, tenant middleware, structlog context</td>
+          <td>candidate_id on all tables, tenant middleware, SQLAlchemy RLS auto-filter (feature-flagged)</td>
         </tr>
         <tr>
           <td>Authentication & authorization</td>
           <td><span class="badge badge-green">Ready</span></td>
-          <td>JWT + refresh blacklist, invite codes, email verification</td>
+          <td>JWT + refresh blacklist, invite codes, email verification, password reset flow</td>
         </tr>
         <tr>
           <td>Payment integration</td>
@@ -1578,7 +1694,7 @@
         <tr>
           <td>Rate limiting</td>
           <td><span class="badge badge-green">Ready</span></td>
-          <td>Per-user SlowAPI, atomic Lua quotas, billing + waitlist rate limits</td>
+          <td>Per-user SlowAPI, atomic Lua quotas, concurrency semaphore, billing + waitlist rate limits</td>
         </tr>
         <tr>
           <td>Structured logging</td>
@@ -1620,12 +1736,22 @@
           <td><span class="badge badge-green">Ready</span></td>
           <td>Backend on Railway (api.hunter-job.com), frontend on Cloudflare</td>
         </tr>
+        <tr>
+          <td>API cost management</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>Per-user cost tracking, daily spending circuit breaker, Redis-backed metering</td>
+        </tr>
+        <tr>
+          <td>Form validation</td>
+          <td><span class="badge badge-green">Ready</span></td>
+          <td>Zod schemas + react-hook-form on all auth forms, aria-invalid/describedby</td>
+        </tr>
       </tbody>
     </table>
   </div>
 
   <div class="report-footer">
-    Generated on March 8, 2026 &bull; JobHunter AI v1.0.0 &bull; Perfect Score: 100/100 &bull; Private Repository
+    Generated on March 12, 2026 &bull; JobHunter AI v1.1.0 &bull; Perfect Score: 100/100 &bull; Private Repository
   </div>
 
 </div>

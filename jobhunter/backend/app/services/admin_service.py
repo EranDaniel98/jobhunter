@@ -332,7 +332,7 @@ async def toggle_user_active(
     return candidate
 
 
-async def get_activity_feed(db: AsyncSession, limit: int = 50) -> list[ActivityFeedItem]:
+async def get_activity_feed(db: AsyncSession, skip: int = 0, limit: int = 50) -> list[ActivityFeedItem]:
     result = await db.execute(
         select(
             AnalyticsEvent.id,
@@ -345,6 +345,7 @@ async def get_activity_feed(db: AsyncSession, limit: int = 50) -> list[ActivityF
         )
         .join(Candidate, Candidate.id == AnalyticsEvent.candidate_id)
         .order_by(AnalyticsEvent.occurred_at.desc())
+        .offset(skip)
         .limit(limit)
     )
     return [
@@ -430,7 +431,7 @@ async def create_audit_log(
     return log
 
 
-async def get_audit_log(db: AsyncSession, limit: int = 50) -> list[AuditLogItem]:
+async def get_audit_log(db: AsyncSession, skip: int = 0, limit: int = 50) -> list[AuditLogItem]:
     admin_alias = Candidate.__table__.alias("admin_user")
     target_alias = Candidate.__table__.alias("target_user")
 
@@ -448,6 +449,7 @@ async def get_audit_log(db: AsyncSession, limit: int = 50) -> list[AuditLogItem]
         .outerjoin(admin_alias, admin_alias.c.id == AdminAuditLog.admin_id)
         .outerjoin(target_alias, target_alias.c.id == AdminAuditLog.target_user_id)
         .order_by(AdminAuditLog.created_at.desc())
+        .offset(skip)
         .limit(limit)
     )
     return [
