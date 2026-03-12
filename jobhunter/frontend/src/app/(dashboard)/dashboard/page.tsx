@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/providers/auth-provider";
-import { usePipelineStats, useFunnel, useOutreachStats } from "@/lib/hooks/use-analytics";
+import { useAnalyticsDashboard } from "@/lib/hooks/use-analytics-insights";
 import { useCompanies } from "@/lib/hooks/use-companies";
 import { useApprovalCount } from "@/lib/hooks/use-approvals";
 import * as candidatesApi from "@/lib/api/candidates";
@@ -45,21 +45,17 @@ import {
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const pipelineQuery = usePipelineStats();
-  const funnelQuery = useFunnel();
-  const statsQuery = useOutreachStats();
+  const dashboardQuery = useAnalyticsDashboard();
   const companiesQuery = useCompanies();
   const dnaQuery = useQuery({ queryKey: ["dna"], queryFn: candidatesApi.getDNA, retry: 1 });
   const approvalCountQuery = useApprovalCount();
 
-  const isLoading =
-    pipelineQuery.isLoading || funnelQuery.isLoading || statsQuery.isLoading;
-  const isError =
-    pipelineQuery.isError || funnelQuery.isError || statsQuery.isError;
+  const isLoading = dashboardQuery.isLoading;
+  const isError = dashboardQuery.isError;
 
-  const stats = statsQuery.data;
-  const pipeline = pipelineQuery.data;
-  const funnel = funnelQuery.data;
+  const stats = dashboardQuery.data?.outreach;
+  const pipeline = dashboardQuery.data?.pipeline;
+  const funnel = dashboardQuery.data?.funnel;
   const recentCompanies = companiesQuery.data?.companies?.slice(0, 5) || [];
   const pendingCount = approvalCountQuery.data?.count || 0;
   const totalCompanies = pipeline
@@ -128,9 +124,7 @@ export default function DashboardPage() {
         <QueryError
           message="Could not load dashboard stats."
           onRetry={() => {
-            pipelineQuery.refetch();
-            funnelQuery.refetch();
-            statsQuery.refetch();
+            dashboardQuery.refetch();
           }}
         />
       ) : isLoading ? (
@@ -342,7 +336,7 @@ function StatCard({
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 mb-3">
           <Icon className="h-5 w-5 text-primary" />
         </div>
-        <p className="text-2xl font-bold tabular-nums">{value}</p>
+        <p className="text-2xl font-bold tabular-nums" aria-live="polite">{value}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
         {sub && (
           <p className="text-[11px] text-muted-foreground/70 mt-1">{sub}</p>

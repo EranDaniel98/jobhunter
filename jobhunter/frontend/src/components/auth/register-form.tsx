@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/providers/auth-provider";
+import { registerSchema, type RegisterFormData } from "@/lib/schemas/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,10 +16,6 @@ import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 
 function stripHtml(value: string): string {
   return value.replace(/<[^>]*>/g, "");
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 const passwordRequirements = [
@@ -39,59 +38,45 @@ interface RegisterFormProps {
 }
 
 export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
-  const { register } = useAuth();
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const { register: authRegister } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(false);
 
-  const trimmedName = stripHtml(fullName).trim();
-  const trimmedEmail = email.trim().toLowerCase();
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting, touchedFields },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      emailNotifications: true,
+    },
+    mode: "onBlur",
+  });
+
+  const password = watch("password");
   const metRequirements = passwordRequirements.filter((r) => r.test(password));
-  const allPasswordRequirementsMet = metRequirements.length === passwordRequirements.length;
-  const passwordsMatch = password === confirmPassword;
 
-  const nameError = touched.fullName && !trimmedName ? "Name is required" : null;
-  const emailError =
-    touched.email && !trimmedEmail
-      ? "Email is required"
-      : touched.email && !isValidEmail(trimmedEmail)
-        ? "Enter a valid email address"
-        : null;
-  const confirmError =
-    touched.confirmPassword && confirmPassword && !passwordsMatch
-      ? "Passwords do not match"
-      : null;
-
-  function markTouched(field: string) {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setTouched({ fullName: true, email: true, password: true, confirmPassword: true });
-
-    if (!trimmedName || !isValidEmail(trimmedEmail) || !allPasswordRequirementsMet || !passwordsMatch) {
-      return;
-    }
-
-    setLoading(true);
+  async function onSubmit(data: RegisterFormData) {
     try {
-      await register(trimmedEmail, password, trimmedName, inviteCode, {
-        email_notifications: emailNotifications,
-      });
+      await authRegister(
+        data.email.trim().toLowerCase(),
+        data.password,
+        stripHtml(data.fullName).trim(),
+        inviteCode,
+        { email_notifications: data.emailNotifications },
+      );
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
         "Registration failed";
       toast.error(message);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -103,7 +88,7 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
           <CardDescription>Invited by {invitedByName}</CardDescription>
         )}
       </CardHeader>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
           {/* Full Name */}
           <div className="space-y-2">
@@ -111,14 +96,17 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
             <Input
               id="name"
               placeholder="John Doe"
-              value={fullName}
-              onChange={(e) => setFullName(stripHtml(e.target.value))}
-              onBlur={() => markTouched("fullName")}
-              required
-              aria-invalid={!!nameError}
-              aria-describedby={nameError ? "name-error" : undefined}
+              {...register("fullName", {
+                onChange: (e) => {
+                  e.target.value = stripHtml(e.target.value);
+                },
+              })}
+              aria-invalid={!!errors.fullName}
+              aria-describedby={errors.fullName ? "name-error" : undefined}
             />
-            {nameError && <p id="name-error" className="text-sm text-destructive">{nameError}</p>}
+            {errors.fullName && (
+              <p id="name-error" className="text-sm text-destructive">{errors.fullName.message}</p>
+            )}
           </div>
 
           {/* Email */}
@@ -128,14 +116,13 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
               id="email"
               type="email"
               placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => markTouched("email")}
-              required
-              aria-invalid={!!emailError}
-              aria-describedby={emailError ? "email-error" : undefined}
+              {...register("email")}
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? "email-error" : undefined}
             />
-            {emailError && <p id="email-error" className="text-sm text-destructive">{emailError}</p>}
+            {errors.email && (
+              <p id="email-error" className="text-sm text-destructive">{errors.email.message}</p>
+            )}
           </div>
 
           {/* Password */}
@@ -146,10 +133,7 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onBlur={() => markTouched("password")}
-                required
+                {...register("password")}
                 className="pr-10"
               />
               <button
@@ -196,6 +180,9 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
                 </ul>
               </div>
             )}
+            {touchedFields.password && errors.password && (
+              <p id="password-error" className="text-sm text-destructive">{errors.password.message}</p>
+            )}
           </div>
 
           {/* Confirm Password */}
@@ -206,13 +193,10 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                onBlur={() => markTouched("confirmPassword")}
-                required
+                {...register("confirmPassword")}
                 className="pr-10"
-                aria-invalid={!!confirmError}
-                aria-describedby={confirmError ? "confirm-error" : undefined}
+                aria-invalid={!!errors.confirmPassword}
+                aria-describedby={errors.confirmPassword ? "confirm-error" : undefined}
               />
               <button
                 type="button"
@@ -223,15 +207,17 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {confirmError && <p id="confirm-error" className="text-sm text-destructive">{confirmError}</p>}
+            {errors.confirmPassword && (
+              <p id="confirm-error" className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+            )}
           </div>
 
           {/* Notification Opt-in */}
           <div className="flex items-start gap-2">
             <Checkbox
               id="notifications"
-              checked={emailNotifications}
-              onCheckedChange={(checked) => setEmailNotifications(checked === true)}
+              checked={watch("emailNotifications")}
+              onCheckedChange={(checked) => setValue("emailNotifications", checked === true)}
             />
             <Label htmlFor="notifications" className="text-sm font-normal leading-snug cursor-pointer">
               Email me about follow-up reminders and outreach updates
@@ -250,8 +236,8 @@ export function RegisterForm({ inviteCode, invitedByName }: RegisterFormProps) {
           </p>
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create account
           </Button>
           <p className="text-sm text-muted-foreground">

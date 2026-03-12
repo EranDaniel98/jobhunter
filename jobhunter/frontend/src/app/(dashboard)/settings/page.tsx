@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { changePasswordSchema, type ChangePasswordFormData } from "@/lib/schemas/auth";
 import { useAuth } from "@/providers/auth-provider";
 import { useInvites, useCreateInvite } from "@/lib/hooks/use-invites";
 import { PageHeader } from "@/components/shared/page-header";
@@ -62,13 +65,12 @@ export default function SettingsPage() {
   const [locationInput, setLocationInput] = useState("");
 
   // Security state
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
-  const [pwLoading, setPwLoading] = useState(false);
-  const [pwError, setPwError] = useState("");
+  const pwForm = useForm<ChangePasswordFormData>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
+  });
 
   // Invites state
   const { data: invites } = useInvites();
@@ -150,30 +152,13 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault();
-    setPwError("");
-
-    if (newPassword.length < 8) {
-      setPwError("New password must be at least 8 characters");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPwError("Passwords do not match");
-      return;
-    }
-
-    setPwLoading(true);
+  async function handleChangePassword(data: ChangePasswordFormData) {
     try {
-      await changePassword(currentPassword, newPassword);
+      await changePassword(data.currentPassword, data.newPassword);
       toast.success("Password changed successfully");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      pwForm.reset();
     } catch (err) {
       toastError(err, "Failed to change password");
-    } finally {
-      setPwLoading(false);
     }
   }
 
@@ -315,15 +300,16 @@ export default function SettingsPage() {
                     <p className="text-sm text-muted-foreground">Manage your password</p>
                   </div>
                   <Separator />
-                  <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+                  <form onSubmit={pwForm.handleSubmit(handleChangePassword)} className="space-y-4 max-w-md">
                     <div className="space-y-2">
-                      <Label>Current password</Label>
+                      <Label htmlFor="currentPassword">Current password</Label>
                       <div className="relative">
                         <Input
+                          id="currentPassword"
                           type={showCurrent ? "text" : "password"}
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          required
+                          {...pwForm.register("currentPassword")}
+                          aria-invalid={!!pwForm.formState.errors.currentPassword}
+                          aria-describedby={pwForm.formState.errors.currentPassword ? "current-pw-error" : undefined}
                         />
                         <Button
                           type="button"
@@ -336,16 +322,21 @@ export default function SettingsPage() {
                           {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
+                      {pwForm.formState.errors.currentPassword && (
+                        <p id="current-pw-error" className="text-sm text-destructive">
+                          {pwForm.formState.errors.currentPassword.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label>New password</Label>
+                      <Label htmlFor="newPassword">New password</Label>
                       <div className="relative">
                         <Input
+                          id="newPassword"
                           type={showNew ? "text" : "password"}
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          required
-                          minLength={8}
+                          {...pwForm.register("newPassword")}
+                          aria-invalid={!!pwForm.formState.errors.newPassword}
+                          aria-describedby={pwForm.formState.errors.newPassword ? "new-pw-error" : undefined}
                         />
                         <Button
                           type="button"
@@ -358,19 +349,29 @@ export default function SettingsPage() {
                           {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
+                      {pwForm.formState.errors.newPassword && (
+                        <p id="new-pw-error" className="text-sm text-destructive">
+                          {pwForm.formState.errors.newPassword.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label>Confirm new password</Label>
+                      <Label htmlFor="confirmPassword">Confirm new password</Label>
                       <Input
+                        id="confirmPassword"
                         type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
+                        {...pwForm.register("confirmPassword")}
+                        aria-invalid={!!pwForm.formState.errors.confirmPassword}
+                        aria-describedby={pwForm.formState.errors.confirmPassword ? "confirm-pw-error" : undefined}
                       />
+                      {pwForm.formState.errors.confirmPassword && (
+                        <p id="confirm-pw-error" className="text-sm text-destructive">
+                          {pwForm.formState.errors.confirmPassword.message}
+                        </p>
+                      )}
                     </div>
-                    {pwError && <p className="text-sm text-destructive">{pwError}</p>}
-                    <Button type="submit" disabled={pwLoading}>
-                      {pwLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Button type="submit" disabled={pwForm.formState.isSubmitting}>
+                      {pwForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Change password
                     </Button>
                   </form>
