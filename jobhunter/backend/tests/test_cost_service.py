@@ -38,7 +38,7 @@ async def test_check_budget_passes_when_under_limit():
     mock_redis.get.return_value = "100"  # 1 cent (100 hundredths), way under 5000 cents limit
 
     with (
-        patch("app.services.cost_service.get_redis", return_value=mock_redis),
+        patch("app.infrastructure.redis_client.get_redis", return_value=mock_redis),
         patch("app.services.cost_service.settings") as mock_settings,
     ):
         mock_settings.DAILY_OPENAI_COST_LIMIT_CENTS = 5000
@@ -53,7 +53,7 @@ async def test_check_budget_raises_503_when_over_limit():
     mock_redis.get.return_value = "500000"
 
     with (
-        patch("app.services.cost_service.get_redis", return_value=mock_redis),
+        patch("app.infrastructure.redis_client.get_redis", return_value=mock_redis),
         patch("app.services.cost_service.settings") as mock_settings,
     ):
         mock_settings.DAILY_OPENAI_COST_LIMIT_CENTS = 5000
@@ -68,14 +68,14 @@ async def test_check_budget_passes_when_no_key():
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
 
-    with patch("app.services.cost_service.get_redis", return_value=mock_redis):
+    with patch("app.infrastructure.redis_client.get_redis", return_value=mock_redis):
         await check_budget()  # Should not raise
 
 
 @pytest.mark.asyncio
 async def test_check_budget_graceful_on_redis_failure():
     """If Redis is down, allow the request (graceful degradation)."""
-    with patch("app.services.cost_service.get_redis", side_effect=Exception("Redis down")):
+    with patch("app.infrastructure.redis_client.get_redis", side_effect=Exception("Redis down")):
         await check_budget()  # Should not raise
 
 
@@ -84,7 +84,7 @@ async def test_record_usage_returns_cost():
     """record_usage should return estimated cost in hundredths of a cent."""
     mock_redis = AsyncMock()
 
-    with patch("app.services.cost_service.get_redis", return_value=mock_redis):
+    with patch("app.infrastructure.redis_client.get_redis", return_value=mock_redis):
         cost = await record_usage(1000, 500)
 
     expected = int(1000 * INPUT_COST_PER_TOKEN + 500 * OUTPUT_COST_PER_TOKEN)
@@ -103,7 +103,7 @@ async def test_record_usage_increments_redis():
     """record_usage should INCRBY the daily key in Redis."""
     mock_redis = AsyncMock()
 
-    with patch("app.services.cost_service.get_redis", return_value=mock_redis):
+    with patch("app.infrastructure.redis_client.get_redis", return_value=mock_redis):
         await record_usage(1000, 500)
 
     mock_redis.incrby.assert_called_once()
@@ -116,7 +116,7 @@ async def test_record_usage_graceful_on_redis_failure():
     mock_redis = AsyncMock()
     mock_redis.incrby.side_effect = Exception("Redis down")
 
-    with patch("app.services.cost_service.get_redis", return_value=mock_redis):
+    with patch("app.infrastructure.redis_client.get_redis", return_value=mock_redis):
         cost = await record_usage(1000, 500)
 
     assert cost > 0  # Still returns cost even though Redis failed
@@ -128,7 +128,7 @@ async def test_record_usage_with_candidate_id_calls_per_user():
     mock_redis = AsyncMock()
 
     with (
-        patch("app.services.cost_service.get_redis", return_value=mock_redis),
+        patch("app.infrastructure.redis_client.get_redis", return_value=mock_redis),
         patch("app.services.cost_service._record_per_user", new_callable=AsyncMock) as mock_record,
     ):
         await record_usage(
@@ -150,7 +150,7 @@ async def test_record_usage_per_user_failure_doesnt_crash():
     mock_redis = AsyncMock()
 
     with (
-        patch("app.services.cost_service.get_redis", return_value=mock_redis),
+        patch("app.infrastructure.redis_client.get_redis", return_value=mock_redis),
         patch(
             "app.services.cost_service._record_per_user",
             new_callable=AsyncMock,

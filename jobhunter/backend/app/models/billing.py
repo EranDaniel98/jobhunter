@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, func
@@ -20,4 +21,4 @@ class ApiUsageRecord(Base):
     tokens_out: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     estimated_cost_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     endpoint: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    created_at: Mapped = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
