@@ -5,10 +5,12 @@ install_rls_listener() actually modifies SELECT queries to append
 `WHERE candidate_id = <tenant>` for models that have a candidate_id column.
 """
 
+import secrets
 import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -19,6 +21,7 @@ from app.middleware.tenant import (
 )
 from app.models.candidate import Candidate
 from app.models.company import Company
+from app.models.invite import InviteCode
 from app.utils.security import hash_password
 
 API = settings.API_V1_PREFIX
@@ -29,28 +32,62 @@ API = settings.API_V1_PREFIX
 # ---------------------------------------------------------------------------
 
 
-async def _make_candidate(
-    db: AsyncSession, *, name: str = "Test", is_admin: bool = False
-) -> Candidate:
-    c = Candidate(
-        id=uuid.uuid4(),
-        email=f"{uuid.uuid4().hex[:8]}@rls.local",
-        password_hash=hash_password("testpass123"),
-        full_name=name,
-        is_admin=is_admin,
+async def _create_invite(db: AsyncSession) -> str:
+    """Create an invite code for registration."""
+    result = await db.execute(
+        select(Candidate).where(Candidate.email == "seed-inviter-rls@test.local")
     )
-    db.add(c)
+    inviter = result.scalar_one_or_none()
+    if not inviter:
+        inviter = Candidate(
+            id=uuid.uuid4(),
+            email="seed-inviter-rls@test.local",
+            password_hash=hash_password("testpass123"),
+            full_name="Seed Inviter",
+        )
+        db.add(inviter)
+        await db.flush()
+
+    code = secrets.token_urlsafe(8)
+    invite = InviteCode(
+        id=uuid.uuid4(),
+        code=code,
+        created_by=inviter.id,
+        is_used=False,
+    )
+    db.add(invite)
     await db.flush()
-    return c
+    return code
 
 
-async def _login(client: AsyncClient, email: str) -> dict:
+async def _register_and_login(
+    client: AsyncClient, db: AsyncSession, *, name: str = "Test"
+) -> tuple[Candidate, dict]:
+    """Register a user via the API and return (candidate, auth_headers)."""
+    code = await _create_invite(db)
+    await db.commit()
+    email = f"{uuid.uuid4().hex[:8]}@rls.local"
+    password = "testpass123"
+
+    await client.post(
+        f"{API}/auth/register",
+        json={
+            "email": email,
+            "password": password,
+            "full_name": name,
+            "invite_code": code,
+        },
+    )
+
+    result = await db.execute(select(Candidate).where(Candidate.email == email))
+    candidate = result.scalar_one()
+
     resp = await client.post(
-        f"{API}/auth/login",
-        json={"email": email, "password": "testpass123"},
+        f"{API}/auth/login", json={"email": email, "password": password}
     )
     tokens = resp.json()
-    return {"Authorization": f"Bearer {tokens['access_token']}"}
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+    return candidate, headers
 
 
 # ---------------------------------------------------------------------------
@@ -127,8 +164,8 @@ async def test_user_data_isolation_via_api(
     client: AsyncClient, db_session: AsyncSession
 ):
     """Two users should only see their own companies via API endpoints."""
-    user_a = await _make_candidate(db_session, name="User A")
-    user_b = await _make_candidate(db_session, name="User B")
+    user_a, headers_a = await _register_and_login(client, db_session, name="User A")
+    user_b, headers_b = await _register_and_login(client, db_session, name="User B")
 
     # Create companies for each user
     for i in range(2):
@@ -150,9 +187,6 @@ async def test_user_data_isolation_via_api(
             )
         )
     await db_session.commit()
-
-    headers_a = await _login(client, user_a.email)
-    headers_b = await _login(client, user_b.email)
 
     resp_a = await client.get(f"{API}/companies", headers=headers_a)
     resp_b = await client.get(f"{API}/companies", headers=headers_b)

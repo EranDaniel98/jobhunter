@@ -1,15 +1,18 @@
 """Tests for per-user API cost tracking endpoints (/me/api-usage, /admin/api-costs)."""
 
+import secrets
 import uuid
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.billing import ApiUsageRecord
 from app.models.candidate import Candidate
+from app.models.invite import InviteCode
 from app.utils.security import hash_password
 
 API = settings.API_V1_PREFIX
@@ -20,25 +23,74 @@ API = settings.API_V1_PREFIX
 # ---------------------------------------------------------------------------
 
 
-async def _create_user(
-    db: AsyncSession, *, full_name: str = "Test User", is_admin: bool = False
-) -> Candidate:
-    candidate = Candidate(
-        id=uuid.uuid4(),
-        email=f"{uuid.uuid4().hex[:8]}@test.local",
-        password_hash=hash_password("testpass123"),
-        full_name=full_name,
-        is_admin=is_admin,
+async def _create_invite(db: AsyncSession) -> str:
+    """Create an invite code for registration."""
+    # Ensure seed inviter exists
+    result = await db.execute(
+        select(Candidate).where(Candidate.email == "seed-inviter-usage@test.local")
     )
-    db.add(candidate)
+    inviter = result.scalar_one_or_none()
+    if not inviter:
+        inviter = Candidate(
+            id=uuid.uuid4(),
+            email="seed-inviter-usage@test.local",
+            password_hash=hash_password("testpass123"),
+            full_name="Seed Inviter",
+        )
+        db.add(inviter)
+        await db.flush()
+
+    code = secrets.token_urlsafe(8)
+    invite = InviteCode(
+        id=uuid.uuid4(),
+        code=code,
+        created_by=inviter.id,
+        is_used=False,
+    )
+    db.add(invite)
     await db.flush()
-    return candidate
+    return code
 
 
-async def _login(client: AsyncClient, email: str, password: str = "testpass123") -> dict:
-    resp = await client.post(f"{API}/auth/login", json={"email": email, "password": password})
+async def _register_and_login(
+    client: AsyncClient,
+    db: AsyncSession,
+    *,
+    full_name: str = "Test User",
+    is_admin: bool = False,
+) -> tuple[Candidate, dict]:
+    """Register a user via the API and return (candidate, auth_headers)."""
+    code = await _create_invite(db)
+    await db.commit()
+    email = f"{uuid.uuid4().hex[:8]}@test.local"
+    password = "testpass123"
+
+    await client.post(
+        f"{API}/auth/register",
+        json={
+            "email": email,
+            "password": password,
+            "full_name": full_name,
+            "invite_code": code,
+        },
+    )
+
+    # If admin, update directly in DB
+    if is_admin:
+        result = await db.execute(select(Candidate).where(Candidate.email == email))
+        candidate = result.scalar_one()
+        candidate.is_admin = True
+        await db.commit()
+    else:
+        result = await db.execute(select(Candidate).where(Candidate.email == email))
+        candidate = result.scalar_one()
+
+    resp = await client.post(
+        f"{API}/auth/login", json={"email": email, "password": password}
+    )
     tokens = resp.json()
-    return {"Authorization": f"Bearer {tokens['access_token']}"}
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+    return candidate, headers
 
 
 async def _seed_usage(db: AsyncSession, candidate_id: uuid.UUID, count: int = 3) -> None:
@@ -66,8 +118,9 @@ async def _seed_usage(db: AsyncSession, candidate_id: uuid.UUID, count: int = 3)
 @pytest_asyncio.fixture
 async def user_with_usage(db_session: AsyncSession, client: AsyncClient):
     """Create a user with seeded API usage records."""
-    user = await _create_user(db_session, full_name="Usage User")
-    headers = await _login(client, user.email)
+    user, headers = await _register_and_login(
+        client, db_session, full_name="Usage User"
+    )
     await _seed_usage(db_session, user.id, count=5)
     await db_session.commit()
     return user, headers
@@ -126,21 +179,25 @@ async def test_get_my_api_usage_unauthenticated(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_my_api_usage_isolation(client: AsyncClient, db_session: AsyncSession):
+async def test_get_my_api_usage_isolation(
+    client: AsyncClient, db_session: AsyncSession
+):
     """User A cannot see user B's usage records."""
-    user_a = await _create_user(db_session, full_name="User A")
-    user_b = await _create_user(db_session, full_name="User B")
+    user_a, headers_a = await _register_and_login(
+        client, db_session, full_name="User A"
+    )
+    user_b, headers_b = await _register_and_login(
+        client, db_session, full_name="User B"
+    )
     await _seed_usage(db_session, user_a.id, count=3)
     await _seed_usage(db_session, user_b.id, count=7)
     await db_session.commit()
 
-    headers_a = await _login(client, user_a.email)
     resp = await client.get(f"{API}/auth/me/api-usage", headers=headers_a)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 3  # Only user A's records
 
-    headers_b = await _login(client, user_b.email)
     resp = await client.get(f"{API}/auth/me/api-usage", headers=headers_b)
     assert resp.status_code == 200
     data = resp.json()
@@ -155,14 +212,14 @@ async def test_get_my_api_usage_isolation(client: AsyncClient, db_session: Async
 @pytest_asyncio.fixture
 async def admin_with_costs(db_session: AsyncSession, client: AsyncClient):
     """Create an admin and some users with usage records."""
-    admin = await _create_user(db_session, full_name="Admin", is_admin=True)
-    user1 = await _create_user(db_session, full_name="User 1")
-    user2 = await _create_user(db_session, full_name="User 2")
+    admin, admin_headers = await _register_and_login(
+        client, db_session, full_name="Admin", is_admin=True
+    )
+    user1, _ = await _register_and_login(client, db_session, full_name="User 1")
+    user2, _ = await _register_and_login(client, db_session, full_name="User 2")
     await _seed_usage(db_session, user1.id, count=3)
     await _seed_usage(db_session, user2.id, count=5)
     await db_session.commit()
-
-    admin_headers = await _login(client, admin.email)
     return admin, admin_headers, user1, user2
 
 
@@ -220,12 +277,13 @@ async def test_admin_api_costs_days_validation(client: AsyncClient, admin_with_c
 
 
 @pytest.mark.asyncio
-async def test_admin_api_costs_non_admin_rejected(client: AsyncClient, db_session: AsyncSession):
+async def test_admin_api_costs_non_admin_rejected(
+    client: AsyncClient, db_session: AsyncSession
+):
     """Non-admin users should be rejected with 403."""
-    user = await _create_user(db_session, full_name="Regular", is_admin=False)
-    await db_session.commit()
-    headers = await _login(client, user.email)
-
+    _, headers = await _register_and_login(
+        client, db_session, full_name="Regular", is_admin=False
+    )
     resp = await client.get(f"{API}/admin/api-costs", headers=headers)
     assert resp.status_code == 403
 
