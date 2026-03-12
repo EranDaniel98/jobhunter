@@ -177,6 +177,35 @@ async def test_concurrency_semaphore_allows_within_limit():
         pass  # Should succeed without error
 
 
+@pytest.mark.asyncio
+async def test_concurrency_semaphore_rejects_over_limit():
+    """4th concurrent request should get 429."""
+    import asyncio
+
+    from app.services.concurrency import _semaphores, acquire_ai_slot
+
+    user_id = "test-overload-user"
+    # Clear any existing semaphore for this user
+    _semaphores.pop(user_id, None)
+
+    # Acquire all 3 slots
+    sem = _semaphores[user_id]
+    await sem.acquire()
+    await sem.acquire()
+    await sem.acquire()
+
+    # 4th should timeout and raise 429
+    with pytest.raises(HTTPException) as exc_info:
+        async with acquire_ai_slot(user_id):
+            pass
+    assert exc_info.value.status_code == 429
+
+    # Release slots
+    sem.release()
+    sem.release()
+    sem.release()
+
+
 def test_billing_model_exists():
     """Verify ApiUsageRecord model can be imported."""
     from app.models.billing import ApiUsageRecord
