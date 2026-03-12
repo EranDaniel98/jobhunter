@@ -22,6 +22,7 @@ from app.schemas.apply import (
     ScrapeUrlResponse,
     UpdateStageRequest,
 )
+from app.services.concurrency import acquire_ai_slot
 
 logger = structlog.get_logger()
 
@@ -127,22 +128,23 @@ async def analyze_job_posting(
     db: AsyncSession = Depends(get_db),
 ):
     """Submit a job posting for analysis."""
-    company_id = uuid.UUID(req.company_id) if req.company_id else None
+    async with acquire_ai_slot(str(candidate.id)):
+        company_id = uuid.UUID(req.company_id) if req.company_id else None
 
-    posting = JobPosting(
-        id=uuid.uuid4(),
-        candidate_id=candidate.id,
-        company_id=company_id,
-        title=req.title,
-        company_name=req.company_name,
-        url=req.url,
-        raw_text=req.raw_text,
-        status=JobPostingStatus.PENDING,
-    )
-    db.add(posting)
-    await db.commit()
+        posting = JobPosting(
+            id=uuid.uuid4(),
+            candidate_id=candidate.id,
+            company_id=company_id,
+            title=req.title,
+            company_name=req.company_name,
+            url=req.url,
+            raw_text=req.raw_text,
+            status=JobPostingStatus.PENDING,
+        )
+        db.add(posting)
+        await db.commit()
 
-    background_tasks.add_task(_run_apply_pipeline, str(candidate.id), str(posting.id))
+        background_tasks.add_task(_run_apply_pipeline, str(candidate.id), str(posting.id))
 
     return JobPostingResponse.model_validate(posting)
 
