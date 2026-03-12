@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # Unsubscribe link signing
     UNSUBSCRIBE_SECRET: str = ""
 
+    # Global daily OpenAI cost cap (in cents, default $50)
+    DAILY_OPENAI_COST_LIMIT_CENTS: int = 5000
+
     # API cost limits (daily per user)
     DAILY_OPENAI_CALL_LIMIT: int = 100
     DAILY_HUNTER_CALL_LIMIT: int = 50
@@ -51,6 +54,9 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_PRICE_EXPLORER: str = ""
     STRIPE_PRICE_HUNTER: str = ""
+
+    # Multi-tenant RLS (feature flag — enable only after thorough testing)
+    ENABLE_RLS: bool = False
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:3000"

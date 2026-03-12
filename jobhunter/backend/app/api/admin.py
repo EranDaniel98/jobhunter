@@ -41,20 +41,22 @@ async def get_overview(
 
 @router.get("/activity", response_model=list[ActivityFeedItem])
 async def get_activity_feed(
+    skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     admin: Candidate = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    return await admin_service.get_activity_feed(db, limit=limit)
+    return await admin_service.get_activity_feed(db, skip=skip, limit=limit)
 
 
 @router.get("/audit-log", response_model=list[AuditLogItem])
 async def get_audit_log(
+    skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     admin: Candidate = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    return await admin_service.get_audit_log(db, limit=limit)
+    return await admin_service.get_audit_log(db, skip=skip, limit=limit)
 
 
 @router.get("/users/export")
@@ -193,6 +195,52 @@ async def update_user_plan(
     )
     user = await admin_service.get_user_detail(db, user_id)
     return user
+
+
+@router.get("/api-costs")
+async def get_api_costs(
+    days: int = Query(7, ge=1, le=90),
+    user_id: uuid.UUID | None = Query(None),
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get aggregated API costs, optionally filtered by user."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import func, select
+
+    from app.models.billing import ApiUsageRecord
+
+    since = datetime.now(UTC) - timedelta(days=days)
+    base_filter = [ApiUsageRecord.created_at >= since]
+    if user_id:
+        base_filter.append(ApiUsageRecord.candidate_id == user_id)
+
+    # Aggregate by user
+    result = await db.execute(
+        select(
+            ApiUsageRecord.candidate_id,
+            func.sum(ApiUsageRecord.tokens_in).label("total_tokens_in"),
+            func.sum(ApiUsageRecord.tokens_out).label("total_tokens_out"),
+            func.sum(ApiUsageRecord.estimated_cost_cents).label("total_cost_cents"),
+            func.count(ApiUsageRecord.id).label("request_count"),
+        )
+        .where(*base_filter)
+        .group_by(ApiUsageRecord.candidate_id)
+        .order_by(func.sum(ApiUsageRecord.estimated_cost_cents).desc())
+        .limit(50)
+    )
+    rows = result.all()
+    return [
+        {
+            "candidate_id": str(row.candidate_id),
+            "total_tokens_in": row.total_tokens_in or 0,
+            "total_tokens_out": row.total_tokens_out or 0,
+            "total_cost_cents": row.total_cost_cents or 0,
+            "request_count": row.request_count or 0,
+        }
+        for row in rows
+    ]
 
 
 @router.get("/analytics/registrations", response_model=list[RegistrationTrend])
