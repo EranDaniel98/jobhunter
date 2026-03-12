@@ -11,12 +11,15 @@ from app.config import settings
 from app.dependencies import get_current_candidate, get_db, get_email_client
 from app.infrastructure.redis_client import redis_safe_get, redis_safe_setex
 from app.models.candidate import Candidate
+from app.rate_limit import limiter
 from app.schemas.auth import (
     CandidateResponse,
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TokenPair,
 )
 from app.schemas.candidate import CandidateUpdate
@@ -62,6 +65,20 @@ async def logout(request: Request, data: LogoutRequest | None = None):
     token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else ""
     if token:
         await auth_service.logout(token, refresh_token=data.refresh_token if data else None)
+
+
+@router.post("/forgot-password", status_code=200)
+@limiter.limit("5/hour")
+async def forgot_password(request: Request, data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    await auth_service.forgot_password(db, data.email)
+    return {"message": "If an account with that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password", status_code=200)
+@limiter.limit("5/hour")
+async def reset_password(request: Request, data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    await auth_service.reset_password(db, data.token, data.new_password)
+    return {"message": "Password reset successfully. You can now log in."}
 
 
 @router.get("/me", response_model=CandidateResponse)
@@ -125,6 +142,50 @@ async def change_password(
     candidate.password_hash = hash_password(data.new_password)
     await db.commit()
     logger.info("password_changed", candidate_id=str(candidate.id))
+
+
+@router.get("/me/api-usage")
+async def get_my_api_usage(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the current user's API usage history."""
+    from sqlalchemy import func
+
+    from app.models.billing import ApiUsageRecord
+
+    result = await db.execute(
+        select(ApiUsageRecord)
+        .where(ApiUsageRecord.candidate_id == candidate.id)
+        .order_by(ApiUsageRecord.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    records = result.scalars().all()
+
+    count_result = await db.execute(
+        select(func.count(ApiUsageRecord.id)).where(ApiUsageRecord.candidate_id == candidate.id)
+    )
+    total = count_result.scalar() or 0
+
+    return {
+        "records": [
+            {
+                "id": str(r.id),
+                "service": r.service,
+                "model": r.model,
+                "tokens_in": r.tokens_in,
+                "tokens_out": r.tokens_out,
+                "estimated_cost_cents": r.estimated_cost_cents,
+                "endpoint": r.endpoint,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+        "total": total,
+    }
 
 
 @router.post("/verify", status_code=200)

@@ -15,6 +15,7 @@ from app.services import invite_service
 from app.utils.security import (
     create_access_token,
     create_refresh_token,
+    create_reset_token,
     create_verification_token,
     decode_token,
     hash_password,
@@ -132,6 +133,64 @@ async def refresh_token(token: str) -> TokenPair:
         await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{jti}", ttl, "revoked")
 
     return TokenPair(access_token=access_token, refresh_token=new_refresh)
+
+
+async def forgot_password(db: AsyncSession, email: str) -> None:
+    """Send a password reset email. Always returns success (no email enumeration)."""
+    result = await db.execute(select(Candidate).where(Candidate.email == email))
+    candidate = result.scalar_one_or_none()
+
+    if not candidate:
+        logger.debug("forgot_password_unknown_email", email=email)
+        return  # Silent — no email enumeration
+
+    token = create_reset_token(str(candidate.id))
+    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+    try:
+        email_client = get_email_client()
+        await email_client.send(
+            to=candidate.email,
+            from_email=settings.SENDER_EMAIL,
+            subject=f"Reset your {settings.APP_NAME} password",
+            body=(
+                f"Hi {candidate.full_name},\n\n"
+                f"Click the link below to reset your password:\n{reset_url}\n\n"
+                "This link expires in 2 hours. If you didn't request this, ignore this email."
+            ),
+        )
+        logger.info("reset_email_sent", candidate_id=str(candidate.id))
+    except Exception as e:
+        logger.warning("reset_email_failed", candidate_id=str(candidate.id), error=str(e))
+
+
+async def reset_password(db: AsyncSession, token: str, new_password: str) -> None:
+    """Reset password using a valid reset token."""
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link",
+        ) from None
+
+    if payload.get("type") != "reset":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token type",
+        )
+
+    candidate_id = payload.get("sub")
+    result = await db.execute(select(Candidate).where(Candidate.id == uuid.UUID(candidate_id)))
+    candidate = result.scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link",
+        )
+
+    candidate.password_hash = hash_password(new_password)
+    await db.commit()
+    logger.info("password_reset", candidate_id=candidate_id)
 
 
 async def logout(token: str, refresh_token: str | None = None) -> None:

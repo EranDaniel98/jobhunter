@@ -53,6 +53,16 @@ def create_verification_token(candidate_id: str) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
+def create_reset_token(candidate_id: str) -> str:
+    """Create a short-lived JWT for password reset (2h)."""
+    payload = {
+        "sub": candidate_id,
+        "exp": datetime.now(UTC) + timedelta(hours=2),
+        "type": "reset",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT token. Raises jwt.PyJWTError on failure."""
     return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
