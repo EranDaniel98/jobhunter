@@ -7,6 +7,7 @@ install_rls_listener() actually modifies SELECT queries to append
 
 import secrets
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -52,8 +53,8 @@ async def _create_invite(db: AsyncSession) -> str:
     invite = InviteCode(
         id=uuid.uuid4(),
         code=code,
-        created_by=inviter.id,
-        is_used=False,
+        invited_by_id=inviter.id,
+        expires_at=datetime.now(UTC) + timedelta(days=7),
     )
     db.add(invite)
     await db.flush()
