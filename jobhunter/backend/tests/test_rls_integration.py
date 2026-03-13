@@ -5,13 +5,10 @@ install_rls_listener() actually modifies SELECT queries to append
 `WHERE candidate_id = <tenant>` for models that have a candidate_id column.
 """
 
-import secrets
 import uuid
-from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -22,73 +19,38 @@ from app.middleware.tenant import (
 )
 from app.models.candidate import Candidate
 from app.models.company import Company
-from app.models.invite import InviteCode
 from app.utils.security import hash_password
 
 API = settings.API_V1_PREFIX
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Helpers — matches test_admin.py pattern (direct DB insert + login)
 # ---------------------------------------------------------------------------
 
 
-async def _create_invite(db: AsyncSession) -> str:
-    """Create an invite code for registration."""
-    result = await db.execute(
-        select(Candidate).where(Candidate.email == "seed-inviter-rls@test.local")
-    )
-    inviter = result.scalar_one_or_none()
-    if not inviter:
-        inviter = Candidate(
-            id=uuid.uuid4(),
-            email="seed-inviter-rls@test.local",
-            password_hash=hash_password("testpass123"),
-            full_name="Seed Inviter",
-        )
-        db.add(inviter)
-        await db.flush()
-
-    code = secrets.token_urlsafe(8)
-    invite = InviteCode(
+async def _create_user(
+    db: AsyncSession, *, name: str = "Test", is_admin: bool = False
+) -> Candidate:
+    c = Candidate(
         id=uuid.uuid4(),
-        code=code,
-        invited_by_id=inviter.id,
-        expires_at=datetime.now(UTC) + timedelta(days=7),
+        email=f"{uuid.uuid4().hex[:8]}@rls.local",
+        password_hash=hash_password("testpass123"),
+        full_name=name,
+        is_admin=is_admin,
     )
-    db.add(invite)
+    db.add(c)
     await db.flush()
-    return code
+    return c
 
 
-async def _register_and_login(
-    client: AsyncClient, db: AsyncSession, *, name: str = "Test"
-) -> tuple[Candidate, dict]:
-    """Register a user via the API and return (candidate, auth_headers)."""
-    code = await _create_invite(db)
-    await db.commit()
-    email = f"{uuid.uuid4().hex[:8]}@rls.local"
-    password = "testpass123"
-
-    await client.post(
-        f"{API}/auth/register",
-        json={
-            "email": email,
-            "password": password,
-            "full_name": name,
-            "invite_code": code,
-        },
-    )
-
-    result = await db.execute(select(Candidate).where(Candidate.email == email))
-    candidate = result.scalar_one()
-
+async def _login(client: AsyncClient, email: str) -> dict:
     resp = await client.post(
-        f"{API}/auth/login", json={"email": email, "password": password}
+        f"{API}/auth/login",
+        json={"email": email, "password": "testpass123"},
     )
     tokens = resp.json()
-    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
-    return candidate, headers
+    return {"Authorization": f"Bearer {tokens['access_token']}"}
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +95,6 @@ class TestHasCandidateIdColumn:
         from sqlalchemy.orm import class_mapper
 
         mapper = class_mapper(Candidate)
-        # Candidate's PK is 'id', it doesn't have a separate 'candidate_id' FK
         assert _has_candidate_id_column(mapper) is False
 
 
@@ -149,7 +110,6 @@ async def test_tenant_middleware_sets_tenant_on_authenticated_request(
     """Authenticated requests should have tenant context set by middleware."""
     resp = await client.get(f"{API}/auth/me", headers=auth_headers)
     assert resp.status_code == 200
-    # The middleware sets tenant_id = candidate_id from JWT
     assert "id" in resp.json()
 
 
@@ -165,8 +125,8 @@ async def test_user_data_isolation_via_api(
     client: AsyncClient, db_session: AsyncSession
 ):
     """Two users should only see their own companies via API endpoints."""
-    user_a, headers_a = await _register_and_login(client, db_session, name="User A")
-    user_b, headers_b = await _register_and_login(client, db_session, name="User B")
+    user_a = await _create_user(db_session, name="User A")
+    user_b = await _create_user(db_session, name="User B")
 
     # Create companies for each user
     for i in range(2):
@@ -189,6 +149,9 @@ async def test_user_data_isolation_via_api(
         )
     await db_session.commit()
 
+    headers_a = await _login(client, user_a.email)
+    headers_b = await _login(client, user_b.email)
+
     resp_a = await client.get(f"{API}/companies", headers=headers_a)
     resp_b = await client.get(f"{API}/companies", headers=headers_b)
 
@@ -198,11 +161,9 @@ async def test_user_data_isolation_via_api(
     companies_a = resp_a.json()
     companies_b = resp_b.json()
 
-    # User A should only see their companies
     for c in companies_a:
         assert c["candidate_id"] == str(user_a.id)
 
-    # User B should only see their companies
     for c in companies_b:
         assert c["candidate_id"] == str(user_b.id)
 
