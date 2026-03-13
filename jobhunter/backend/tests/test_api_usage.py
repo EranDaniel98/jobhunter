@@ -81,7 +81,7 @@ async def user_with_usage(db_session: AsyncSession, client: AsyncClient):
     """Create a user with seeded API usage records."""
     user = await _create_user(db_session, full_name="Usage User")
     await _seed_usage(db_session, user.id, count=5)
-    await db_session.commit()
+    await db_session.flush()
     headers = await _login(client, user.email)
     return user, headers
 
@@ -149,7 +149,7 @@ async def test_get_my_api_usage_isolation(
     user_b = await _create_user(db_session, full_name="User B")
     await _seed_usage(db_session, user_a.id, count=3)
     await _seed_usage(db_session, user_b.id, count=7)
-    await db_session.commit()
+    await db_session.flush()
 
     headers_a = await _login(client, user_a.email)
     resp = await client.get(f"{API}/auth/me/api-usage", headers=headers_a)
@@ -175,7 +175,7 @@ async def admin_with_costs(db_session: AsyncSession, client: AsyncClient):
     user2 = await _create_user(db_session, full_name="User 2")
     await _seed_usage(db_session, user1.id, count=3)
     await _seed_usage(db_session, user2.id, count=5)
-    await db_session.commit()
+    await db_session.flush()
     admin_headers = await _login(client, admin.email)
     return admin, admin_headers, user1, user2
 
@@ -239,7 +239,7 @@ async def test_admin_api_costs_non_admin_rejected(
 ):
     """Non-admin users should be rejected with 403."""
     user = await _create_user(db_session, full_name="Regular", is_admin=False)
-    await db_session.commit()
+    await db_session.flush()
     headers = await _login(client, user.email)
     resp = await client.get(f"{API}/admin/api-costs", headers=headers)
     assert resp.status_code == 403

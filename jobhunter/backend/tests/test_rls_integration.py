@@ -147,7 +147,7 @@ async def test_user_data_isolation_via_api(
                 domain=f"b{i}.example.com",
             )
         )
-    await db_session.commit()
+    await db_session.flush()
 
     headers_a = await _login(client, user_a.email)
     headers_b = await _login(client, user_b.email)
