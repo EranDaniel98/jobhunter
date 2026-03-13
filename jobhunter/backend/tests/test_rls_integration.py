@@ -159,14 +159,22 @@ async def test_user_data_isolation_via_api(
     assert resp_a.status_code == 200
     assert resp_b.status_code == 200
 
-    companies_a = resp_a.json()
-    companies_b = resp_b.json()
+    # Response is CompanyListResponse with "companies" list and "total" count
+    data_a = resp_a.json()
+    data_b = resp_b.json()
 
-    for c in companies_a:
-        assert c["candidate_id"] == str(user_a.id)
+    companies_a = data_a["companies"]
+    companies_b = data_b["companies"]
 
-    for c in companies_b:
-        assert c["candidate_id"] == str(user_b.id)
+    # User A should see exactly 2 companies, User B should see exactly 3
+    assert len(companies_a) == 2, f"User A expected 2 companies, got {len(companies_a)}"
+    assert len(companies_b) == 3, f"User B expected 3 companies, got {len(companies_b)}"
+
+    # Verify names to confirm isolation (no cross-tenant leakage)
+    names_a = {c["name"] for c in companies_a}
+    names_b = {c["name"] for c in companies_b}
+    assert all(n.startswith("Company A-") for n in names_a)
+    assert all(n.startswith("Company B-") for n in names_b)
 
 
 # ---------------------------------------------------------------------------
