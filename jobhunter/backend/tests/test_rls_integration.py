@@ -49,6 +49,7 @@ async def _login(client: AsyncClient, email: str) -> dict:
         f"{API}/auth/login",
         json={"email": email, "password": "testpass123"},
     )
+    assert resp.status_code == 200, f"Login failed for {email}: {resp.text}"
     tokens = resp.json()
     return {"Authorization": f"Bearer {tokens['access_token']}"}
 

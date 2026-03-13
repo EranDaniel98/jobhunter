@@ -1,6 +1,7 @@
 from app.models.analytics import AnalyticsEvent
 from app.models.audit import AdminAuditLog
 from app.models.base import Base
+from app.models.billing import ApiUsageRecord
 from app.models.candidate import Candidate, CandidateDNA, Resume, Skill
 from app.models.company import Company, CompanyDossier
 from app.models.company_note import CompanyNote
@@ -19,6 +20,7 @@ __all__ = [
     "AdminAuditLog",
     "AnalyticsEvent",
     "AnalyticsInsight",
+    "ApiUsageRecord",
     "Base",
     "Candidate",
     "CandidateDNA",
