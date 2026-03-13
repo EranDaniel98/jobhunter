@@ -1065,7 +1065,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.14.0" },
     { name = "arq", specifier = ">=0.26.0" },
     { name = "asyncpg", specifier = ">=0.30.0" },
-    { name = "bcrypt", specifier = ">=4.0.0,<4.1" },
+    { name = "bcrypt", specifier = ">=4.0.0,<5.1" },
     { name = "boto3", specifier = ">=1.35.0" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.6.0" },
     { name = "duckduckgo-search", specifier = ">=7.0.0" },

@@ -51,7 +51,7 @@ jobs:
       - name: Ruff format check
         run: uv run ruff format --check app/
       - name: Mypy type check
-        run: uv run mypy app/ --ignore-missing-imports || true
+        run: uv run mypy app/ --ignore-missing-imports
       - name: Create test database
         run: PGPASSWORD=jobhunter psql -h localhost -U jobhunter -d jobhunter -c "CREATE DATABASE jobhunter_test;" || true
       - run: uv run pytest tests/ -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=70
@@ -74,7 +74,7 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - name: npm audit security scan
-        run: npm audit --audit-level=moderate || true
+        run: npm audit --audit-level=high
 
   e2e:
     runs-on: ubuntu-latest

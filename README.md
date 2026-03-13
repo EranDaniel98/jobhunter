@@ -1,5 +1,8 @@
 # JobHunter AI
 
+![CI](https://github.com/EranDaniel98/jobhunter/actions/workflows/ci.yml/badge.svg)
+![Security](https://github.com/EranDaniel98/jobhunter/actions/workflows/security.yml/badge.svg)
+
 **AI-powered job search automation platform** - intelligent company discovery, personalized outreach, and career intelligence.
 
 JobHunter AI is a semi-automated platform that combines AI intelligence with human judgment. The system discovers opportunities, researches companies, and drafts personalized outreach - but every action goes through you first.
