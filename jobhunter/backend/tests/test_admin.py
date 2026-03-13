@@ -95,7 +95,7 @@ async def regular_headers(client: AsyncClient, regular_user: Candidate) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 1. AUTH GUARD — All endpoints must require admin
+# 1. AUTH GUARD - All endpoints must require admin
 # ---------------------------------------------------------------------------
 
 class TestAdminAuthGuard:
@@ -169,7 +169,7 @@ class TestSystemOverview:
         db_session.add(contact)
         await db_session.flush()
 
-        # One sent message, one draft — only sent should count
+        # One sent message, one draft - only sent should count
         db_session.add(OutreachMessage(
             id=uuid.uuid4(), contact_id=contact.id, candidate_id=admin_user.id,
             body="sent msg", status="sent", sent_at=datetime.now(timezone.utc),
@@ -683,7 +683,7 @@ class TestTopUsers:
         )
         db_session.add(contact)
         await db_session.flush()
-        # Only drafts — should NOT appear in top users
+        # Only drafts - should NOT appear in top users
         db_session.add(OutreachMessage(
             id=uuid.uuid4(), contact_id=contact.id, candidate_id=admin_user.id,
             body="just a draft", status="draft",

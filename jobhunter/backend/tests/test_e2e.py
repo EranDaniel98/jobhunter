@@ -93,7 +93,7 @@ async def test_full_e2e_flow(client: AsyncClient, invite_code: str, db_session: 
     assert resp.status_code == 200
     assert "email_verified" in resp.json()  # Real API may return False for test contacts
 
-    # 10. Draft outreach (now async — create via service for deterministic e2e flow)
+    # 10. Draft outreach (now async - create via service for deterministic e2e flow)
     me_resp = await client.get(f"{API}/auth/me", headers=headers)
     candidate_id = uuid.UUID(me_resp.json()["id"])
 

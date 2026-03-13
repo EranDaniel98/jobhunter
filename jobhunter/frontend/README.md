@@ -1,4 +1,4 @@
-# JobHunter AI — Frontend
+# JobHunter AI - Frontend
 
 Next.js 16 frontend for the JobHunter AI platform.
 

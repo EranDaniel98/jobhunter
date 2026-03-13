@@ -26,7 +26,7 @@ uv sync --all-extras
 
 # Copy environment file and fill in secrets
 cp .env.example .env
-# Edit .env — at minimum set JWT_SECRET and API keys
+# Edit .env - at minimum set JWT_SECRET and API keys
 
 # Run database migrations
 uv run alembic upgrade head
@@ -45,7 +45,7 @@ npm install
 
 # Copy environment file
 cp .env.production .env.local
-# Edit .env.local — set NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+# Edit .env.local - set NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
 # Start dev server
 npm run dev
@@ -70,7 +70,7 @@ uv run python -m pytest tests/test_companies.py -xvs
 uv run python -m pytest tests/ --cov=app --cov-report=html
 ```
 
-Tests use **lightweight stubs** for external APIs (OpenAI, Hunter.io, Resend) — no real API calls are made. See `tests/conftest.py` for stub implementations.
+Tests use **lightweight stubs** for external APIs (OpenAI, Hunter.io, Resend) - no real API calls are made. See `tests/conftest.py` for stub implementations.
 
 ### Frontend (Playwright E2E)
 
@@ -91,11 +91,11 @@ npm run test:e2e:ui
 
 Key patterns used throughout the codebase:
 
-- **Protocol-based DI** — External clients (OpenAI, Hunter, Resend) implement protocols, swapped with stubs in tests
-- **Redis helpers** — Atomic INCR for daily limits (email, API quotas), graceful degradation via `redis_safe_*` helpers
-- **structlog** — Structured JSON logging with request ID context
-- **Singleton clients** — `dependencies.py` manages single instances of API clients
-- **LangGraph** — Resume processing pipeline with PostgreSQL-backed checkpointing
+- **Protocol-based DI** - External clients (OpenAI, Hunter, Resend) implement protocols, swapped with stubs in tests
+- **Redis helpers** - Atomic INCR for daily limits (email, API quotas), graceful degradation via `redis_safe_*` helpers
+- **structlog** - Structured JSON logging with request ID context
+- **Singleton clients** - `dependencies.py` manages single instances of API clients
+- **LangGraph** - Resume processing pipeline with PostgreSQL-backed checkpointing
 
 See [docs/architecture-decisions.md](docs/architecture-decisions.md) for detailed ADRs.
 
@@ -133,7 +133,7 @@ See [`backend/.env.example`](backend/.env.example) for all available variables w
 3. Copy the DSN from the project settings
 4. Set `SENTRY_DSN` in `backend/.env` (for the backend)
 5. Set `NEXT_PUBLIC_SENTRY_DSN` in `frontend/.env.local` (for the frontend)
-6. Restart the servers — Sentry will auto-capture unhandled exceptions
+6. Restart the servers - Sentry will auto-capture unhandled exceptions
 
 ## Email Domain Setup
 

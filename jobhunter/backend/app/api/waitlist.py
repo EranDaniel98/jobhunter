@@ -1,4 +1,4 @@
-"""Waitlist API — public signup endpoint."""
+"""Waitlist API - public signup endpoint."""
 
 import structlog
 from fastapi import APIRouter, Depends, Request

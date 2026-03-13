@@ -182,7 +182,7 @@ async def test_full_draft_pipeline(
     thread_id = f"test-outreach-{uuid.uuid4().hex[:8]}"
     config = {"configurable": {"thread_id": thread_id}}
 
-    # Run the graph — it should pause at interrupt()
+    # Run the graph - it should pause at interrupt()
     result = await graph.ainvoke(state, config=config)
 
     # Verify OutreachMessage was created in DB
@@ -228,7 +228,7 @@ async def test_resume_after_approval(
     thread_id = f"test-outreach-{uuid.uuid4().hex[:8]}"
     config = {"configurable": {"thread_id": thread_id}}
 
-    # First half — pauses at interrupt
+    # First half - pauses at interrupt
     await graph.ainvoke(state, config=config)
 
     # Resume with approval
@@ -268,7 +268,7 @@ async def test_rejection_skips_send(
     thread_id = f"test-outreach-{uuid.uuid4().hex[:8]}"
     config = {"configurable": {"thread_id": thread_id}}
 
-    # First half — pauses at interrupt
+    # First half - pauses at interrupt
     await graph.ainvoke(state, config=config)
 
     # Resume with rejection
@@ -277,7 +277,7 @@ async def test_rejection_skips_send(
         config=config,
     )
 
-    # Rejection routes to END — status stays "awaiting_approval" (not "sent")
+    # Rejection routes to END - status stays "awaiting_approval" (not "sent")
     assert result.get("status") != "sent"
 
     # Verify DB: message stays draft (not sent)

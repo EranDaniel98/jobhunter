@@ -14,7 +14,7 @@ async def resend_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Handle Resend webhook events (no JWT auth — uses Svix signature verification)."""
+    """Handle Resend webhook events (no JWT auth - uses Svix signature verification)."""
     body = await request.body()
     svix_headers = {
         "svix-id": request.headers.get("svix-id", ""),
@@ -39,7 +39,7 @@ async def unsubscribe(
     token: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Handle email unsubscribe (no JWT auth — recipient clicks link)."""
+    """Handle email unsubscribe (no JWT auth - recipient clicks link)."""
     success = await process_unsubscribe(db, token)
     if not success:
         raise HTTPException(status_code=400, detail="Invalid or expired unsubscribe link")

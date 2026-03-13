@@ -25,8 +25,8 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # New sending domains need gradual ramp-up to build reputation with ISPs.
 # Redis keys:
-#   email_warmup:{domain}:start_date  — ISO date when sending started
-#   email_warmup:{domain}:daily:{date} — send count for that date
+#   email_warmup:{domain}:start_date  - ISO date when sending started
+#   email_warmup:{domain}:daily:{date} - send count for that date
 # ---------------------------------------------------------------------------
 
 WARMUP_START_KEY = "email_warmup:{domain}:start_date"
@@ -53,7 +53,7 @@ async def get_warmup_limit(domain: str) -> int:
 
     start_date_str = await redis.get(start_key)
     if start_date_str is None:
-        # First send ever for this domain — record today as day-0
+        # First send ever for this domain - record today as day-0
         await redis.set(start_key, today.isoformat(), ex=90 * 86400)  # 90-day TTL
         start_date_str = today.isoformat()
         logger.info("warmup_domain_registered", domain=domain, start_date=start_date_str)
@@ -119,7 +119,7 @@ async def send_outreach(
 
     # Duplicate send prevention
     if message.status not in (MessageStatus.DRAFT, MessageStatus.APPROVED):
-        raise ValueError(f"Cannot send message with status '{message.status}' — already sent or processing")
+        raise ValueError(f"Cannot send message with status '{message.status}' - already sent or processing")
 
     # Enforce outreach sequence: followups require the previous message to be sent
     prev_msg = None
@@ -179,7 +179,7 @@ async def send_outreach(
     except ValueError:
         raise  # Propagate warm-up limit errors as-is
     except Exception as e:
-        # Redis failure — log and allow (graceful degradation)
+        # Redis failure - log and allow (graceful degradation)
         logger.warning("warmup_check_failed", domain=sender_domain, error=str(e))
 
     # 3. Warn if unverified (but don't block)
@@ -227,7 +227,7 @@ async def send_outreach(
     candidate_result = await db.execute(select(Candidate.email).where(Candidate.id == message.candidate_id))
     candidate_email = candidate_result.scalar_one_or_none()
 
-    # Build headers — threading for follow-ups
+    # Build headers - threading for follow-ups
     send_headers = {
         "List-Unsubscribe": f"<mailto:unsubscribe@hunter-job.com?subject=unsubscribe>, <{unsubscribe_link}>",
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -312,7 +312,7 @@ async def send_outreach(
     except Exception as e:
         message.status = MessageStatus.FAILED
         await db.commit()
-        # Restore quota — email was never sent
+        # Restore quota - email was never sent
         try:
             from app.services.quota_service import QUOTA_KEY
 
@@ -461,7 +461,7 @@ def verify_unsubscribe_token(token: str) -> str | None:
         expected = hmac.new(settings.UNSUBSCRIBE_SECRET.encode(), f"{ts}:{email}".encode(), hashlib.sha256).hexdigest()
         return email if hmac.compare_digest(sig, expected) else None
     elif len(parts) == 2:
-        # Legacy format — accept but log deprecation
+        # Legacy format - accept but log deprecation
         sig, email = parts
         expected = hmac.new(settings.UNSUBSCRIBE_SECRET.encode(), email.encode(), hashlib.sha256).hexdigest()
         if hmac.compare_digest(sig, expected):

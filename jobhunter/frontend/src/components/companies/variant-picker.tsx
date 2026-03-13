@@ -26,7 +26,7 @@ export function VariantPicker({ variants, open, onOpenChange, onPicked }: Varian
         onOpenChange(false);
       },
       onError: () => {
-        // Even if delete fails, the pick is fine — user has both drafts
+        // Even if delete fails, the pick is fine - user has both drafts
         onPicked();
         onOpenChange(false);
       },

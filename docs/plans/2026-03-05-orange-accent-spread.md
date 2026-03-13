@@ -1,4 +1,4 @@
-# Orange Accent Spread — Implementation Plan
+# Orange Accent Spread - Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Active sidebar link — orange left border + stronger tint
+### Task 1: Active sidebar link - orange left border + stronger tint
 
 **Files:**
 - Modify: `frontend/src/components/layout/sidebar.tsx:82-84`
@@ -29,7 +29,7 @@ isActive && "bg-primary/10 text-primary font-semibold"
 isActive && "bg-primary/15 text-primary font-semibold border-l-[3px] border-primary pl-2.5"
 ```
 
-The `pl-2.5` compensates for the border so text doesn't shift. The resting state already has `rounded-xl` which clips the left border nicely — that's fine, it creates a subtle inset bar effect.
+The `pl-2.5` compensates for the border so text doesn't shift. The resting state already has `rounded-xl` which clips the left border nicely - that's fine, it creates a subtle inset bar effect.
 
 **Step 2: Verify visually**
 
@@ -44,7 +44,7 @@ git commit -m "style: add orange left-border to active sidebar nav item"
 
 ---
 
-### Task 2: Active mobile nav link — match sidebar
+### Task 2: Active mobile nav link - match sidebar
 
 **Files:**
 - Modify: `frontend/src/components/layout/mobile-nav.tsx:76`
@@ -72,7 +72,7 @@ git commit -m "style: match mobile nav active state to sidebar orange border"
 
 ---
 
-### Task 3: Tabs — orange active underline
+### Task 3: Tabs - orange active underline
 
 **Files:**
 - Modify: `frontend/src/components/ui/tabs.tsx:70`
@@ -106,7 +106,7 @@ git commit -m "style: orange underline on active tab triggers"
 
 ---
 
-### Task 4: Card hover — subtle orange top-border glow
+### Task 4: Card hover - subtle orange top-border glow
 
 **Files:**
 - Modify: `frontend/src/components/ui/card.tsx:10`
@@ -140,7 +140,7 @@ git commit -m "style: orange border tint + shadow lift on card hover"
 
 ---
 
-### Task 5: Global link color — orange text links via CSS layer
+### Task 5: Global link color - orange text links via CSS layer
 
 **Files:**
 - Modify: `frontend/src/app/globals.css:127-134`
@@ -169,7 +169,7 @@ The `:not([data-slot])` selector excludes shadcn/ui components (buttons, badges,
 
 **Step 2: Verify visually**
 
-Check `localhost:3000/dashboard` — the "Upgrade" link in UsageCard and the "View all" links should now be orange. Buttons should NOT change color (they have `data-slot="button"`).
+Check `localhost:3000/dashboard` - the "Upgrade" link in UsageCard and the "View all" links should now be orange. Buttons should NOT change color (they have `data-slot="button"`).
 
 **Important caveat:** If this over-applies (e.g., table row links that shouldn't be orange), the selector can be narrowed to `a:not([data-slot]):not([class*="flex"])` or removed in favor of per-component changes. Check visually before committing.
 
@@ -182,7 +182,7 @@ git commit -m "style: global orange link color for non-component anchor tags"
 
 ---
 
-### Task 6: Stat card icons — all use orange (dashboard consistency)
+### Task 6: Stat card icons - all use orange (dashboard consistency)
 
 **Files:**
 - Modify: `frontend/src/app/(dashboard)/dashboard/page.tsx:119-121,145-147,164-166,185-187`
@@ -194,7 +194,7 @@ Currently the 4 stat cards use different chart colors for their icons (chart-2, 
 Find and replace these 3 stat card icon containers (the Companies card at line 119 already uses primary):
 
 ```tsx
-// Emails Sent card (line 145-146) — change chart-2 to primary
+// Emails Sent card (line 145-146) - change chart-2 to primary
 // OLD
 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-chart-2/15">
   <Mail className="h-4 w-4 text-chart-2" />
@@ -204,7 +204,7 @@ Find and replace these 3 stat card icon containers (the Companies card at line 1
   <Mail className="h-4 w-4 text-primary" />
 
 
-// Open Rate card (line 164-165) — change chart-3 to primary
+// Open Rate card (line 164-165) - change chart-3 to primary
 // OLD
 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-chart-3/15">
   <Eye className="h-4 w-4 text-chart-3" />
@@ -214,7 +214,7 @@ Find and replace these 3 stat card icon containers (the Companies card at line 1
   <Eye className="h-4 w-4 text-primary" />
 
 
-// Reply Rate card (line 185-186) — change chart-5 to primary
+// Reply Rate card (line 185-186) - change chart-5 to primary
 // OLD
 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-chart-5/15">
   <MessageSquare className="h-4 w-4 text-chart-5" />
@@ -237,7 +237,7 @@ git commit -m "style: unify dashboard stat card icons to orange"
 
 ---
 
-### Task 7: Page header title accent — orange first word or icon dot
+### Task 7: Page header title accent - orange first word or icon dot
 
 **Files:**
 - Modify: `frontend/src/components/shared/page-header.tsx`
@@ -270,7 +270,7 @@ git commit -m "style: add orange dot accent to page header titles"
 
 ---
 
-### Task 8: Footer status dot — use orange instead of chart-2
+### Task 8: Footer status dot - use orange instead of chart-2
 
 **Files:**
 - Modify: `frontend/src/components/layout/footer.tsx:7-8`

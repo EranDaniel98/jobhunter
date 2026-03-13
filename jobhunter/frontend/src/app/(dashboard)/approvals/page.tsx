@@ -111,7 +111,7 @@ export default function ApprovalsPage() {
   function handleApprove(id: string) {
     approveMutation.mutate(id, {
       onSuccess: () => {
-        toast.success("Action approved — message sent");
+        toast.success("Action approved - message sent");
         setSelectedAction(null);
       },
       onError: (err: unknown) => toastError(err, "Failed to approve"),

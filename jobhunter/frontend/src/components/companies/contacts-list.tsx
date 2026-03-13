@@ -149,11 +149,11 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                   </div>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                  {contact.title || "—"}
+                  {contact.title || "-"}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm">{contact.email || "—"}</span>
+                    <span className="text-sm">{contact.email || "-"}</span>
                     {contact.email_verified && (
                       <ShieldCheck className="h-3.5 w-3.5 text-primary" />
                     )}

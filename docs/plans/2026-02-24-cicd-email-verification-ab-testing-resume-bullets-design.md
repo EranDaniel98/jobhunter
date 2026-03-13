@@ -38,4 +38,4 @@ One workflow file, two parallel jobs for CI, one conditional job for releases.
 - Add `resume_bullets: list[str] | None` to CompanyDossier model + schema
 - Extend dossier prompt to generate 3-5 bullet points based on DNA gaps vs company requirements
 - Display on company detail page below "Why Hire Me" as checklist card
-- No separate endpoint — included in existing dossier response
+- No separate endpoint - included in existing dossier response

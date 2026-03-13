@@ -21,7 +21,7 @@ Return a JSON object with these fields:
 - certifications: string[]
 - summary: string (1-2 sentence professional summary)
 
-Be thorough and extract ALL information. Do not fabricate or embellish — only extract what is explicitly stated."""
+Be thorough and extract ALL information. Do not fabricate or embellish - only extract what is explicitly stated."""
 
 RESUME_PARSE_SCHEMA = {
     "type": "object",

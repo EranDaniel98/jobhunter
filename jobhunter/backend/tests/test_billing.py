@@ -156,7 +156,7 @@ async def test_create_portal_session_no_customer_raises():
 
 
 # ---------------------------------------------------------------------------
-# billing_service.handle_webhook_event — subscription lifecycle
+# billing_service.handle_webhook_event - subscription lifecycle
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio

@@ -1,4 +1,4 @@
-# LangGraph Resume Pipeline — Design Document
+# LangGraph Resume Pipeline - Design Document
 
 **Date:** 2026-02-24
 **Status:** Approved
@@ -50,17 +50,17 @@ All fields are JSON-serializable for checkpointing.
 
 ## Graph Nodes
 
-1. **parse_resume** — Load resume from DB, call OpenAI structured parse, save `parsed_data` to Resume table and state.
-2. **extract_skills** — Read `raw_text` from state, call OpenAI skills extraction, write `skills_data` to state.
-3. **generate_dna** — Read `parsed_data` + `skills_data`, generate DNA summary + embeddings, create CandidateDNA and Skill records in DB.
-4. **recalculate_fits** — Recompute cosine similarity fit scores for all suggested/approved companies.
-5. **notify** — Mark resume as completed, send WebSocket notification.
-6. **mark_failed** — Error handler: mark resume as failed, send error notification.
+1. **parse_resume** - Load resume from DB, call OpenAI structured parse, save `parsed_data` to Resume table and state.
+2. **extract_skills** - Read `raw_text` from state, call OpenAI skills extraction, write `skills_data` to state.
+3. **generate_dna** - Read `parsed_data` + `skills_data`, generate DNA summary + embeddings, create CandidateDNA and Skill records in DB.
+4. **recalculate_fits** - Recompute cosine similarity fit scores for all suggested/approved companies.
+5. **notify** - Mark resume as completed, send WebSocket notification.
+6. **mark_failed** - Error handler: mark resume as failed, send error notification.
 
 ## Checkpointing
 
 - **Library:** `langgraph-checkpoint-postgres` (async, uses existing asyncpg driver)
-- **Thread ID:** `resume:{resume_id}` — enables status queries and resume-from-failure
+- **Thread ID:** `resume:{resume_id}` - enables status queries and resume-from-failure
 - **Setup:** `checkpointer.setup()` called in FastAPI lifespan (creates tables automatically)
 - **Retention:** ARQ cron job cleans up checkpoints older than 7 days
 

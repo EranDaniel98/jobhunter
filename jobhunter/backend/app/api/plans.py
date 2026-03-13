@@ -115,7 +115,7 @@ async def stripe_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Handle Stripe webhook events (no auth — verified by signature)."""
+    """Handle Stripe webhook events (no auth - verified by signature)."""
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 

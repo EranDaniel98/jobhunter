@@ -96,7 +96,7 @@ async def _create_message(
 
 
 # ---------------------------------------------------------------------------
-# 1. Subquery tests — list_users
+# 1. Subquery tests - list_users
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio

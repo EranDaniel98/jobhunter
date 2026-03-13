@@ -170,7 +170,7 @@ export default function OutreachPage() {
   const [attachResume, setAttachResume] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Bulk select — only drafts are selectable
+  // Bulk select - only drafts are selectable
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -253,7 +253,7 @@ export default function OutreachPage() {
     );
   }
 
-  // Bulk actions — only drafts
+  // Bulk actions - only drafts
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -447,7 +447,7 @@ export default function OutreachPage() {
                       bulkMode && !isDraft && "opacity-50 cursor-not-allowed",
                     )}
                   >
-                    {/* Bulk checkbox — only drafts */}
+                    {/* Bulk checkbox - only drafts */}
                     {bulkMode && isDraft && (
                       <div
                         className="pt-1 shrink-0"

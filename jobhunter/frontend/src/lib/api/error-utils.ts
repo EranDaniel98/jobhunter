@@ -29,7 +29,7 @@ export function getErrorMessage(err: unknown, fallback = "Something went wrong")
   const apiErr = err as ApiError;
 
   if (!apiErr?.response) {
-    return "Network error — check your connection and try again";
+    return "Network error - check your connection and try again";
   }
 
   const status = apiErr.response.status;
@@ -47,12 +47,12 @@ export function getErrorMessage(err: unknown, fallback = "Something went wrong")
 
   if (typeof detail === "string") return detail;
 
-  if (status === 401) return "Session expired — please log in again";
+  if (status === 401) return "Session expired - please log in again";
   if (status === 403) return "You don't have permission to do that";
-  if (status === 404) return "Not found — it may have been deleted";
-  if (status === 409) return "Conflict — this already exists";
-  if (status === 429) return "Too many requests — please slow down";
-  if (status && status >= 500) return "Server error — please try again later";
+  if (status === 404) return "Not found - it may have been deleted";
+  if (status === 409) return "Conflict - this already exists";
+  if (status === 429) return "Too many requests - please slow down";
+  if (status && status >= 500) return "Server error - please try again later";
 
   return fallback;
 }

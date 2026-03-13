@@ -43,7 +43,7 @@ export function EmailVerificationBanner() {
     setLoading(true);
     try {
       await resendVerification();
-      toast.success("Verification email sent — check your inbox");
+      toast.success("Verification email sent - check your inbox");
       const until = Date.now() + COOLDOWN_SECONDS * 1000;
       localStorage.setItem(COOLDOWN_KEY, String(until));
       setCooldownRemaining(COOLDOWN_SECONDS);

@@ -20,7 +20,7 @@ def _validate_url(url: str) -> None:
         if ip.is_private or ip.is_loopback or ip.is_link_local:
             raise ValueError("Internal/private URLs are not allowed")
     except socket.gaierror:
-        pass  # Can't resolve — let Jina handle it
+        pass  # Can't resolve - let Jina handle it
 
 
 async def scrape_job_url(url: str) -> str:

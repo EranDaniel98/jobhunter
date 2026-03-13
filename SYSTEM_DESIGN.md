@@ -1,4 +1,4 @@
-# JobHunter AI — System Design Document
+# JobHunter AI - System Design Document
 
 > An intelligent, semi-automated job search system that thinks like a career strategist.
 
@@ -149,12 +149,12 @@ Agent produces action → PendingAction created in DB →
 ```
 
 **PendingAction types:**
-- `send_email` — outreach message with full preview
-- `send_followup` — follow-up with context of prior messages
-- `apply_resume_tweak` — diff view of suggested resume changes
-- `submit_application` — application package ready to send
-- `add_target_company` — new company added to pipeline
-- `connect_linkedin` — LinkedIn connection request draft
+- `send_email` - outreach message with full preview
+- `send_followup` - follow-up with context of prior messages
+- `apply_resume_tweak` - diff view of suggested resume changes
+- `submit_application` - application package ready to send
+- `add_target_company` - new company added to pipeline
+- `connect_linkedin` - LinkedIn connection request draft
 
 The Approval Queue UI shows:
 - The proposed action with full context
@@ -164,7 +164,7 @@ The Approval Queue UI shows:
 
 ### 1.5 Inter-Agent Communication
 
-Agents communicate through the **LangGraph StateGraph** — a shared state object that accumulates data as it flows through the graph.
+Agents communicate through the **LangGraph StateGraph** - a shared state object that accumulates data as it flows through the graph.
 
 ```mermaid
 graph TD
@@ -889,12 +889,12 @@ graph TD
 
 **Agent: `apply_agent`**
 
-Resume tweak generation (critical — never fabricates):
+Resume tweak generation (critical - never fabricates):
 
 ```python
 system_prompt = """You are optimizing a resume for a specific job application.
 
-RULES — THESE ARE ABSOLUTE:
+RULES - THESE ARE ABSOLUTE:
 1. NEVER add skills, experiences, or achievements the candidate doesn't have
 2. NEVER exaggerate or embellish existing experience
 3. ONLY suggest presentation changes:
@@ -993,7 +993,7 @@ suggest how to bridge from adjacent experiences.
 
 ### 3.5 Workflow: Analytics & Learning Loop
 
-**Trigger:** Continuous — runs after every event (email opened, application status change, interview completed).
+**Trigger:** Continuous - runs after every event (email opened, application status change, interview completed).
 
 ```mermaid
 graph TD
@@ -1163,9 +1163,9 @@ class HunterRateLimiter:
 **Important:** Use the **Responses API** (not Assistants API, which sunsets August 2026).
 
 **Models used:**
-- `gpt-4o` — Complex reasoning: resume analysis, message writing, interview prep, company research synthesis
-- `gpt-4o-mini` — Simple tasks: classification, extraction, summarization (cheaper, faster)
-- `text-embedding-3-large` — All vector embeddings (3072 dimensions)
+- `gpt-4o` - Complex reasoning: resume analysis, message writing, interview prep, company research synthesis
+- `gpt-4o-mini` - Simple tasks: classification, extraction, summarization (cheaper, faster)
+- `text-embedding-3-large` - All vector embeddings (3072 dimensions)
 
 #### 4.2.1 Resume Parsing (Module 1)
 
@@ -1386,7 +1386,7 @@ async def score_opportunity_fit(
 | 1. Candidate DNA | text-embedding-3-large | Embed candidate profile | One-time + on update |
 | 2. Scout Scoring | text-embedding-3-large + gpt-4o-mini | Embed & score opportunities | Per discovery batch |
 | 3. Research | gpt-4o | Synthesize company dossiers | Per target company |
-| 4. Contact | (no OpenAI, Hunter.io only) | — | — |
+| 4. Contact | (no OpenAI, Hunter.io only) | - | - |
 | 5. Apply | gpt-4o | Resume tweaks + cover letters | Per application |
 | 6. Outreach | gpt-4o | Personalized messages | Per contact |
 | 7. Interview | gpt-4o | STAR stories, prep materials | Per interview |
@@ -1395,7 +1395,7 @@ async def score_opportunity_fit(
 **Cost control strategies:**
 - Use `gpt-4o-mini` for classification, scoring, and simple extraction ($0.15/1M input vs $2.50 for gpt-4o)
 - Use `text-embedding-3-large` with dimensionality reduction if needed (can reduce to 1536 dims)
-- Cache embeddings — don't re-embed unchanged data
+- Cache embeddings - don't re-embed unchanged data
 - Batch embedding requests (up to 2048 inputs per call)
 - Use structured outputs (`json_schema` with `strict: true`) to avoid parsing errors and retries
 
@@ -1425,7 +1425,7 @@ The MVP must demonstrate the **core differentiator**: intelligence-driven job se
 
 #### Phase 1: Foundation + Core Intelligence (MVP)
 
-**Modules:** 1 (Resume), 3 (Research), 4 (Contact), 6 (Outreach) — partial
+**Modules:** 1 (Resume), 3 (Research), 4 (Contact), 6 (Outreach) - partial
 **Delivers:** Upload resume → System finds target companies → Discovers contacts → Drafts personalized outreach → User approves and sends
 
 ```
@@ -1591,9 +1591,9 @@ These are the highest-risk unknowns that need validation **before** committing t
 
 | Moat Type | Description | Strength |
 |-----------|-------------|----------|
-| **Personal Data Compounding** | Every interaction teaches the system about this specific user. Resume tweaks, outreach preferences, company rejections, timing insights — all compound into an increasingly personalized system. A competitor starting from scratch has zero data. | Very Strong |
+| **Personal Data Compounding** | Every interaction teaches the system about this specific user. Resume tweaks, outreach preferences, company rejections, timing insights - all compound into an increasingly personalized system. A competitor starting from scratch has zero data. | Very Strong |
 | **Integrated Intelligence** | The system connects resume analysis → company research → contact discovery → personalized outreach → application tracking → interview prep → analytics. No competitor offers this end-to-end chain where each step enriches the next. | Strong |
-| **Feedback Loop Learning** | A/B testing outreach variants, tracking which resume tweaks lead to callbacks, correlating send times with response rates — the system genuinely improves with use. This is extremely rare in job search tools. | Strong |
+| **Feedback Loop Learning** | A/B testing outreach variants, tracking which resume tweaks lead to callbacks, correlating send times with response rates - the system genuinely improves with use. This is extremely rare in job search tools. | Strong |
 | **Hidden Market Access** | Signal monitoring + Hunter.io contact discovery + personalized outreach = access to the 70-85% of jobs never publicly posted. Job boards only touch the visible market. | Medium-Strong |
 | **Human-in-the-Loop Quality** | Semi-automated approach ensures outreach quality stays high (no spam), building genuine professional relationships. Auto-apply tools burn bridges at scale. | Medium |
 
@@ -1605,7 +1605,7 @@ These are the highest-risk unknowns that need validation **before** committing t
 
 3. **Semantic matching tuned to individual careers:** Generic keyword matching is easy to copy. A system that understands "this marketing manager's experience at a B2B SaaS company translates well to this product marketing role at a fintech because..." requires deep per-user understanding.
 
-4. **Quality through restraint:** The semi-automated, 50-target precision approach is philosophically opposite to auto-apply tools. It's not a feature you bolt on — it's a fundamental architecture decision that affects every module.
+4. **Quality through restraint:** The semi-automated, 50-target precision approach is philosophically opposite to auto-apply tools. It's not a feature you bolt on - it's a fundamental architecture decision that affects every module.
 
 ### 7.3 What's NOT a Moat (Be Honest)
 
@@ -1618,9 +1618,9 @@ These are the highest-risk unknowns that need validation **before** committing t
 
 ### 7.4 Long-Term Differentiation Strategy
 
-1. **Network effects (future):** If the system grows to multiple users, aggregate (anonymized) data creates powerful benchmarks: "Your outreach response rate is 25%, 2x the average for your role" — data that improves with scale.
+1. **Network effects (future):** If the system grows to multiple users, aggregate (anonymized) data creates powerful benchmarks: "Your outreach response rate is 25%, 2x the average for your role" - data that improves with scale.
 
-2. **Institutional knowledge:** Over time, the system builds a knowledge base of which companies respond to what types of outreach, which interview formats different companies use, what compensation ranges look like — all from real user interactions.
+2. **Institutional knowledge:** Over time, the system builds a knowledge base of which companies respond to what types of outreach, which interview formats different companies use, what compensation ranges look like - all from real user interactions.
 
 3. **Platform expansion:** The same agent architecture could power recruiter-side tools, creating a two-sided marketplace where both job seekers and hiring managers benefit from AI-powered matching.
 

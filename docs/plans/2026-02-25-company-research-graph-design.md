@@ -1,8 +1,8 @@
-# Company Research Graph — Design
+# Company Research Graph - Design
 
 ## Context
 
-Company research currently runs as a monolithic function (`company_service.research_company()`) that calls Hunter API, generates an AI dossier via OpenAI, creates contacts, and generates embeddings — all in one big try/except. If it crashes halfway through, the entire process must restart from scratch.
+Company research currently runs as a monolithic function (`company_service.research_company()`) that calls Hunter API, generates an AI dossier via OpenAI, creates contacts, and generates embeddings - all in one big try/except. If it crashes halfway through, the entire process must restart from scratch.
 
 **Goal**: Convert to a LangGraph StateGraph with per-node checkpointing (crash recovery), add a web search node for grounded dossier generation, and follow the same pattern as the existing resume pipeline.
 

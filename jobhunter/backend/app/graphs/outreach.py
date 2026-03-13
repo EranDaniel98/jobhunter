@@ -246,7 +246,7 @@ async def quality_check_node(state: OutreachGraphState) -> dict:
     if not draft.get("personalization_points"):
         logger.warning("outreach_draft_no_personalization")
 
-    return {}  # pass through — no state changes needed
+    return {}  # pass through - no state changes needed
 
 
 async def create_approval_node(state: OutreachGraphState) -> dict:
@@ -280,7 +280,7 @@ async def create_approval_node(state: OutreachGraphState) -> dict:
 
     logger.info("outreach_graph_awaiting_approval", action_id=action_id)
 
-    # INTERRUPT — graph pauses here until resumed
+    # INTERRUPT - graph pauses here until resumed
     approval_decision = interrupt(
         {
             "action_id": action_id,
@@ -431,7 +431,7 @@ async def send_email_node(state: OutreachGraphState) -> dict:
         candidate_result = await db.execute(select(Candidate.email).where(Candidate.id == candidate_id))
         candidate_email = candidate_result.scalar_one_or_none()
 
-        # Build headers — threading for follow-ups
+        # Build headers - threading for follow-ups
         send_headers = {
             "List-Unsubscribe": f"<mailto:unsubscribe@hunter-job.com?subject=unsubscribe>, <{unsubscribe_link}>",
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",

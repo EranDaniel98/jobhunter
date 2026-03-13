@@ -27,8 +27,8 @@ Resend will provide DNS records to add to your domain registrar. You'll need to 
 | Type | Name | Value | Purpose |
 |------|------|-------|---------|
 | MX | `feedback.eran-jobs.com` | (provided by Resend) | Bounce handling |
-| TXT | `eran-jobs.com` | `v=spf1 include:amazonses.com ~all` | SPF — authorizes Resend to send on your behalf |
-| TXT (DKIM) | (provided by Resend) | (provided by Resend) | DKIM — email signature verification |
+| TXT | `eran-jobs.com` | `v=spf1 include:amazonses.com ~all` | SPF - authorizes Resend to send on your behalf |
+| TXT (DKIM) | (provided by Resend) | (provided by Resend) | DKIM - email signature verification |
 
 **Where to add these records:**
 - Log in to your domain registrar (e.g., Cloudflare, Namecheap, GoDaddy)

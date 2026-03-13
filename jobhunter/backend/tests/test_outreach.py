@@ -151,14 +151,14 @@ async def test_delete_sent_message_fails(client: AsyncClient, auth_headers: dict
     msg = await _draft_via_service(db_session, candidate_id, uuid.UUID(contact_id))
     message_id = str(msg.id)
 
-    # Send the message (auto_approve via legacy path — no graph thread)
+    # Send the message (auto_approve via legacy path - no graph thread)
     resp = await client.post(
         f"{API}/outreach/{message_id}/send?auto_approve=true", headers=auth_headers
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "sent"
 
-    # Attempt to delete sent message — should fail
+    # Attempt to delete sent message - should fail
     resp = await client.delete(
         f"{API}/outreach/{message_id}", headers=auth_headers
     )

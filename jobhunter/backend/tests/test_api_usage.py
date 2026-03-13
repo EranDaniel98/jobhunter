@@ -16,7 +16,7 @@ API = settings.API_V1_PREFIX
 
 
 # ---------------------------------------------------------------------------
-# Helpers — matches test_admin.py pattern (direct DB insert + login)
+# Helpers - matches test_admin.py pattern (direct DB insert + login)
 # ---------------------------------------------------------------------------
 
 

@@ -373,7 +373,7 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
 
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_db] = override_get_session
-    # Use stubs for all external API clients — no real API calls in tests
+    # Use stubs for all external API clients - no real API calls in tests
     app.dependency_overrides[get_email_client] = lambda: ResendStub()
 
     # Inject stubs into singletons for code that calls get_*() directly

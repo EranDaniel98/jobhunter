@@ -759,7 +759,7 @@ async def start_mock_interview(
         company_id=company.id,
         prep_type="mock_interview",
         content={"interview_type": req.interview_type, "status": "in_progress", "score": None},
-        status="completed",  # Session is "live" — no background generation needed
+        status="completed",  # Session is "live" - no background generation needed
     )
     db.add(session)
 
@@ -953,7 +953,7 @@ git commit -m "feat(interview): add API router with prep generation + mock inter
 
 **Files:**
 - Modify: `backend/app/services/company_service.py` (after company approve)
-- Modify: `backend/app/graphs/outreach.py` (after reply detection — handled via webhook already)
+- Modify: `backend/app/graphs/outreach.py` (after reply detection - handled via webhook already)
 
 **Step 1: Auto-trigger on company approval**
 
@@ -1375,10 +1375,10 @@ git commit -m "feat(interview): add frontend interview prep page with mock inter
 
 ---
 
-### Interview Prep Agent — Verification
+### Interview Prep Agent - Verification
 
-1. `pytest tests/test_interview_prep.py -v` — all tests pass
-2. `pytest tests/ -v` — full suite passes (no regressions)
+1. `pytest tests/test_interview_prep.py -v` - all tests pass
+2. `pytest tests/ -v` - full suite passes (no regressions)
 3. Graph has 4 nodes: load_context, generate_prep, save_and_notify, mark_failed
 4. `POST /interview-prep/generate` triggers pipeline, creates InterviewPrepSession
 5. `GET /interview-prep/sessions` lists sessions for candidate
@@ -2034,7 +2034,7 @@ async def get_analysis(
     redis = get_redis()
     cached = await redis.get(f"apply:analysis:{posting_id}")
     if not cached:
-        raise HTTPException(status_code=404, detail="Analysis not found — may have expired")
+        raise HTTPException(status_code=404, detail="Analysis not found - may have expired")
 
     analysis = json.loads(cached)
     return ApplyAnalysisResponse(
@@ -2099,11 +2099,11 @@ if "cover_letter" in schema_keys and len(schema_keys) == 1:
 **Step 2: Create test file**
 
 Create `backend/tests/test_apply.py` with tests:
-1. `test_graph_builds` — graph compiles
-2. `test_graph_has_expected_nodes` — 6 nodes present
-3. `test_analyze_endpoint` — POST /apply/analyze returns 200
-4. `test_list_postings_empty` — GET /apply/postings returns empty list
-5. `test_invalid_posting_not_found` — GET /apply/postings/{bad_id}/analysis returns 404
+1. `test_graph_builds` - graph compiles
+2. `test_graph_has_expected_nodes` - 6 nodes present
+3. `test_analyze_endpoint` - POST /apply/analyze returns 200
+4. `test_list_postings_empty` - GET /apply/postings returns empty list
+5. `test_invalid_posting_not_found` - GET /apply/postings/{bad_id}/analysis returns 404
 
 **Step 3: Run and commit**
 
@@ -2168,9 +2168,9 @@ Endpoints:
 
 **Step 3: Create hooks** (`frontend/src/lib/hooks/use-apply.ts`)
 
-- `useJobPostings()` — queryKey: `["job-postings"]`
-- `useApplyAnalysis(postingId)` — queryKey: `["apply-analysis", postingId]`, polling while status=pending
-- `useAnalyzeJob()` — mutation, invalidates `["job-postings"]`
+- `useJobPostings()` - queryKey: `["job-postings"]`
+- `useApplyAnalysis(postingId)` - queryKey: `["apply-analysis", postingId]`, polling while status=pending
+- `useAnalyzeJob()` - mutation, invalidates `["job-postings"]`
 
 **Step 4: Add sidebar nav item**
 
@@ -2211,10 +2211,10 @@ git commit -m "feat(apply): add frontend apply page with job analysis"
 
 ---
 
-### Apply Agent — Verification
+### Apply Agent - Verification
 
-1. `pytest tests/test_apply.py -v` — all tests pass
-2. `pytest tests/ -v` — full suite passes
+1. `pytest tests/test_apply.py -v` - all tests pass
+2. `pytest tests/ -v` - full suite passes
 3. Graph has 6 nodes: parse_job, match_skills, generate_tips, generate_cover_letter, save_and_notify, mark_failed
 4. `POST /apply/analyze` creates JobPosting and triggers pipeline
 5. `GET /apply/postings` lists postings
@@ -2288,11 +2288,11 @@ git commit -m "feat(analytics): add AnalyticsInsight model + migration"
 Create `backend/app/graphs/analytics_pipeline.py`:
 
 5-node pipeline:
-1. `gather_data` — Load all pipeline stats, outreach stats, funnel, skill data from existing `analytics_service.py` functions
-2. `generate_insights` — Call OpenAI with all the data to produce AI-generated insights (structured output)
-3. `save_insights` — Save `AnalyticsInsight` records to DB
-4. `notify` — WebSocket broadcast + optional email digest
-5. `mark_failed` — Error handler
+1. `gather_data` - Load all pipeline stats, outreach stats, funnel, skill data from existing `analytics_service.py` functions
+2. `generate_insights` - Call OpenAI with all the data to produce AI-generated insights (structured output)
+3. `save_insights` - Save `AnalyticsInsight` records to DB
+4. `notify` - WebSocket broadcast + optional email digest
+5. `mark_failed` - Error handler
 
 State schema:
 ```python
@@ -2359,10 +2359,10 @@ class AnalyticsDashboardResponse(BaseModel):
 
 Add to `backend/app/api/analytics.py`:
 
-- `GET /analytics/insights` — List AnalyticsInsight records, ordered by created_at desc, supports `?unread_only=true`
-- `POST /analytics/insights/refresh` — Trigger analytics pipeline via BackgroundTasks (rate limited 5/day)
-- `PATCH /analytics/insights/{id}/read` — Mark insight as read
-- `GET /analytics/dashboard` — Combined endpoint returning funnel + outreach + pipeline + latest insights in one call
+- `GET /analytics/insights` - List AnalyticsInsight records, ordered by created_at desc, supports `?unread_only=true`
+- `POST /analytics/insights/refresh` - Trigger analytics pipeline via BackgroundTasks (rate limited 5/day)
+- `PATCH /analytics/insights/{id}/read` - Mark insight as read
+- `GET /analytics/dashboard` - Combined endpoint returning funnel + outreach + pipeline + latest insights in one call
 
 **Step 3: Register the analytics cron in worker.py**
 
@@ -2408,7 +2408,7 @@ async def run_weekly_analytics(ctx):
     logger.info("weekly_analytics_completed")
 ```
 
-Register: `cron(run_weekly_analytics, weekday={0}, hour={8}, minute={0})` — Mondays 8 AM UTC.
+Register: `cron(run_weekly_analytics, weekday={0}, hour={8}, minute={0})` - Mondays 8 AM UTC.
 
 **Step 4: Commit**
 
@@ -2463,7 +2463,7 @@ git commit -m "feat(analytics): add tests for analytics pipeline and API"
 
 ---
 
-### Task 18: Analytics frontend — enhanced dashboard + insights
+### Task 18: Analytics frontend - enhanced dashboard + insights
 
 **Files:**
 - Create: `frontend/src/app/(dashboard)/analytics/page.tsx`
@@ -2509,21 +2509,21 @@ API endpoints:
 - `markInsightRead(id)` → PATCH `/analytics/insights/{id}/read`
 
 Hooks:
-- `useAnalyticsDashboard()` — queryKey: `["analytics-dashboard"]`
-- `useAnalyticsInsights(unreadOnly?)` — queryKey: `["analytics-insights"]`
-- `useRefreshInsights()` — mutation
-- `useMarkInsightRead()` — mutation
+- `useAnalyticsDashboard()` - queryKey: `["analytics-dashboard"]`
+- `useAnalyticsInsights(unreadOnly?)` - queryKey: `["analytics-insights"]`
+- `useRefreshInsights()` - mutation
+- `useMarkInsightRead()` - mutation
 
 **Step 3: Create analytics page**
 
 Create `frontend/src/app/(dashboard)/analytics/page.tsx`:
 
-Top section — Charts (Recharts):
+Top section - Charts (Recharts):
 - Funnel chart (bar chart: drafted → sent → delivered → opened → replied)
 - Pipeline chart (pie chart: suggested, approved, researched, contacted)
 - Outreach performance (open rate, reply rate as radial progress)
 
-Bottom section — Insights Feed:
+Bottom section - Insights Feed:
 - Scrollable list of AI-generated insight cards
 - Color-coded by severity (info=blue, success=green, warning=yellow, action_needed=red)
 - Mark as read on click/expand
@@ -2549,10 +2549,10 @@ git commit -m "feat(analytics): add analytics dashboard with charts and insights
 
 ---
 
-### Analytics Agent — Verification
+### Analytics Agent - Verification
 
-1. `pytest tests/test_analytics_agent.py -v` — all tests pass
-2. `pytest tests/ -v` — full suite passes
+1. `pytest tests/test_analytics_agent.py -v` - all tests pass
+2. `pytest tests/ -v` - full suite passes
 3. Pipeline has 5 nodes: gather_data, generate_insights, save_insights, notify, mark_failed
 4. `GET /analytics/dashboard` returns combined data
 5. `GET /analytics/insights` lists AI-generated insights
@@ -2585,7 +2585,7 @@ git commit -m "docs: update project report with Phase 3 completion"
 
 ## Final Verification
 
-1. `cd jobhunter/backend && python -m pytest tests/ -v` — ALL tests pass
+1. `cd jobhunter/backend && python -m pytest tests/ -v` - ALL tests pass
 2. All 3 new sidebar nav items visible: Interview Prep, Apply, Analytics
 3. All new migrations applied: 014, 015, 016
 4. All new models registered in `__init__.py`: InterviewPrepSession, MockInterviewMessage, JobPosting, AnalyticsInsight

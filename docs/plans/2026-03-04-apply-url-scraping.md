@@ -1,4 +1,4 @@
-# Apply URL Scraping — Implementation Plan
+# Apply URL Scraping - Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Backend — URL Scraper Client
+### Task 1: Backend - URL Scraper Client
 
 **Files:**
 - Create: `jobhunter/backend/app/infrastructure/url_scraper.py`
@@ -64,7 +64,7 @@ class TestScrapeJobUrl:
 **Step 2: Run test to verify it fails**
 
 Run: `cd jobhunter/backend && python -m pytest tests/test_url_scraper.py -v`
-Expected: ImportError — `scrape_job_url` does not exist yet.
+Expected: ImportError - `scrape_job_url` does not exist yet.
 
 **Step 3: Write implementation**
 
@@ -113,12 +113,12 @@ git commit -m "feat: add Jina Reader URL scraper client"
 
 ---
 
-### Task 2: Backend — Scrape URL Endpoint
+### Task 2: Backend - Scrape URL Endpoint
 
 **Files:**
-- Modify: `jobhunter/backend/app/schemas/apply.py` — add request/response schemas
-- Modify: `jobhunter/backend/app/api/apply.py` — add `POST /apply/scrape-url` endpoint
-- Test: `jobhunter/backend/tests/test_apply.py` — add scrape endpoint tests
+- Modify: `jobhunter/backend/app/schemas/apply.py` - add request/response schemas
+- Modify: `jobhunter/backend/app/api/apply.py` - add `POST /apply/scrape-url` endpoint
+- Test: `jobhunter/backend/tests/test_apply.py` - add scrape endpoint tests
 
 **Step 1: Add schemas**
 
@@ -245,12 +245,12 @@ git commit -m "feat: add POST /apply/scrape-url endpoint with Jina Reader"
 
 ---
 
-### Task 3: Frontend — Scrape API Function and Hook
+### Task 3: Frontend - Scrape API Function and Hook
 
 **Files:**
-- Modify: `jobhunter/frontend/src/lib/types.ts` — add `ScrapeUrlResponse` type
-- Modify: `jobhunter/frontend/src/lib/api/apply.ts` — add `scrapeUrl()` function
-- Modify: `jobhunter/frontend/src/lib/hooks/use-apply.ts` — add `useScrapeUrl()` mutation hook
+- Modify: `jobhunter/frontend/src/lib/types.ts` - add `ScrapeUrlResponse` type
+- Modify: `jobhunter/frontend/src/lib/api/apply.ts` - add `scrapeUrl()` function
+- Modify: `jobhunter/frontend/src/lib/hooks/use-apply.ts` - add `useScrapeUrl()` mutation hook
 
 **Step 1: Add type**
 
@@ -301,10 +301,10 @@ git commit -m "feat: add scrapeUrl API function and useScrapeUrl hook"
 
 ---
 
-### Task 4: Frontend — Redesign Apply Form (URL-First)
+### Task 4: Frontend - Redesign Apply Form (URL-First)
 
 **Files:**
-- Modify: `jobhunter/frontend/src/app/(dashboard)/apply/page.tsx` — rewrite the form section
+- Modify: `jobhunter/frontend/src/app/(dashboard)/apply/page.tsx` - rewrite the form section
 
 **Goal:** URL field at top with "Fetch" button. On success: auto-fill title, company, description. Description shown as textarea (pre-filled, editable). Manual paste fallback if scraping fails.
 
@@ -320,7 +320,7 @@ Key changes:
 5. On fetch failure: show error toast, reveal empty description textarea
 6. Description textarea always visible but pre-filled after fetch
 7. `handleSubmit` validation: require either `rawText` (manual or scraped)
-8. Remove "Saved for reference only" helper text from URL field — replace with "Paste URL and click Fetch to auto-fill"
+8. Remove "Saved for reference only" helper text from URL field - replace with "Paste URL and click Fetch to auto-fill"
 9. Title field: no longer required in HTML (auto-filled from scrape), but still validated before submit
 
 The form should look like:
@@ -359,7 +359,7 @@ The main changes to the `ApplyPage` component:
 2. Add `handleFetch()` function that calls `scrapeMutation.mutate(url, { onSuccess: ... })`
 3. Reorder form fields: URL first with Fetch button, then divider, then title/company/description
 4. Auto-fill on fetch success
-5. Update `handleSubmit` to not require title if rawText was scraped (actually keep title required — OpenAI extracts it)
+5. Update `handleSubmit` to not require title if rawText was scraped (actually keep title required - OpenAI extracts it)
 6. The description `required` HTML attribute should be kept but validation done in JS
 
 ```tsx
@@ -420,10 +420,10 @@ git add -A && git commit -m "chore: fixups for URL scraping feature"
 |---|------|--------|
 | 1 | `backend/app/infrastructure/url_scraper.py` | CREATE |
 | 2 | `backend/tests/test_url_scraper.py` | CREATE |
-| 3 | `backend/app/schemas/apply.py` | MODIFY — add ScrapeUrlRequest/Response |
-| 4 | `backend/app/api/apply.py` | MODIFY — add POST /apply/scrape-url |
-| 5 | `backend/tests/test_apply.py` | MODIFY — add scrape endpoint tests |
-| 6 | `frontend/src/lib/types.ts` | MODIFY — add ScrapeUrlResponse |
-| 7 | `frontend/src/lib/api/apply.ts` | MODIFY — add scrapeUrl() |
-| 8 | `frontend/src/lib/hooks/use-apply.ts` | MODIFY — add useScrapeUrl() |
-| 9 | `frontend/src/app/(dashboard)/apply/page.tsx` | MODIFY — URL-first form |
+| 3 | `backend/app/schemas/apply.py` | MODIFY - add ScrapeUrlRequest/Response |
+| 4 | `backend/app/api/apply.py` | MODIFY - add POST /apply/scrape-url |
+| 5 | `backend/tests/test_apply.py` | MODIFY - add scrape endpoint tests |
+| 6 | `frontend/src/lib/types.ts` | MODIFY - add ScrapeUrlResponse |
+| 7 | `frontend/src/lib/api/apply.ts` | MODIFY - add scrapeUrl() |
+| 8 | `frontend/src/lib/hooks/use-apply.ts` | MODIFY - add useScrapeUrl() |
+| 9 | `frontend/src/app/(dashboard)/apply/page.tsx` | MODIFY - URL-first form |

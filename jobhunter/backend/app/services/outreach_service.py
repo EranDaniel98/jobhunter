@@ -40,10 +40,10 @@ Title: {contact_title}
 Role: {contact_role}
 
 INSTRUCTIONS:
-- Reference the candidate's REAL experience — do not fabricate achievements
+- Reference the candidate's REAL experience - do not fabricate achievements
 - Reference specific details about the company (recent news, tech stack, culture)
 - Keep it concise: 100-150 words for initial, 50-80 for follow-ups
-- Professional but warm tone — not robotic, not overly casual
+- Professional but warm tone - not robotic, not overly casual
 - Include a clear, low-pressure call to action
 - LANGUAGE: Write the entire email (subject and body) in {language_name}. If Hebrew, write right-to-left naturally.
 - {message_type_instructions}
@@ -70,7 +70,7 @@ MESSAGE_TYPE_INSTRUCTIONS = {
     ),
     "followup_1": (
         "This is a follow-up to an unanswered initial email."
-        " Add new value — share a relevant insight or accomplishment. Don't guilt-trip."
+        " Add new value - share a relevant insight or accomplishment. Don't guilt-trip."
     ),
     "followup_2": (
         "Second follow-up. Keep it very brief."
@@ -89,7 +89,7 @@ Draft a short LinkedIn message (max 300 characters for connection request, or ~1
 from a job candidate to a contact.
 
 CANDIDATE: {candidate_summary}
-COMPANY: {company_name} — {culture_summary}
+COMPANY: {company_name} - {culture_summary}
 CONTACT: {contact_name}, {contact_title}
 
 Keep it casual, specific, and ask to connect. Reference one specific thing about them or the company.

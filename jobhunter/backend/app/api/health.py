@@ -34,7 +34,7 @@ async def health_check(
         checks["redis"] = f"unhealthy: {e}"
         logger.error("health_check_redis_failed", error=str(e))
 
-    # Migration version check (informational — does not affect healthy/unhealthy)
+    # Migration version check (informational - does not affect healthy/unhealthy)
     try:
         result = await db.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
         row = result.first()

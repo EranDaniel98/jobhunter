@@ -23,7 +23,7 @@ async def test_acquire_and_release():
     _semaphores.pop(user, None)
 
     async with acquire_ai_slot(user):
-        # Inside the slot — semaphore should be acquired
+        # Inside the slot - semaphore should be acquired
         sem = _semaphores[user]
         # We acquired 1 of 3 slots, so 2 more should be available
         # Try acquiring another to verify
@@ -46,7 +46,7 @@ async def test_three_concurrent_slots_allowed():
             acquired.append(True)
             await asyncio.sleep(0.1)
 
-    # Run 3 concurrent tasks — all should succeed
+    # Run 3 concurrent tasks - all should succeed
     await asyncio.gather(
         acquire_slot(),
         acquire_slot(),
@@ -133,7 +133,7 @@ async def test_slot_becomes_available_after_release():
             await asyncio.sleep(delay)
             results.append(f"{label}-released")
 
-    # Start 4 tasks — 3 will acquire immediately, 4th will wait
+    # Start 4 tasks - 3 will acquire immediately, 4th will wait
     # The first tasks release quickly so the 4th should succeed within timeout
     tasks = [
         hold_slot(0.05, "a"),

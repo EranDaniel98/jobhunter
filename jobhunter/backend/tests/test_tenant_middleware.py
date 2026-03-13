@@ -1,4 +1,4 @@
-"""Tests for TenantMiddleware — extracts candidate_id from JWT into request.state."""
+"""Tests for TenantMiddleware - extracts candidate_id from JWT into request.state."""
 
 from unittest.mock import patch
 
@@ -101,7 +101,7 @@ async def test_admin_path_bypasses_tenant_extraction():
 
 @pytest.mark.asyncio
 async def test_invalid_jwt_doesnt_crash():
-    """Malformed JWT is handled gracefully — tenant_id stays None."""
+    """Malformed JWT is handled gracefully - tenant_id stays None."""
     app = _create_test_app()
 
     with patch("app.middleware.tenant.settings") as mock_settings:

@@ -195,7 +195,7 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
                 <div key={i} className="text-sm">
                   <span className="font-medium">{String(person.name ?? "")}</span>
                   {person.title ? (
-                    <span className="text-muted-foreground"> — {String(person.title)}</span>
+                    <span className="text-muted-foreground"> - {String(person.title)}</span>
                   ) : null}
                 </div>
               ))}

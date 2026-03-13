@@ -1,4 +1,4 @@
-# CI/CD, Email Verification, A/B Testing & Resume Bullets — Implementation Plan
+# CI/CD, Email Verification, A/B Testing & Resume Bullets - Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -15,32 +15,32 @@
 | # | Task | Action | Files |
 |---|------|--------|-------|
 | 1 | CI/CD | CREATE | `.github/workflows/ci.yml` |
-| 2 | Email Verify — Backend | CREATE | `backend/alembic/versions/008_email_verified.py` |
+| 2 | Email Verify - Backend | CREATE | `backend/alembic/versions/008_email_verified.py` |
 | | | MODIFY | `backend/app/models/candidate.py` |
 | | | MODIFY | `backend/app/schemas/auth.py` |
 | | | MODIFY | `backend/app/utils/security.py` |
 | | | MODIFY | `backend/app/services/auth_service.py` |
 | | | MODIFY | `backend/app/api/auth.py` |
 | | | MODIFY | `backend/app/dependencies.py` |
-| 3 | Email Verify — Frontend | CREATE | `frontend/src/components/dashboard/email-verification-banner.tsx` |
+| 3 | Email Verify - Frontend | CREATE | `frontend/src/components/dashboard/email-verification-banner.tsx` |
 | | | MODIFY | `frontend/src/app/(dashboard)/dashboard/page.tsx` |
 | | | MODIFY | `frontend/src/lib/api/auth.ts` |
 | | | MODIFY | `frontend/src/lib/types.ts` |
-| 4 | A/B Testing — Backend | CREATE | `backend/alembic/versions/009_outreach_variant.py` |
+| 4 | A/B Testing - Backend | CREATE | `backend/alembic/versions/009_outreach_variant.py` |
 | | | MODIFY | `backend/app/models/outreach.py` |
 | | | MODIFY | `backend/app/services/outreach_service.py` |
 | | | MODIFY | `backend/app/api/outreach.py` |
 | | | MODIFY | `backend/app/services/analytics_service.py` |
-| 5 | A/B Testing — Frontend | CREATE | `frontend/src/components/companies/variant-picker.tsx` |
+| 5 | A/B Testing - Frontend | CREATE | `frontend/src/components/companies/variant-picker.tsx` |
 | | | MODIFY | `frontend/src/components/companies/contacts-list.tsx` |
 | | | MODIFY | `frontend/src/lib/api/outreach.ts` |
 | | | MODIFY | `frontend/src/lib/hooks/use-outreach.ts` |
 | | | MODIFY | `frontend/src/lib/types.ts` |
-| 6 | Resume Bullets — Backend | CREATE | `backend/alembic/versions/010_resume_bullets.py` |
+| 6 | Resume Bullets - Backend | CREATE | `backend/alembic/versions/010_resume_bullets.py` |
 | | | MODIFY | `backend/app/models/company.py` |
 | | | MODIFY | `backend/app/services/company_service.py` |
 | | | MODIFY | `backend/app/schemas/company.py` |
-| 7 | Resume Bullets — Frontend | MODIFY | `frontend/src/components/companies/dossier-view.tsx` |
+| 7 | Resume Bullets - Frontend | MODIFY | `frontend/src/components/companies/dossier-view.tsx` |
 | | | MODIFY | `frontend/src/lib/types.ts` |
 
 **7 tasks, ~7 new files, ~18 modified files.**
@@ -124,7 +124,7 @@ jobs:
 
 ---
 
-## Task 2: Email Verification — Backend
+## Task 2: Email Verification - Backend
 
 ### Step 1: Add migration
 
@@ -189,7 +189,7 @@ class CandidateResponse(BaseModel):
     email_verified: bool = True  # <-- ADD after is_admin
 ```
 
-### Step 5: Update auth service — send verification email on register
+### Step 5: Update auth service - send verification email on register
 
 **MODIFY** `jobhunter/backend/app/services/auth_service.py`
 
@@ -321,7 +321,7 @@ Add `email_verified=candidate.email_verified` to ALL `CandidateResponse(...)` co
 
 In `get_current_candidate`, after the `if not candidate` check, add:
 ```python
-# Note: We don't block unverified users — we let the frontend show a banner.
+# Note: We don't block unverified users - we let the frontend show a banner.
 # This keeps the UX smooth while encouraging verification.
 ```
 
@@ -331,7 +331,7 @@ We intentionally do NOT add a hard 403 block. The frontend will show a banner in
 
 ---
 
-## Task 3: Email Verification — Frontend
+## Task 3: Email Verification - Frontend
 
 ### Step 1: Add API functions
 
@@ -437,7 +437,7 @@ export function EmailVerificationBanner() {
     setLoading(true);
     try {
       await resendVerification();
-      toast.success("Verification email sent — check your inbox");
+      toast.success("Verification email sent - check your inbox");
       const until = Date.now() + COOLDOWN_SECONDS * 1000;
       localStorage.setItem(COOLDOWN_KEY, String(until));
       setCooldownRemaining(COOLDOWN_SECONDS);
@@ -494,7 +494,7 @@ import { EmailVerificationBanner } from "@/components/dashboard/email-verificati
 
 ---
 
-## Task 4: A/B Testing — Backend
+## Task 4: A/B Testing - Backend
 
 ### Step 1: Add migration
 
@@ -646,7 +646,7 @@ async def get_variant_stats(db: AsyncSession, candidate_id: uuid.UUID) -> dict:
 
 ---
 
-## Task 5: A/B Testing — Frontend
+## Task 5: A/B Testing - Frontend
 
 ### Step 1: Update types
 
@@ -729,7 +729,7 @@ export function VariantPicker({ variants, open, onOpenChange, onPicked }: Varian
         onOpenChange(false);
       },
       onError: () => {
-        // Even if delete fails, the pick is fine — user has both drafts
+        // Even if delete fails, the pick is fine - user has both drafts
         onPicked();
         onOpenChange(false);
       },
@@ -825,7 +825,7 @@ Add dialog at the end:
 
 ---
 
-## Task 6: Resume Bullets — Backend
+## Task 6: Resume Bullets - Backend
 
 ### Step 1: Add migration
 
@@ -865,12 +865,12 @@ resume_bullets: Mapped[list[str] | None] = mapped_column(ARRAY(String(500)))
 
 **MODIFY** `jobhunter/backend/app/services/company_service.py`
 
-Update `DOSSIER_PROMPT` — add to the "Generate a JSON dossier" section:
+Update `DOSSIER_PROMPT` - add to the "Generate a JSON dossier" section:
 ```
-- resume_bullets: array of 3-5 specific bullet points the candidate should add or emphasize on their resume to be a stronger match for THIS company. Reference specific skills, technologies, or experiences that align with the company's needs. Each bullet should be actionable (e.g. "Highlight your experience with distributed systems — their tech stack relies heavily on microservices").
+- resume_bullets: array of 3-5 specific bullet points the candidate should add or emphasize on their resume to be a stronger match for THIS company. Reference specific skills, technologies, or experiences that align with the company's needs. Each bullet should be actionable (e.g. "Highlight your experience with distributed systems - their tech stack relies heavily on microservices").
 ```
 
-Update `DOSSIER_SCHEMA` — add to `properties`:
+Update `DOSSIER_SCHEMA` - add to `properties`:
 ```python
 "resume_bullets": {
     "type": "array",
@@ -880,7 +880,7 @@ Update `DOSSIER_SCHEMA` — add to `properties`:
 
 Add `"resume_bullets"` to the `required` list.
 
-Update `research_company` function — add after `dossier.recent_news = ...`:
+Update `research_company` function - add after `dossier.recent_news = ...`:
 ```python
 dossier.resume_bullets = dossier_data.get("resume_bullets")
 ```
@@ -898,7 +898,7 @@ resume_bullets: list[str] | None = None  # after recent_news
 
 ---
 
-## Task 7: Resume Bullets — Frontend
+## Task 7: Resume Bullets - Frontend
 
 ### Step 1: Update types
 
@@ -952,8 +952,8 @@ The `md:col-span-2` makes it span the full width of the 2-column grid.
 
 After all 7 tasks:
 
-1. `cd jobhunter/frontend && npm run build` — no TypeScript errors
-2. `cd jobhunter/backend && uv run pytest tests/test_auth.py -x -q` — all pass
+1. `cd jobhunter/frontend && npm run build` - no TypeScript errors
+2. `cd jobhunter/backend && uv run pytest tests/test_auth.py -x -q` - all pass
 3. Push to GitHub and verify CI workflow runs and passes
 4. Manual checks:
    - Registration sends verification email, login page handles `?verify=` token

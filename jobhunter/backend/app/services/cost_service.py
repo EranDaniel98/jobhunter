@@ -45,7 +45,7 @@ async def check_budget() -> None:
                 )
                 raise HTTPException(
                     status_code=503,
-                    detail="AI service temporarily unavailable — daily cost limit reached. Try again tomorrow.",
+                    detail="AI service temporarily unavailable - daily cost limit reached. Try again tomorrow.",
                 )
     except HTTPException:
         raise

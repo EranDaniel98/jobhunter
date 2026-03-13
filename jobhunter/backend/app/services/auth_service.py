@@ -142,7 +142,7 @@ async def forgot_password(db: AsyncSession, email: str) -> None:
 
     if not candidate:
         logger.debug("forgot_password_unknown_email", email=email)
-        return  # Silent — no email enumeration
+        return  # Silent - no email enumeration
 
     token = create_reset_token(str(candidate.id))
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"

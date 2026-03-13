@@ -113,18 +113,18 @@ Experienced software engineer with 6+ years building scalable distributed system
 
 EXPERIENCE
 
-TechCorp — Senior Software Engineer (2022-Present)
+TechCorp - Senior Software Engineer (2022-Present)
 - Led backend development for microservices platform serving 10M requests/day
 - Reduced API latency by 40% through caching and query optimization
 - Designed event-driven architecture using Kafka and PostgreSQL
 
-StartupXYZ — Software Engineer (2019-2022)
+StartupXYZ - Software Engineer (2019-2022)
 - Built real-time data pipeline processing 1TB/day
 - Implemented CI/CD pipelines reducing deployment time by 70%
 - Developed REST APIs using FastAPI and PostgreSQL
 
 EDUCATION
-MIT — B.S. Computer Science (2019)
+MIT - B.S. Computer Science (2019)
 
 SKILLS
 Python, FastAPI, PostgreSQL, Redis, Docker, Kubernetes, AWS, React, TypeScript, System Design

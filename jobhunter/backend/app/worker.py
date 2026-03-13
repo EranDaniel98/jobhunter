@@ -63,7 +63,7 @@ async def check_followup_due(ctx):
             # and have no newer message for the same contact+candidate+channel
             # Find sent/delivered messages of this type that are old enough.
             # Per-message dedup (newer message check, pending action check)
-            # happens in the loop below — kept out of the query to avoid
+            # happens in the loop below - kept out of the query to avoid
             # a broken self-join that compared columns to themselves.
             query = select(OutreachMessage).where(
                 OutreachMessage.status.in_([MessageStatus.SENT, MessageStatus.DELIVERED]),
@@ -89,7 +89,7 @@ async def check_followup_due(ctx):
                         .limit(1)
                     )
                     if newer_check.scalar_one_or_none():
-                        continue  # Skip — newer message exists
+                        continue  # Skip - newer message exists
 
                     # Skip if a pending action already exists for this message
                     pending_check = await db.execute(
@@ -101,7 +101,7 @@ async def check_followup_due(ctx):
                         .limit(1)
                     )
                     if pending_check.scalar_one_or_none():
-                        continue  # Skip — pending action already exists
+                        continue  # Skip - pending action already exists
 
                     # Launch the outreach graph for follow-up drafting
                     # Graph handles: context → draft → quality check → approval → interrupt

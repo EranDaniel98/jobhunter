@@ -92,7 +92,7 @@ function AuditLogTableInner({ items }: AuditLogTableProps) {
                     </div>
                   </>
                 ) : (
-                  <span className="text-muted-foreground">—</span>
+                  <span className="text-muted-foreground">-</span>
                 )}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">

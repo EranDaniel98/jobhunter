@@ -55,7 +55,7 @@ const SOLUTIONS = [
   "Personalized outreach drafted per company, ready to send",
   "Visual pipeline tracks every stage from discovery to offer",
   "Company-specific prep: behavioral, technical, and culture fit",
-  "One dashboard for your entire search — nothing falls through",
+  "One dashboard for your entire search - nothing falls through",
 ];
 
 /* ────────────────────────────────────────────────
@@ -66,7 +66,7 @@ const JOURNEY = [
     step: "01",
     icon: FileText,
     title: "Upload Resume",
-    desc: "AI builds your DNA profile — skills, strengths, experience gaps, and career trajectory.",
+    desc: "AI builds your DNA profile - skills, strengths, experience gaps, and career trajectory.",
     accent: "from-blue-500 to-blue-600",
   },
   {
@@ -107,7 +107,7 @@ const AI_TEAM = [
     icon: Dna,
     name: "Resume Analyst",
     personality: "Finds strengths you didn't know you had",
-    desc: "Parses your resume into a DNA profile — categorizing skills, identifying gaps, and mapping your career trajectory.",
+    desc: "Parses your resume into a DNA profile - categorizing skills, identifying gaps, and mapping your career trajectory.",
     color: "text-blue-500",
     bg: "bg-blue-500/10",
     bgHover: "group-hover:bg-blue-500",
@@ -175,7 +175,7 @@ const SHOWCASE = [
   {
     icon: TrendingUp,
     title: "Pipeline Dashboard",
-    desc: "A visual funnel showing every company's status — from discovered to interviewing. Drag to approve, click to research, track at a glance.",
+    desc: "A visual funnel showing every company's status - from discovered to interviewing. Drag to approve, click to research, track at a glance.",
     visual: "pipeline" as const,
   },
   {
@@ -187,7 +187,7 @@ const SHOWCASE = [
   {
     icon: Dna,
     title: "DNA Skills Grid",
-    desc: "Your skills categorized into Technical, Domain, and Soft — each backed by evidence extracted from your resume and matched to job requirements.",
+    desc: "Your skills categorized into Technical, Domain, and Soft - each backed by evidence extracted from your resume and matched to job requirements.",
     visual: "skills" as const,
   },
   {
@@ -646,7 +646,7 @@ export default function LandingPage() {
               <span className="text-primary">Team</span>
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              7 specialized agents working together — like having a career
+              7 specialized agents working together - like having a career
               services team in your pocket.
             </p>
           </div>
@@ -689,7 +689,7 @@ export default function LandingPage() {
               <span className="text-primary">See</span>
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Not screenshots — these are the real interfaces you&apos;ll use
+              Not screenshots - these are the real interfaces you&apos;ll use
               every day.
             </p>
           </div>

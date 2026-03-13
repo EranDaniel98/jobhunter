@@ -43,7 +43,7 @@ async def check():
 
     # Check API keys (optional in mock mode)
     if settings.USE_MOCK_APIS:
-        print("[INFO] Running in MOCK mode — API keys not required")
+        print("[INFO] Running in MOCK mode - API keys not required")
     else:
         api_keys = [
             ("OPENAI_API_KEY", bool(settings.OPENAI_API_KEY)),
