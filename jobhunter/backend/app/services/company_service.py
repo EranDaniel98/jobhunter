@@ -116,30 +116,32 @@ DOSSIER_SCHEMA = {
 
 
 DISCOVERY_PROMPT = """
-You are a company discovery assistant for job seekers. Based on the candidate's profile,
-suggest 5-8 real companies they should target.
+You are a company discovery assistant for job seekers. Suggest 5-8 real companies
+that closely match the search criteria below.
 
-CANDIDATE PROFILE:
+{filter_instructions}
+
+CANDIDATE PROFILE (for context on their background):
 {candidate_summary}
 
-TARGET INDUSTRIES: {industries}
-TARGET ROLES: {roles}
+INDUSTRY REQUIREMENT (STRICT): Only suggest companies in these industries: {industries}
+Do NOT suggest companies from unrelated industries.
+
+ROLE CONTEXT: The candidate is looking for roles like: {roles}
 
 {location_constraint}
 
 EXISTING COMPANIES (do NOT suggest these again): {existing_domains}
 
-{filter_instructions}
-
 INSTRUCTIONS:
-- Suggest REAL companies with valid domain names
-- Focus on companies that match the candidate's skills and experience
+- Every company MUST match the industry and filter requirements above
+- Suggest REAL companies with valid, working domain names
+- The "reason" field must explain specifically how this company matches the search criteria
 - Prefer companies that are actively hiring or growing
 - Include a mix of well-known and emerging companies
-- Each suggestion must have a real, working company website domain
 - For each company include its primary industry, approximate employee size range
   (e.g. "51-200", "201-500"), and known tech stack
-- Strictly follow the LOCATION REQUIREMENT above"""
+- Strictly follow ALL requirements marked (STRICT) above"""
 
 DISCOVERY_SCHEMA = {
     "type": "object",
@@ -278,12 +280,15 @@ async def discover_companies(
     else:
         location_constraint = "LOCATION: No location preference specified."
 
-    # Build filter instructions for additional filters
+    # Build filter instructions - placed prominently at top of prompt
     filter_parts = []
     if company_size:
-        filter_parts.append(f"COMPANY SIZE PREFERENCE: {company_size}")
+        filter_parts.append(f"COMPANY SIZE (STRICT): Only suggest companies of size {company_size}")
     if keywords:
-        filter_parts.append(f"ADDITIONAL PREFERENCES: {keywords}")
+        filter_parts.append(
+            f"SEARCH KEYWORDS (STRICT): The user is specifically searching for: {keywords}\n"
+            f"Every suggested company MUST be relevant to these keywords."
+        )
     filter_instructions = "\n".join(filter_parts)
 
     client = get_openai()
