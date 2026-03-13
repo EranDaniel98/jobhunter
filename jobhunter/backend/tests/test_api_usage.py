@@ -21,7 +21,7 @@ API = settings.API_V1_PREFIX
 
 
 def _unique_email(prefix: str = "usage") -> str:
-    return f"{prefix}-{uuid.uuid4().hex[:8]}@test.local"
+    return f"{prefix}-{uuid.uuid4().hex[:8]}@test.com"
 
 
 async def _create_user(

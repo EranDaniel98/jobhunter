@@ -34,7 +34,7 @@ async def _create_user(
 ) -> Candidate:
     c = Candidate(
         id=uuid.uuid4(),
-        email=f"{uuid.uuid4().hex[:8]}@rls.local",
+        email=f"{uuid.uuid4().hex[:8]}@rls.com",
         password_hash=hash_password("testpass123"),
         full_name=name,
         is_admin=is_admin,
