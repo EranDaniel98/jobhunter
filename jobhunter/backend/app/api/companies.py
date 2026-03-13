@@ -55,15 +55,23 @@ async def discover_companies(
     db: AsyncSession = Depends(get_db),
 ):
     await check_and_increment(str(candidate.id), "discovery", candidate.plan_tier, is_admin=candidate.is_admin)
-    async with acquire_ai_slot(str(candidate.id)):
-        companies = await company_service.discover_companies(
-            db,
-            candidate.id,
-            industries=data.industries if data else None,
-            locations=data.locations if data else None,
-            company_size=data.company_size if data else None,
-            keywords=data.keywords if data else None,
-        )
+    try:
+        async with acquire_ai_slot(str(candidate.id)):
+            companies = await company_service.discover_companies(
+                db,
+                candidate.id,
+                industries=data.industries if data else None,
+                locations=data.locations if data else None,
+                company_size=data.company_size if data else None,
+                keywords=data.keywords if data else None,
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("discover_companies_failed", error=str(e), candidate_id=str(candidate.id))
+        raise HTTPException(status_code=502, detail="Company discovery failed. Please try again later.") from e
     return CompanyListResponse(
         companies=[_company_to_response(c) for c in companies],
         total=len(companies),

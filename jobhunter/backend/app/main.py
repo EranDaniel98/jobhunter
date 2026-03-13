@@ -47,12 +47,17 @@ async def lifespan(app: FastAPI):
         raise SystemExit("FATAL: JWT_SECRET must be changed from the default value.")
 
     if not settings.UNSUBSCRIBE_SECRET:
-        logger.warning("UNSUBSCRIBE_SECRET is empty — unsubscribe tokens are insecure")
+        logger.warning("UNSUBSCRIBE_SECRET is empty - unsubscribe tokens are insecure")
+
+    if not settings.OPENAI_API_KEY:
+        logger.warning("OPENAI_API_KEY is empty - company discovery and AI features will fail")
+    if not settings.HUNTER_API_KEY:
+        logger.warning("HUNTER_API_KEY is empty - company discovery and enrichment will fail")
 
     import os
 
     if "localhost" in settings.FRONTEND_URL and os.getenv("RAILWAY_ENVIRONMENT"):
-        logger.error("FRONTEND_URL is localhost in production — CORS will block the real frontend")
+        logger.error("FRONTEND_URL is localhost in production - CORS will block the real frontend")
 
     logger.info("starting_up", app=settings.APP_NAME)
     await init_redis()
@@ -131,7 +136,7 @@ app.add_middleware(
     expose_headers=["x-request-id"],
 )
 
-# Routers — imported here to avoid circular imports
+# Routers - imported here to avoid circular imports
 from app.api.admin import router as admin_router  # noqa: E402
 from app.api.analytics import router as analytics_router  # noqa: E402
 from app.api.apply import router as apply_router  # noqa: E402
