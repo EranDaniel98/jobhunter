@@ -17,7 +17,10 @@ Convert the existing waitlist signup flow into an admin-triggered invite pipelin
 Add columns to `waitlist_entries`:
 - `status` (string, default `"pending"`) - one of: `pending`, `invited`, `registered`
 - `invited_at` (timestamp, nullable)
-- `invite_code_id` (UUID FK to `invite_codes.id`, nullable)
+- `invite_code_id` (`sa.dialects.postgresql.UUID(as_uuid=True)`, FK to `invite_codes.id`, nullable)
+
+Add column to `invite_codes`:
+- `email` (string, nullable) - the email address this invite was generated for. Used by the registration hook to match waitlist entries.
 
 ### API
 
@@ -25,21 +28,31 @@ Add columns to `waitlist_entries`:
 - List waitlist entries with filtering by status
 - Pagination via `skip`/`limit`
 - Ordered by `created_at` ASC (FIFO)
+- Response model: `WaitlistListResponse` (define in `app/schemas/admin.py`)
 - Returns: email, source, status, created_at, invited_at
 
 **`POST /api/v1/admin/waitlist/{id}/invite`**
-- Generate invite code via existing `invite_service.create_invite()`
+- Create a new `invite_service.create_system_invite(db, email)` variant that sets `invited_by_id=None` (system-generated invite, no candidate actor). Store the waitlist entry's email on the invite code's new `email` column.
 - Send invite email via Resend
-- Update waitlist entry status to `invited`, set `invited_at`
+- Update waitlist entry status to `invited`, set `invited_at`, set `invite_code_id`
 - Idempotent: if already invited, return existing invite code
+- Create `AdminAuditLog` entry for the action
 
 **`POST /api/v1/admin/waitlist/invite-batch`**
 - Body: `{"ids": [1, 2, 3]}`
 - Max 50 per batch
+- **Best-effort semantics**: each invite is committed independently (emails already sent cannot be rolled back on later failures)
 - Returns: `{"invited": 3, "skipped": 1, "errors": []}`
+- Create `AdminAuditLog` entry for the batch action
+
+### Invite Service Changes
+Add `create_system_invite(db, email: str) -> InviteCode` to `invite_service.py`:
+- Same logic as `create_invite()` but `invited_by_id=None`
+- Sets `email` on the invite code
+- Returns the new invite code
 
 ### Registration Hook
-Modify `auth_service.register()`: when an invite code is consumed, check if its email matches a waitlist entry. If so, update waitlist status to `registered`.
+Modify `auth_service.register()`: when an invite code is consumed, look up the invite code's `email` field. If it matches a `waitlist_entries` row, update that row's status to `registered`. This closes the conversion tracking loop.
 
 ### Frontend
 Add "Waitlist" tab to admin dashboard (`/admin/waitlist`):
@@ -63,9 +76,11 @@ This link expires in 7 days.
 ### Key Files
 - `alembic/versions/022_add_waitlist_status.py` (new)
 - `app/api/admin.py` (extend)
-- `app/services/invite_service.py` (extend)
+- `app/schemas/admin.py` (extend - `WaitlistEntryResponse`, `WaitlistListResponse`)
+- `app/services/invite_service.py` (extend - `create_system_invite`)
 - `app/services/auth_service.py` (extend registration hook)
 - `app/models/waitlist.py` (extend)
+- `app/models/invite.py` (extend - `email` column)
 - `frontend/src/app/(dashboard)/admin/waitlist/page.tsx` (new)
 
 ---
@@ -73,7 +88,7 @@ This link expires in 7 days.
 ## 2. SPF/DKIM Health Check
 
 ### Overview
-Admin dashboard panel that verifies SPF, DKIM, and DMARC DNS records are correctly configured for the sender email domain. Uses `dnspython` for async DNS lookups.
+Admin dashboard panel that verifies SPF, DKIM, and DMARC DNS records are correctly configured for the sender email domain. Uses `dns.asyncresolver` from `dnspython` for non-blocking async DNS lookups.
 
 ### Dependency
 Add `dnspython>=2.6.0` to `pyproject.toml`.
@@ -81,7 +96,7 @@ Add `dnspython>=2.6.0` to `pyproject.toml`.
 ### Service
 **New file: `app/services/dns_health_service.py`**
 
-Function `check_email_dns_health(domain: str)` performs three DNS lookups:
+Function `async check_email_dns_health(domain: str)` performs three DNS lookups using `dns.asyncresolver.Resolver`:
 
 - **SPF**: TXT lookup on domain. Look for record containing `v=spf1`. Check for `include:amazonses.com` (Resend's SPF). Pass/fail + raw record.
 - **DKIM**: TXT lookup on `resend._domainkey.{domain}` (Resend's default selector). Pass/fail + existence check.
@@ -94,11 +109,16 @@ Returns:
     "spf": {"status": "pass", "record": "v=spf1 include:amazonses.com ~all"},
     "dkim": {"status": "pass", "selector": "resend"},
     "dmarc": {"status": "fail", "record": null, "recommendation": "Add a DMARC record"},
-    "overall": "warning"  # pass / warning / fail
+    "overall": "warning"
 }
 ```
 
-Overall: all three pass = `pass`, any missing = `warning`, SPF missing = `fail`.
+Per-check `status` is always `"pass"` or `"fail"` (record present and valid, or not).
+
+Overall logic (escalating):
+- All three pass = `"pass"`
+- DKIM or DMARC missing (but SPF present) = `"warning"`
+- SPF missing = `"fail"` (SPF is the most critical for deliverability)
 
 ### API
 
@@ -112,10 +132,10 @@ Overall: all three pass = `pass`, any missing = `warning`, SPF missing = `fail`.
 - Three status rows: SPF, DKIM, DMARC with green check / yellow warning / red X
 - Expandable detail showing raw DNS record
 - Overall status badge
-- Link to `docs/email-domain-setup.md`
+- Link to `docs/email-domain-setup.md` (already exists)
 
 ### Landing Page Fix
-Update the trust signal on the landing page that claims "SPF/DKIM/DMARC verified" to something accurate like "Email deliverability monitoring" or conditionally show only if records are configured.
+Update the trust signal on the landing page that claims "SPF/DKIM/DMARC verified" to something accurate like "Email deliverability monitoring".
 
 ### Key Files
 - `app/services/dns_health_service.py` (new)
@@ -129,6 +149,9 @@ Update the trust signal on the landing page that claims "SPF/DKIM/DMARC verified
 
 ### Overview
 Add pgBouncer as a connection pooling proxy between the app and PostgreSQL. Transaction-mode pooling. Local dev via Docker Compose, Railway-ready via env var separation.
+
+### SAVEPOINT Compatibility Note
+Transaction-mode pgBouncer does not support `SAVEPOINT` (used by SQLAlchemy nested transactions). The codebase uses `async_sessionmaker` with standard `BEGIN`/`COMMIT` patterns and does not use explicit nested transactions or `session.begin_nested()`. SQLAlchemy's `autoflush` can emit implicit `SAVEPOINT`s during `flush()` in some edge cases, but our session configuration (`expire_on_commit=False`) avoids this. No codebase changes needed, but future code must avoid `session.begin_nested()` when pgBouncer is active.
 
 ### Docker Compose
 Add `pgbouncer` service:
@@ -158,10 +181,10 @@ pgbouncer:
 Add to `app/config.py`:
 - `PGBOUNCER_URL: str = ""` - when set, used for regular queries
 
-In `app/infrastructure/database.py`:
-- Use `PGBOUNCER_URL` if set, fall back to `DATABASE_URL`
-- When pgBouncer is active, reduce SQLAlchemy pool: `pool_size=5`, `max_overflow=5`
-- Keep `pool_pre_ping=True`
+This is a **startup-time decision**, not a runtime switch. In `app/infrastructure/database.py`, at module load:
+- If `PGBOUNCER_URL` is set: use it as the engine URL, reduce SQLAlchemy pool to `pool_size=5`, `max_overflow=5`
+- If `PGBOUNCER_URL` is empty: use `DATABASE_URL` with current pool settings (unchanged)
+- Keep `pool_pre_ping=True` in both cases
 
 `DATABASE_URL` always used for Alembic migrations (DDL doesn't work through transaction-mode pgBouncer).
 
@@ -193,17 +216,23 @@ No deployment changes. When scaling to multiple instances, set `PGBOUNCER_URL` i
 Split company dossier generation into generic (cacheable, shared across users) and personal (always fresh, per-candidate) phases. Cache generic results in Redis to avoid redundant OpenAI calls.
 
 ### Schema Split
-Define in `app/schemas/company.py`:
+The current `DOSSIER_SCHEMA` and `DOSSIER_PROMPT` in `company_service.py` are replaced by two new schemas and prompts.
 
-**`CompanyDossierGeneric`** (cacheable):
-- `culture_summary`, `culture_score`, `red_flags`
-- `interview_format`, `compensation_data`
-- `key_people`, `recent_news`
+**`DOSSIER_GENERIC_SCHEMA`** (JSON schema with `additionalProperties: false`, all fields `required`):
+- `culture_summary` (string), `culture_score` (number 0-100), `red_flags` (array of strings)
+- `interview_format` (string), `interview_questions` (array of strings), `compensation_data` (string)
+- `key_people` (array of objects), `recent_news` (array of strings)
 
-**`CompanyDossierPersonal`** (always fresh):
-- `why_hire_me`, `resume_bullets`, `fit_score_tips`
+**`DOSSIER_GENERIC_PROMPT`**: Same context as current `DOSSIER_PROMPT` (company name, domain, industry, size, location, description, tech stack, web search context) but instructions ask only for the generic fields above. No candidate-specific context included.
 
-Final result merges both into the existing `CompanyDossier` shape. Downstream code unchanged.
+**`DOSSIER_PERSONAL_SCHEMA`** (JSON schema with `additionalProperties: false`, all fields `required`):
+- `why_hire_me` (string), `resume_bullets` (array of strings), `fit_score_tips` (array of strings)
+
+**`DOSSIER_PERSONAL_PROMPT`**: Receives the generic dossier output as context (culture, interview format, key people, etc.) plus the candidate's DNA summary. Instructions ask for personalized recommendations only.
+
+The old `DOSSIER_SCHEMA` and `DOSSIER_PROMPT` are removed. All prompt templates use `{{` to escape braces per project convention.
+
+Define Pydantic models `CompanyDossierGeneric` and `CompanyDossierPersonal` in `app/schemas/company.py` for type safety. The final merged result matches the existing `CompanyDossier` shape so downstream code is unchanged.
 
 ### Cache Layer
 **New file: `app/infrastructure/dossier_cache.py`**
@@ -219,20 +248,21 @@ Config: `DOSSIER_CACHE_TTL: int = 604800` (7 days).
 Modify `generate_dossier_node` in `app/graphs/company_research.py`:
 
 1. Check cache for `dossier:generic:{domain}`
-2. **Cache hit**: Use cached data, skip generic OpenAI call. Log hit.
-3. **Cache miss**: Call `parse_structured()` with `CompanyDossierGeneric` schema. Cache result.
-4. **Always**: Call `parse_structured()` with `CompanyDossierPersonal` schema, passing generic data + candidate DNA as context. Shorter, cheaper call (3 fields only).
-5. Merge generic + personal into final dossier. Continue pipeline.
+2. **Cache hit**: Use cached data, skip generic OpenAI call. Log cache hit.
+3. **Cache miss**: Build prompt from `DOSSIER_GENERIC_PROMPT` with company fields + web context. Call `parse_structured()` with `DOSSIER_GENERIC_SCHEMA`. Cache the result.
+4. **Always**: Build prompt from `DOSSIER_PERSONAL_PROMPT` with generic dossier output + candidate DNA summary. Call `parse_structured()` with `DOSSIER_PERSONAL_SCHEMA`.
+5. Merge generic + personal dicts into final dossier. Continue pipeline as before.
 
 ### Cost Impact
 Generic call: ~1500-2000 output tokens (expensive). Personal call: ~300-500 output tokens (cheap). For company researched by N users, saves (N-1) generic calls.
 
 ### Cache Invalidation
 - TTL-based: 7 days, auto-expires
-- Manual: `POST /api/v1/admin/cache/clear?domain=example.com` for admin force-refresh
+- Manual: `DELETE /api/v1/admin/cache/dossier/{domain}` for admin force-refresh (RESTful pattern consistent with existing admin API)
 
 ### Key Files
-- `app/schemas/company.py` (extend)
+- `app/services/company_service.py` (replace `DOSSIER_SCHEMA`/`DOSSIER_PROMPT` with split versions)
+- `app/schemas/company.py` (extend - `CompanyDossierGeneric`, `CompanyDossierPersonal`)
 - `app/infrastructure/dossier_cache.py` (new)
 - `app/graphs/company_research.py` (modify `generate_dossier_node`)
 - `app/api/admin.py` (extend - cache clear endpoint)
@@ -268,31 +298,34 @@ worker picks up chunk job -> asyncio.gather with semaphore -> process chunk conc
 **`check_followup_due`** (becomes coordinator):
 - Query all due follow-ups
 - Chunk message IDs into groups of `ARQ_CHUNK_SIZE`
-- Enqueue `process_followup_chunk` per chunk
+- Enqueue `process_followup_chunk` per chunk via `await ctx["redis"].enqueue_job("process_followup_chunk", message_ids=chunk)`
 
-**`process_followup_chunk(ctx, message_ids: list[str])`** (new):
+**`process_followup_chunk(ctx, message_ids: list[str])`** (new worker function):
 - Takes list of message IDs
-- Dedup checks + outreach graph per message
+- Per-message dedup checks (newer-message, pending-action) remain as individual DB queries per message - these are lightweight SELECTs and batching them would add complexity without meaningful gain
+- Outreach graph invocation per message
 - `asyncio.gather` with `asyncio.Semaphore(ARQ_CHUNK_CONCURRENCY)`
 
 **`run_daily_scout`** (becomes coordinator):
 - Query active candidates with DNA
 - Chunk candidate IDs, enqueue `process_scout_chunk` per chunk
 
-**`process_scout_chunk(ctx, candidate_ids: list[str])`** (new):
+**`process_scout_chunk(ctx, candidate_ids: list[str])`** (new worker function):
 - Scout pipeline per candidate with semaphore-bounded concurrency
 
 **`run_weekly_analytics`** (becomes coordinator):
 - Same pattern, enqueue `process_analytics_chunk`
 
-**`process_analytics_chunk(ctx, candidate_ids: list[str])`** (new):
+**`process_analytics_chunk(ctx, candidate_ids: list[str])`** (new worker function):
 - Analytics pipeline per candidate with semaphore-bounded concurrency
 
 ### Error Handling
 Each item in a chunk wrapped in try/except. Single item failure doesn't kill the chunk. Structured log per failure (item ID + error). Summary logged: `"Chunk complete: 9/10 succeeded, 1 failed"`.
 
 ### ARQ Registration
-Add three new worker functions to `WorkerSettings.functions`. Cron schedule unchanged.
+- Coordinator functions remain in `WorkerSettings.cron_jobs` (schedule unchanged)
+- Three new chunk processor functions added to `WorkerSettings.functions` list (they are enqueued programmatically, not scheduled)
+- Chunk jobs use default ARQ `job_timeout` (300s). If a chunk with 10 concurrent pipeline invocations needs more time, increase via `job_timeout` kwarg on the function registration.
 
 ### Scaling Path
 One worker: chunks process sequentially from queue, concurrency within each chunk. Add workers: chunks automatically distribute. No code changes.
@@ -329,4 +362,4 @@ New pyproject.toml additions:
 - `dnspython>=2.6.0` (SPF/DKIM health checks)
 
 ### Migrations
-- `022_add_waitlist_status.py` (waitlist status, invited_at, invite_code_id FK)
+- `022_add_waitlist_status.py` (waitlist status, invited_at, invite_code_id FK, invite_codes.email)
