@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     template: "%s | JobHunter",
   },
   description:
-    "AI-powered job search automation. 7 agents handle resume analysis, company research, personalized outreach, and interview prep — so you can focus on landing the right role.",
+    "AI-powered job search automation. 7 agents handle resume analysis, company research, personalized outreach, and interview prep - so you can focus on landing the right role.",
   openGraph: {
     title: "JobHunter - AI-Powered Job Search Platform",
     description:

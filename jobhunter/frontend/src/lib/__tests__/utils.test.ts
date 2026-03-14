@@ -38,11 +38,11 @@ describe('formatDate', () => {
   })
 
   it('returns em-dash for null', () => {
-    expect(formatDate(null)).toBe('—')
+    expect(formatDate(null)).toBe('-')
   })
 
   it('returns em-dash for empty string', () => {
-    expect(formatDate('')).toBe('—')
+    expect(formatDate('')).toBe('-')
   })
 })
 
@@ -54,7 +54,7 @@ describe('formatDateTime', () => {
   })
 
   it('returns em-dash for null', () => {
-    expect(formatDateTime(null)).toBe('—')
+    expect(formatDateTime(null)).toBe('-')
   })
 })
 

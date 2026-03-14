@@ -85,7 +85,7 @@ class TestCheckAndIncrement:
 
     @pytest.mark.asyncio
     async def test_increment_explorer_plan_higher_limits(self):
-        """Explorer plan has email limit of 20 — 15 should succeed."""
+        """Explorer plan has email limit of 20 - 15 should succeed."""
         mock_redis = AsyncMock()
         mock_redis.eval.return_value = 15
 

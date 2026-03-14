@@ -1,6 +1,6 @@
 """Centralized status and type enums for all models.
 
-Using StrEnum so values serialize to plain strings — no DB migration needed.
+Using StrEnum so values serialize to plain strings - no DB migration needed.
 """
 
 from enum import StrEnum

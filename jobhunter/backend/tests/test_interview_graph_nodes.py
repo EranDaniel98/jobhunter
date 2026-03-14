@@ -109,7 +109,7 @@ def _interview_state(
 
 
 # ---------------------------------------------------------------------------
-# Tests — generate_prep_node for each prep_type (OpenAI call, no DB)
+# Tests - generate_prep_node for each prep_type (OpenAI call, no DB)
 # ---------------------------------------------------------------------------
 
 def _make_context():
@@ -239,7 +239,7 @@ async def test_generate_prep_unknown_type(patch_openai_stub):
 
 
 # ---------------------------------------------------------------------------
-# Tests — _check_error routing
+# Tests - _check_error routing
 # ---------------------------------------------------------------------------
 
 def test_check_error_continue():
@@ -253,7 +253,7 @@ def test_check_error_failed():
 
 
 # ---------------------------------------------------------------------------
-# Tests — mark_failed_node
+# Tests - mark_failed_node
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -277,7 +277,7 @@ async def test_mark_failed_node_no_session():
 
 
 # ---------------------------------------------------------------------------
-# Tests — load_context_node (needs DB)
+# Tests - load_context_node (needs DB)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -314,7 +314,7 @@ async def test_load_context_builds_context(
 
 
 # ---------------------------------------------------------------------------
-# Tests — graph structure
+# Tests - graph structure
 # ---------------------------------------------------------------------------
 
 def test_interview_graph_has_expected_nodes():

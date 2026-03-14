@@ -234,7 +234,7 @@ async def test_check_followup_due_launches_graph(
     deps._email_client = ResendStub()
 
     try:
-        # Run the cron function — graph will pause at interrupt()
+        # Run the cron function - graph will pause at interrupt()
         await check_followup_due(ctx={})
     finally:
         db_mod.async_session_factory = original_factory

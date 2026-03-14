@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     STRIPE_PRICE_EXPLORER: str = ""
     STRIPE_PRICE_HUNTER: str = ""
 
-    # Multi-tenant RLS (feature flag — enable only after thorough testing)
+    # Multi-tenant RLS (feature flag - enable only after thorough testing)
     ENABLE_RLS: bool = False
 
     # Frontend
@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "JobHunter AI"
     API_V1_PREFIX: str = "/api/v1"
 
-    # Cloudflare R2 (optional — falls back to local filesystem if not set)
+    # Cloudflare R2 (optional - falls back to local filesystem if not set)
     R2_ENDPOINT_URL: str = ""
     R2_ACCESS_KEY_ID: str = ""
     R2_SECRET_ACCESS_KEY: str = ""

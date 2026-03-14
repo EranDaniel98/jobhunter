@@ -1,8 +1,8 @@
-# UI/UX Perfection Plan — From 7/10 to 10/10
+# UI/UX Perfection Plan - From 7/10 to 10/10
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Fix every issue identified in the 4-agent UI/UX review — accessibility violations, navigation gaps, page-level UX issues, and polish items — to achieve a 10/10 score.
+**Goal:** Fix every issue identified in the 4-agent UI/UX review - accessibility violations, navigation gaps, page-level UX issues, and polish items - to achieve a 10/10 score.
 
 **Architecture:** Pure frontend changes across ~30 files. Four phases: (1) Critical WCAG fixes, (2) High-impact UX gaps, (3) Medium polish, (4) Nice-to-have premium features. Each phase builds on the last and can be committed independently.
 
@@ -19,7 +19,7 @@
 **Files:**
 - Modify: `frontend/src/app/globals.css`
 
-**Context:** `muted-foreground` is used on ~30+ elements (descriptions, placeholders, secondary labels). Current light mode value `oklch(0.450)` yields ~3.8:1 on background — fails WCAG AA 4.5:1. Dark mode `oklch(0.560)` is also borderline.
+**Context:** `muted-foreground` is used on ~30+ elements (descriptions, placeholders, secondary labels). Current light mode value `oklch(0.450)` yields ~3.8:1 on background - fails WCAG AA 4.5:1. Dark mode `oklch(0.560)` is also borderline.
 
 **Step 1: Edit light mode muted-foreground**
 
@@ -91,7 +91,7 @@ with:
 
 **Step 2: Fix second password toggle (line 211-218)**
 
-Same change for confirm password toggle — remove `tabIndex={-1}`, add `aria-label={showConfirmPassword ? "Hide password" : "Show password"}`.
+Same change for confirm password toggle - remove `tabIndex={-1}`, add `aria-label={showConfirmPassword ? "Hide password" : "Show password"}`.
 
 **Step 3: Link form errors to inputs via aria-describedby**
 
@@ -241,7 +241,7 @@ git commit -m "fix(a11y): make upload zone keyboard-accessible, add aria-live"
 
 ---
 
-### Task 5: Fix semantic HTML — nav list structure
+### Task 5: Fix semantic HTML - nav list structure
 
 **Files:**
 - Modify: `frontend/src/components/layout/sidebar.tsx:74-97`
@@ -291,7 +291,7 @@ Wrap nav items in `<ul>` and each item in `<li>`. Change line 74-97:
 
 **Step 2: Apply same `<ul>/<li>` structure to mobile-nav.tsx**
 
-Same pattern — wrap nav items in `<ul>/<li>` inside the `<nav>`.
+Same pattern - wrap nav items in `<ul>/<li>` inside the `<nav>`.
 
 **Step 3: Commit**
 
@@ -495,7 +495,7 @@ git commit -m "refactor: extract shared nav config with section groupings, sync 
 
 **Step 1: Make command menu externally triggerable**
 
-Add a `useCommandMenu` context or expose a ref. Simplest approach — add a global custom event:
+Add a `useCommandMenu` context or expose a ref. Simplest approach - add a global custom event:
 
 In `command-menu.tsx`, add a listener:
 ```tsx
@@ -591,7 +591,7 @@ After the logo div (line 72), add:
 </button>
 ```
 
-Import `Search` from lucide-react (already imported in the file for other uses — check and add if missing).
+Import `Search` from lucide-react (already imported in the file for other uses - check and add if missing).
 
 **Step 2: Commit**
 
@@ -694,7 +694,7 @@ git commit -m "feat: make notifications actionable with route links per event ty
 
 ---
 
-### Task 11: Fix footer — remove fake status, add useful links
+### Task 11: Fix footer - remove fake status, add useful links
 
 **Files:**
 - Modify: `frontend/src/components/layout/footer.tsx`
@@ -765,7 +765,7 @@ export const COMPANY_STATUS_COLORS: Record<string, string> = {
 };
 ```
 
-Actually, since Tailwind v4 doesn't have built-in support for custom `--success` unless registered, use the simpler approach — use the chart-3 color (which is green-ish hue 155) as a stand-in for success:
+Actually, since Tailwind v4 doesn't have built-in support for custom `--success` unless registered, use the simpler approach - use the chart-3 color (which is green-ish hue 155) as a stand-in for success:
 
 ```ts
 export const COMPANY_STATUS_COLORS: Record<string, string> = {
@@ -852,7 +852,7 @@ In `.dark`, change every surface/border/sidebar variable from hue `265` to `70`.
 
 **Step 2: Verify**
 
-Toggle dark mode — surfaces should feel like "warm charcoal" instead of "cool slate". The warmth should match light mode's personality.
+Toggle dark mode - surfaces should feel like "warm charcoal" instead of "cool slate". The warmth should match light mode's personality.
 
 **Step 3: Commit**
 
@@ -881,7 +881,7 @@ git commit -m "style: unify dark mode hue with light mode (warm 70) for consiste
 }
 ```
 
-This is the nuclear option — respects the user's OS preference completely. All animations, transitions, and auto-scroll stop. This is standard practice (GitHub uses this exact approach).
+This is the nuclear option - respects the user's OS preference completely. All animations, transitions, and auto-scroll stop. This is standard practice (GitHub uses this exact approach).
 
 **Step 2: Commit**
 
@@ -982,7 +982,7 @@ git commit -m "style: replace pulse skeleton with orange-tinted shimmer animatio
 
 ---
 
-### Task 17: Interview prep — extract content renderers to separate files
+### Task 17: Interview prep - extract content renderers to separate files
 
 **Files:**
 - Create: `frontend/src/components/interview/company-qa-content.tsx`
@@ -1031,7 +1031,7 @@ git commit -m "refactor: extract interview prep content renderers, fix GenericCo
 
 ---
 
-### Task 18: Apply page — add polling for in-progress analysis
+### Task 18: Apply page - add polling for in-progress analysis
 
 **Files:**
 - Modify: `frontend/src/app/(dashboard)/apply/page.tsx`
@@ -1054,7 +1054,7 @@ git commit -m "feat: poll for analysis completion on Apply page"
 
 ---
 
-### Task 19: Company detail — add "not found" empty state and retry research button
+### Task 19: Company detail - add "not found" empty state and retry research button
 
 **Files:**
 - Modify: `frontend/src/app/(dashboard)/companies/[id]/page.tsx`
@@ -1100,7 +1100,7 @@ git commit -m "feat: proper 404 empty state + retry research button on company d
 
 ---
 
-### Task 20: Dashboard — add UsageCard, empty state for recent companies, responsive stat grid
+### Task 20: Dashboard - add UsageCard, empty state for recent companies, responsive stat grid
 
 **Files:**
 - Modify: `frontend/src/app/(dashboard)/dashboard/page.tsx`
@@ -1134,7 +1134,7 @@ After the `recentCompanies.length > 0` block, add an else:
 )}
 ```
 
-**Step 3: Fix responsive stat grid — add `sm:grid-cols-2`**
+**Step 3: Fix responsive stat grid - add `sm:grid-cols-2`**
 
 Change:
 ```
@@ -1158,7 +1158,7 @@ git commit -m "feat: add UsageCard to dashboard, empty state for companies, resp
 
 ---
 
-### Task 21: Settings — per-section save with sticky save bar
+### Task 21: Settings - per-section save with sticky save bar
 
 **Files:**
 - Modify: `frontend/src/app/(dashboard)/settings/page.tsx`
@@ -1190,7 +1190,7 @@ git commit -m "feat: sticky save bar for settings page with dirty state tracking
 
 ---
 
-### Task 22: Approvals — bulk actions with select all
+### Task 22: Approvals - bulk actions with select all
 
 **Files:**
 - Modify: `frontend/src/app/(dashboard)/approvals/page.tsx`
@@ -1218,7 +1218,7 @@ function clearSelection() {
 }
 ```
 
-**Step 2: Add selection UI — checkbox on each card + bulk action bar**
+**Step 2: Add selection UI - checkbox on each card + bulk action bar**
 
 Add a checkbox to each approval card. When any items are selected, show a floating action bar:
 
@@ -1253,7 +1253,7 @@ git commit -m "feat: bulk approve/reject with selection + count badges on filter
 
 ---
 
-### Task 23: Plans page — add feature comparison matrix
+### Task 23: Plans page - add feature comparison matrix
 
 **Files:**
 - Modify: `frontend/src/app/(dashboard)/plans/page.tsx`
@@ -1281,7 +1281,7 @@ git commit -m "feat: bulk approve/reject with selection + count badges on filter
             <TableCell className="font-medium">{label}</TableCell>
             {sortedPlans.map((p) => (
               <TableCell key={p.tier} className="text-center font-medium">
-                {p.limits[key] ?? "—"}/day
+                {p.limits[key] ?? "-"}/day
               </TableCell>
             ))}
           </TableRow>
@@ -1372,7 +1372,7 @@ git commit -m "feat: collapsible sidebar with icon-only mode and tooltip labels"
 
 ---
 
-### Task 25: Auth — add Terms of Service links
+### Task 25: Auth - add Terms of Service links
 
 **Files:**
 - Modify: `frontend/src/components/auth/register-form.tsx`
@@ -1412,7 +1412,7 @@ git commit -m "feat: add Terms of Service and Privacy Policy links to registrati
 cd frontend && npx tsc --noEmit
 ```
 
-**Step 2: Visual check — light mode**
+**Step 2: Visual check - light mode**
 - [ ] Sidebar has section headers (Core, Outreach, Insights, System)
 - [ ] Active nav has orange left border
 - [ ] Cmd+K search trigger visible in sidebar
@@ -1426,13 +1426,13 @@ cd frontend && npx tsc --noEmit
 - [ ] Muted text is readable (4.5:1 contrast)
 - [ ] Footer shows Settings link + keyboard shortcut hint
 
-**Step 3: Visual check — dark mode**
-- [ ] Surfaces feel warm (not cold slate) — hue consistency
+**Step 3: Visual check - dark mode**
+- [ ] Surfaces feel warm (not cold slate) - hue consistency
 - [ ] All hover/focus states work
 - [ ] Shimmer skeletons visible on dark backgrounds
 
 **Step 4: Accessibility check**
-- [ ] Tab through entire dashboard — skip link appears first
+- [ ] Tab through entire dashboard - skip link appears first
 - [ ] Tab reaches all nav items, search, notifications
 - [ ] Password toggles reachable via keyboard
 - [ ] Upload zone focusable via keyboard
@@ -1443,7 +1443,7 @@ cd frontend && npx tsc --noEmit
 
 ```bash
 git add -A
-git commit -m "style: comprehensive UI/UX polish — accessibility, navigation, semantic colors, shimmer, collapsible sidebar"
+git commit -m "style: comprehensive UI/UX polish - accessibility, navigation, semantic colors, shimmer, collapsible sidebar"
 ```
 
 ---
@@ -1452,7 +1452,7 @@ git commit -m "style: comprehensive UI/UX polish — accessibility, navigation, 
 
 | Phase | Tasks | Priority |
 |-------|-------|----------|
-| 1: Critical A11y | Tasks 1-6 | WCAG AA violations — must fix |
+| 1: Critical A11y | Tasks 1-6 | WCAG AA violations - must fix |
 | 2: High UX | Tasks 7-12 | Navigation, discoverability, actionable notifications |
 | 3: Medium Polish | Tasks 13-20 | Dark mode unification, shimmer, component extraction, polling |
 | 4: Premium | Tasks 21-25 | Bulk actions, collapsible sidebar, feature comparison, sticky save |

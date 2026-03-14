@@ -87,7 +87,7 @@ _storage_instance = None
 
 
 def get_storage():
-    """Return the storage singleton — R2 if configured, otherwise local."""
+    """Return the storage singleton - R2 if configured, otherwise local."""
     global _storage_instance
     if _storage_instance is None:
         if settings.R2_ENDPOINT_URL and settings.R2_BUCKET_NAME:

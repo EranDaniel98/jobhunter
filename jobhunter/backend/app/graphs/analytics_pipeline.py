@@ -1,4 +1,4 @@
-"""LangGraph analytics pipeline — AI-powered job search insights.
+"""LangGraph analytics pipeline - AI-powered job search insights.
 
 5-node StateGraph + mark_failed:
   gather_data → generate_insights → save_insights → notify

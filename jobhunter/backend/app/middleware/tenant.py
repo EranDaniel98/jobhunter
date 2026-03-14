@@ -1,4 +1,4 @@
-"""Tenant isolation middleware — extracts candidate_id from JWT and sets request state.
+"""Tenant isolation middleware - extracts candidate_id from JWT and sets request state.
 
 When ENABLE_RLS=True, also installs a SQLAlchemy event listener that automatically
 filters all SELECT queries on models with a `candidate_id` column.

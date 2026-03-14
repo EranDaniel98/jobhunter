@@ -1,8 +1,11 @@
 # JobHunter AI
 
-**AI-powered job search automation platform** — intelligent company discovery, personalized outreach, and career intelligence.
+![CI](https://github.com/EranDaniel98/jobhunter/actions/workflows/ci.yml/badge.svg)
+![Security](https://github.com/EranDaniel98/jobhunter/actions/workflows/security.yml/badge.svg)
 
-JobHunter AI is a semi-automated platform that combines AI intelligence with human judgment. The system discovers opportunities, researches companies, and drafts personalized outreach — but every action goes through you first.
+**AI-powered job search automation platform** - intelligent company discovery, personalized outreach, and career intelligence.
+
+JobHunter AI is a semi-automated platform that combines AI intelligence with human judgment. The system discovers opportunities, researches companies, and drafts personalized outreach - but every action goes through you first.
 
 ## Architecture
 
@@ -53,32 +56,32 @@ JobHunter AI is a semi-automated platform that combines AI intelligence with hum
 ## Features
 
 ### Core
-- **Resume Intelligence** — Upload PDF/DOCX, AI extracts skills taxonomy with explicit/transferable/adjacent categorization
-- **Candidate DNA** — Vector representation of your professional identity for semantic company matching
-- **Company Discovery** — Hunter.io integration for finding target companies with AI-computed fit scores
-- **Company Dossier** — AI-generated research briefs with culture analysis, interview prep, and compensation data
-- **Contact Finder** — Discover decision-makers with email verification and priority scoring
-- **Outreach Drafting** — GPT-4o personalized emails referencing real experience and company specifics
-- **Email Sequences** — 4-message outreach sequences (initial, followup, followup, breakup)
-- **Compliance** — Daily send limits, suppression lists, CAN-SPAM unsubscribe links, webhook tracking
-- **Analytics** — Pipeline funnel and outreach performance metrics
+- **Resume Intelligence** - Upload PDF/DOCX, AI extracts skills taxonomy with explicit/transferable/adjacent categorization
+- **Candidate DNA** - Vector representation of your professional identity for semantic company matching
+- **Company Discovery** - Hunter.io integration for finding target companies with AI-computed fit scores
+- **Company Dossier** - AI-generated research briefs with culture analysis, interview prep, and compensation data
+- **Contact Finder** - Discover decision-makers with email verification and priority scoring
+- **Outreach Drafting** - GPT-4o personalized emails referencing real experience and company specifics
+- **Email Sequences** - 4-message outreach sequences (initial, followup, followup, breakup)
+- **Compliance** - Daily send limits, suppression lists, CAN-SPAM unsubscribe links, webhook tracking
+- **Analytics** - Pipeline funnel and outreach performance metrics
 
 ### Admin Dashboard
-- **System overview** — Total users, companies, messages, contacts, invites, active users (7d/30d)
-- **User management** — List, search, paginate, toggle admin/active, delete with cascade, user detail drawer
-- **User suspension** — Suspend/activate users; suspended users blocked at login (403)
-- **Activity feed** — Cross-tenant event stream with relative timestamps and event icons
-- **Admin audit log** — Tracks toggle_admin, toggle_active, delete_user, broadcast_sent actions
-- **CSV export** — Download all users with aggregated stats
-- **Broadcast email** — Send to all active opted-in users with confirmation dialog
-- **Registration trend** — 30-day chart with auto-refresh
-- **Invite chain** — Tracks who invited whom
-- **Top users** — Leaderboard by messages sent or companies added
+- **System overview** - Total users, companies, messages, contacts, invites, active users (7d/30d)
+- **User management** - List, search, paginate, toggle admin/active, delete with cascade, user detail drawer
+- **User suspension** - Suspend/activate users; suspended users blocked at login (403)
+- **Activity feed** - Cross-tenant event stream with relative timestamps and event icons
+- **Admin audit log** - Tracks toggle_admin, toggle_active, delete_user, broadcast_sent actions
+- **CSV export** - Download all users with aggregated stats
+- **Broadcast email** - Send to all active opted-in users with confirmation dialog
+- **Registration trend** - 30-day chart with auto-refresh
+- **Invite chain** - Tracks who invited whom
+- **Top users** - Leaderboard by messages sent or companies added
 
 ### Settings
-- **Profile management** — Name, headline, location, target roles/industries/locations, salary range
-- **Notification preferences** — Opt in/out of platform emails (affects broadcast)
-- **Invite system** — Generate invite links, filter by status (active/used/expired), scrollable list
+- **Profile management** - Name, headline, location, target roles/industries/locations, salary range
+- **Notification preferences** - Opt in/out of platform emails (affects broadcast)
+- **Invite system** - Generate invite links, filter by status (active/used/expired), scrollable list
 
 ## Quick Start
 
@@ -128,7 +131,7 @@ cd frontend
 npm run build
 ```
 
-Tests use lightweight stubs — no real API keys needed.
+Tests use lightweight stubs - no real API keys needed.
 
 ## API Overview
 
@@ -199,10 +202,10 @@ jobhunter/
 
 ## Design Philosophy
 
-1. **Semi-Automated** — AI suggests, human approves. No emails sent without explicit confirmation.
-2. **Resume is Source of Truth** — All matching and personalization builds from your real documented experience.
-3. **Compound Learning** — The system gets smarter with every interaction cycle.
-4. **SaaS-Ready** — Tenant-aware data model, API versioning, protocol-based infrastructure.
+1. **Semi-Automated** - AI suggests, human approves. No emails sent without explicit confirmation.
+2. **Resume is Source of Truth** - All matching and personalization builds from your real documented experience.
+3. **Compound Learning** - The system gets smarter with every interaction cycle.
+4. **SaaS-Ready** - Tenant-aware data model, API versioning, protocol-based infrastructure.
 
 ## Roadmap
 
@@ -221,4 +224,4 @@ jobhunter/
 
 ## License
 
-Private — All rights reserved.
+Private - All rights reserved.

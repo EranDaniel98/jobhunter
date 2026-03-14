@@ -1,4 +1,4 @@
-"""LangGraph scout pipeline — proactive company discovery via funding news.
+"""LangGraph scout pipeline - proactive company discovery via funding news.
 
 6-node StateGraph + mark_failed:
   build_search_queries → search_news → parse_articles → score_and_filter → create_companies → notify
@@ -92,7 +92,7 @@ PARSE_ARTICLES_PROMPT = (
     "- industry: The company's primary industry\n"
     "- description: A brief description of what the company does\n\n"
     "Only include companies where a funding round is clearly mentioned."
-    " Deduplicate — each company should appear only once."
+    " Deduplicate - each company should appear only once."
 )
 
 PARSE_ARTICLES_SCHEMA = {
@@ -140,7 +140,7 @@ async def build_search_queries_node(state: ScoutState) -> dict:
         result = await db.execute(select(CandidateDNA).where(CandidateDNA.candidate_id == candidate_id))
         dna = result.scalar_one_or_none()
         if not dna:
-            return {"status": "failed", "error": "No CandidateDNA found — upload a resume first"}
+            return {"status": "failed", "error": "No CandidateDNA found - upload a resume first"}
 
         # Load candidate for target industries
         from app.models.candidate import Candidate
@@ -227,7 +227,7 @@ async def search_news_node(state: ScoutState) -> dict:
     logger.info("scout_news_searched", total_articles=len(all_articles))
 
     if not all_articles:
-        # Empty results — not a failure, just nothing found
+        # Empty results - not a failure, just nothing found
         return {"raw_articles": [], "companies_created": 0, "status": "completed"}
 
     return {"raw_articles": all_articles}

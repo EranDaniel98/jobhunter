@@ -1,4 +1,4 @@
-"""Stripe billing service — checkout sessions, portal, webhook handling."""
+"""Stripe billing service - checkout sessions, portal, webhook handling."""
 
 from datetime import UTC, datetime
 
@@ -77,7 +77,7 @@ async def create_portal_session(candidate: Candidate) -> str:
     _get_stripe()
 
     if not candidate.stripe_customer_id:
-        raise ValueError("No billing account found — subscribe to a plan first")
+        raise ValueError("No billing account found - subscribe to a plan first")
 
     session = stripe.billing_portal.Session.create(
         customer=candidate.stripe_customer_id,
@@ -141,7 +141,7 @@ async def _handle_subscription_deleted(event: stripe.Event, db: AsyncSession) ->
 
 
 async def _handle_checkout_completed(event: stripe.Event, db: AsyncSession) -> None:
-    """Handle checkout.session.completed — link subscription if not already linked."""
+    """Handle checkout.session.completed - link subscription if not already linked."""
     session = event.data.object
     if session.mode != "subscription":
         return

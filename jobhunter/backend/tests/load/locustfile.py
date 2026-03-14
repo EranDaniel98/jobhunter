@@ -1,4 +1,4 @@
-"""Load test — simulates typical user workflows."""
+"""Load test - simulates typical user workflows."""
 
 from locust import HttpUser, task, between
 

@@ -24,7 +24,7 @@ This document captures key architectural decisions made during JobHunter AI deve
 
 **Decision:** Define Python `Protocol` classes for each client interface. Production implementations and test stubs both satisfy the same protocol. `dependencies.py` manages singleton instances.
 
-**Consequences:** Tests run fast with zero API calls. Adding a new client requires implementing the protocol + a stub. No DI framework needed — plain FastAPI `Depends()`.
+**Consequences:** Tests run fast with zero API calls. Adding a new client requires implementing the protocol + a stub. No DI framework needed - plain FastAPI `Depends()`.
 
 ---
 

@@ -256,7 +256,7 @@ async def get_analysis(
     redis = get_redis()
     cached = await redis.get(f"apply:analysis:{posting_id}")
     if not cached:
-        raise HTTPException(status_code=404, detail="Analysis not found — may have expired")
+        raise HTTPException(status_code=404, detail="Analysis not found - may have expired")
 
     analysis = json.loads(cached)
     return ApplyAnalysisResponse(

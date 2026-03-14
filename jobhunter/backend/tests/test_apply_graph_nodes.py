@@ -129,7 +129,7 @@ def _apply_state(candidate_id: uuid.UUID, job_posting_id: uuid.UUID) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tests — match_skills_node (pure logic, no DB or OpenAI)
+# Tests - match_skills_node (pure logic, no DB or OpenAI)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -213,7 +213,7 @@ async def test_match_skills_empty_candidate_skills():
 
 
 # ---------------------------------------------------------------------------
-# Tests — generate_tips_node (OpenAI call)
+# Tests - generate_tips_node (OpenAI call)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -252,7 +252,7 @@ async def test_generate_tips_node_returns_tips(patch_openai_stub):
 
 
 # ---------------------------------------------------------------------------
-# Tests — generate_cover_letter_node (OpenAI call)
+# Tests - generate_cover_letter_node (OpenAI call)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -283,7 +283,7 @@ async def test_generate_cover_letter_node(patch_openai_stub):
 
 
 # ---------------------------------------------------------------------------
-# Tests — _check_error routing
+# Tests - _check_error routing
 # ---------------------------------------------------------------------------
 
 def test_check_error_continue():
@@ -297,7 +297,7 @@ def test_check_error_failed():
 
 
 # ---------------------------------------------------------------------------
-# Tests — parse_job_node (needs DB)
+# Tests - parse_job_node (needs DB)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio

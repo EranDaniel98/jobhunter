@@ -11,7 +11,7 @@ Integrate Stripe for payment processing:
 - **Checkout Sessions** for subscription creation
 - **Customer Portal** for self-service billing management
 - **Webhooks** for subscription lifecycle events (created, updated, deleted)
-- **Plan-aware quotas** — the existing quota service reads the candidate's `subscription_tier` to determine limits
+- **Plan-aware quotas** - the existing quota service reads the candidate's `subscription_tier` to determine limits
 
 Billing state is stored on the `Candidate` model: `stripe_customer_id`, `subscription_tier`, `subscription_status`.
 

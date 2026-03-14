@@ -58,7 +58,7 @@ async def test_x_content_type_options_nosniff(secured_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_x_xss_protection_disabled(secured_client: AsyncClient):
-    """X-XSS-Protection should be '0' (modern best practice — CSP is preferred)."""
+    """X-XSS-Protection should be '0' (modern best practice - CSP is preferred)."""
     resp = await secured_client.get("/ping")
     assert resp.headers.get("x-xss-protection") == "0"
 

@@ -96,7 +96,7 @@ def _analytics_state(candidate_id: uuid.UUID, include_email: bool = False) -> di
 
 
 # ---------------------------------------------------------------------------
-# Tests — generate_insights_node (pure OpenAI call, no DB)
+# Tests - generate_insights_node (pure OpenAI call, no DB)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -175,7 +175,7 @@ async def test_generate_insights_node_handles_none_raw_data(patch_openai_stub):
 
 
 # ---------------------------------------------------------------------------
-# Tests — _check_error routing
+# Tests - _check_error routing
 # ---------------------------------------------------------------------------
 
 def test_check_error_routes_to_continue_on_success():
@@ -195,7 +195,7 @@ def test_check_error_routes_to_mark_failed_on_failure():
 
 
 # ---------------------------------------------------------------------------
-# Tests — mark_failed_node
+# Tests - mark_failed_node
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -218,7 +218,7 @@ async def test_mark_failed_node_sets_status():
 
 
 # ---------------------------------------------------------------------------
-# Tests — full pipeline (with DB)
+# Tests - full pipeline (with DB)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio

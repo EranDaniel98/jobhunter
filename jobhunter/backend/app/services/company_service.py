@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import get_hunter, get_openai
 from app.models.candidate import CandidateDNA
 from app.models.company import Company
@@ -39,11 +40,11 @@ Generate a JSON dossier with:
 - resume_bullets: array of 3-5 specific bullet points the candidate should add or emphasize on their resume
   to be a stronger match for THIS company. Reference specific skills, technologies, or experiences that align
   with the company's needs. Each bullet should be actionable
-  (e.g. "Highlight your experience with distributed systems — their tech stack relies heavily on microservices").
+  (e.g. "Highlight your experience with distributed systems - their tech stack relies heavily on microservices").
 - fit_score_tips: array of 3-5 tips explaining what gaps exist between the candidate's profile and this
   company's ideal hire, and how to close them. Focus on skills, technologies, domain knowledge, or experience
-  gaps. Example: "Learn Kubernetes basics — this company heavily uses container orchestration" or
-  "Their stack is Python-heavy, which aligns well with your experience — emphasize this"."""
+  gaps. Example: "Learn Kubernetes basics - this company heavily uses container orchestration" or
+  "Their stack is Python-heavy, which aligns well with your experience - emphasize this"."""
 
 DOSSIER_SCHEMA = {
     "type": "object",
@@ -115,30 +116,32 @@ DOSSIER_SCHEMA = {
 
 
 DISCOVERY_PROMPT = """
-You are a company discovery assistant for job seekers. Based on the candidate's profile,
-suggest 5-8 real companies they should target.
+You are a company discovery assistant for job seekers. Suggest 5-8 real companies
+that closely match the search criteria below.
 
-CANDIDATE PROFILE:
+{filter_instructions}
+
+CANDIDATE PROFILE (for context on their background):
 {candidate_summary}
 
-TARGET INDUSTRIES: {industries}
-TARGET ROLES: {roles}
+INDUSTRY REQUIREMENT (STRICT): Only suggest companies in these industries: {industries}
+Do NOT suggest companies from unrelated industries.
+
+ROLE CONTEXT: The candidate is looking for roles like: {roles}
 
 {location_constraint}
 
 EXISTING COMPANIES (do NOT suggest these again): {existing_domains}
 
-{filter_instructions}
-
 INSTRUCTIONS:
-- Suggest REAL companies with valid domain names
-- Focus on companies that match the candidate's skills and experience
+- Every company MUST match the industry and filter requirements above
+- Suggest REAL companies with valid, working domain names
+- The "reason" field must explain specifically how this company matches the search criteria
 - Prefer companies that are actively hiring or growing
 - Include a mix of well-known and emerging companies
-- Each suggestion must have a real, working company website domain
 - For each company include its primary industry, approximate employee size range
   (e.g. "51-200", "201-500"), and known tech stack
-- Strictly follow the LOCATION REQUIREMENT above"""
+- Strictly follow ALL requirements marked (STRICT) above"""
 
 DISCOVERY_SCHEMA = {
     "type": "object",
@@ -235,6 +238,11 @@ async def discover_companies(
             detail="Upload and process a resume before discovering companies",
         )
 
+    if not settings.OPENAI_API_KEY:
+        raise ValueError("OpenAI API key not configured. Please set OPENAI_API_KEY.")
+    if not settings.HUNTER_API_KEY:
+        raise ValueError("Hunter API key not configured. Please set HUNTER_API_KEY.")
+
     hunter = get_hunter()
 
     # Gather existing company domains to exclude
@@ -272,12 +280,15 @@ async def discover_companies(
     else:
         location_constraint = "LOCATION: No location preference specified."
 
-    # Build filter instructions for additional filters
+    # Build filter instructions - placed prominently at top of prompt
     filter_parts = []
     if company_size:
-        filter_parts.append(f"COMPANY SIZE PREFERENCE: {company_size}")
+        filter_parts.append(f"COMPANY SIZE (STRICT): Only suggest companies of size {company_size}")
     if keywords:
-        filter_parts.append(f"ADDITIONAL PREFERENCES: {keywords}")
+        filter_parts.append(
+            f"SEARCH KEYWORDS (STRICT): The user is specifically searching for: {keywords}\n"
+            f"Every suggested company MUST be relevant to these keywords."
+        )
     filter_instructions = "\n".join(filter_parts)
 
     client = get_openai()

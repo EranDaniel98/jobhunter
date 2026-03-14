@@ -41,7 +41,7 @@ class ResendClient:
         if reply_to:
             params["reply_to"] = [reply_to]
 
-        # Resend SDK is synchronous — run in executor
+        # Resend SDK is synchronous - run in executor
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, partial(resend.Emails.send, params))
         logger.info("email_sent_via_resend", to=to, message_id=result.get("id"))

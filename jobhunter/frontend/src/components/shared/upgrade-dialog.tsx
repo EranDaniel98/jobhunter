@@ -49,7 +49,7 @@ export function UpgradeDialog({ open, onOpenChange, plan }: UpgradeDialogProps) 
     if (isPaid && priceId) {
       checkout.mutate(priceId);
     } else {
-      // Downgrading to free — open billing portal to cancel
+      // Downgrading to free - open billing portal to cancel
       portal.mutate();
     }
   }

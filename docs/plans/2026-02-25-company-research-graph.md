@@ -726,9 +726,9 @@ git commit -m "feat: wire company research graph into API endpoint"
 
 **Step 1: Remove `research_company` function**
 
-The `research_company()` function at lines 371-449 in `company_service.py` is now dead code — the graph handles all research. Delete lines 371-449 entirely.
+The `research_company()` function at lines 371-449 in `company_service.py` is now dead code - the graph handles all research. Delete lines 371-449 entirely.
 
-Also remove the unused imports that were only needed by `research_company()`: `json` (line 1) and `datetime, timezone` (line 3) — but check if they're used elsewhere in the file first.
+Also remove the unused imports that were only needed by `research_company()`: `json` (line 1) and `datetime, timezone` (line 3) - but check if they're used elsewhere in the file first.
 
 Keep `json` since it's used in `discover_companies`. Keep `datetime, timezone` only if used elsewhere.
 
@@ -769,8 +769,8 @@ git commit -m "docs: mark Company Research Graph as done in project report"
 ## Verification Checklist
 
 1. `pip install duckduckgo-search` succeeds
-2. `pytest tests/test_company_research_graph.py -v` — 4 tests pass
-3. `pytest tests/ -v` — full suite passes (no regressions)
+2. `pytest tests/test_company_research_graph.py -v` - 4 tests pass
+3. `pytest tests/ -v` - full suite passes (no regressions)
 4. Graph has 7 nodes: enrich_company, web_search, generate_dossier, create_contacts, embed_company, notify, mark_failed
 5. `_research_background` in companies.py now calls the graph instead of `company_service.research_company`
 6. `research_company()` is removed from company_service.py

@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword(data.email);
     } catch {
-      // Silently handle — still show success message
+      // Silently handle - still show success message
     }
     setSubmitted(true);
   }

@@ -191,7 +191,7 @@ export default function CompaniesPage() {
 
   return (
     <div className="space-y-5">
-      {/* Page Header — title + description only */}
+      {/* Page Header - title + description only */}
       <PageHeader
         title="Companies"
         description="Track and manage your target company pipeline"
@@ -257,7 +257,7 @@ export default function CompaniesPage() {
         </div>
       </div>
 
-      {/* Discover panel — collapsible */}
+      {/* Discover panel - collapsible */}
       {discoverOpen && (
         <Card className="border-dashed">
           <CardContent className="pt-5 pb-4">
@@ -322,7 +322,7 @@ export default function CompaniesPage() {
         </Card>
       )}
 
-      {/* Filter / sort bar — always visible */}
+      {/* Filter / sort bar - always visible */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         {/* Search */}
         <div className="relative flex-1 max-w-xs">

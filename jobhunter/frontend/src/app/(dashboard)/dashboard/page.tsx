@@ -94,7 +94,7 @@ export default function DashboardPage() {
         hasSentMessages={(stats?.total_sent || 0) > 0}
       />
 
-      {/* Next Actions — contextual prompts */}
+      {/* Next Actions - contextual prompts */}
       {nextActions.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {nextActions.slice(0, 3).map((action) => {
@@ -119,7 +119,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats cards — square proportions */}
+      {/* Stats cards - square proportions */}
       {isError ? (
         <QueryError
           message="Could not load dashboard stats."
@@ -167,7 +167,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Pipeline + Usage — 2-column */}
+      {/* Pipeline + Usage - 2-column */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {pipeline && (
@@ -312,7 +312,7 @@ export default function DashboardPage() {
   );
 }
 
-/* Square stat card — centered layout with icon, value, label */
+/* Square stat card - centered layout with icon, value, label */
 function StatCard({
   label,
   value,

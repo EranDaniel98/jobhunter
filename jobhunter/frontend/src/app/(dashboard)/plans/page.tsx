@@ -330,7 +330,7 @@ export default function PlansPage() {
                     {sortedPlans.map((p) => (
                       <TableCell key={p.tier} className="text-center">
                         <div className="space-y-1">
-                          <span className="font-medium">{p.limits[key] ?? "—"}/day</span>
+                          <span className="font-medium">{p.limits[key] ?? "-"}/day</span>
                           {p.tier === currentTier && usage?.quotas[key] && (
                             <div className="space-y-0.5">
                               <Progress

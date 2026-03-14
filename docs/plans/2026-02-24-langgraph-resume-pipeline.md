@@ -4,7 +4,7 @@
 
 **Goal:** Replace the monolithic `_run_async_background()` in `candidates.py` with a LangGraph StateGraph that processes resumes through independently checkpointed nodes with PostgreSQL persistence.
 
-**Architecture:** A 5-node StateGraph (parse_resume → extract_skills → generate_dna → recalculate_fits → notify) with conditional error routing to a mark_failed node. Each node reads/writes to a shared TypedDict state. PostgreSQL checkpointing via `langgraph-checkpoint-postgres` enables crash recovery and per-node retry. The graph is invoked from the same BackgroundTasks entry point — no API or frontend changes.
+**Architecture:** A 5-node StateGraph (parse_resume → extract_skills → generate_dna → recalculate_fits → notify) with conditional error routing to a mark_failed node. Each node reads/writes to a shared TypedDict state. PostgreSQL checkpointing via `langgraph-checkpoint-postgres` enables crash recovery and per-node retry. The graph is invoked from the same BackgroundTasks entry point - no API or frontend changes.
 
 **Tech Stack:** LangGraph 0.4+, langgraph-checkpoint-postgres 2.0+, FastAPI BackgroundTasks, SQLAlchemy async, OpenAI structured output, pgvector embeddings.
 
@@ -12,7 +12,7 @@
 
 ## Context
 
-The resume processing pipeline currently lives in `jobhunter/backend/app/api/candidates.py:52-87` as a single async function `_run_async_background()`. It calls `resume_service.parse_resume()`, `resume_service.generate_candidate_dna()`, `company_service.recalculate_fit_scores()`, and sends a WebSocket notification — all in one try/except. Any failure means the entire pipeline must restart from scratch.
+The resume processing pipeline currently lives in `jobhunter/backend/app/api/candidates.py:52-87` as a single async function `_run_async_background()`. It calls `resume_service.parse_resume()`, `resume_service.generate_candidate_dna()`, `company_service.recalculate_fit_scores()`, and sends a WebSocket notification - all in one try/except. Any failure means the entire pipeline must restart from scratch.
 
 The existing service functions in `resume_service.py` contain the actual logic we're preserving:
 - `parse_resume()` (lines 191-209): OpenAI structured output to parse resume text
@@ -21,15 +21,15 @@ The existing service functions in `resume_service.py` contain the actual logic w
 We'll decompose `generate_candidate_dna()` into separate graph nodes (extract_skills, generate_dna) and add recalculate_fits + notify as their own nodes.
 
 **Key files to understand before starting:**
-- `app/api/candidates.py` — current background task entry point
-- `app/services/resume_service.py` — resume parsing + DNA generation logic
-- `app/services/company_service.py:151-191` — fit score recalculation
-- `app/services/embedding_service.py` — embed_text, batch_embed, cosine_similarity
-- `app/infrastructure/database.py` — async_session_factory
-- `app/infrastructure/websocket_manager.py` — ws_manager.broadcast()
-- `app/config.py` — settings.DATABASE_URL
-- `app/main.py` — lifespan startup/shutdown
-- `tests/conftest.py` — OpenAIStub, test fixtures
+- `app/api/candidates.py` - current background task entry point
+- `app/services/resume_service.py` - resume parsing + DNA generation logic
+- `app/services/company_service.py:151-191` - fit score recalculation
+- `app/services/embedding_service.py` - embed_text, batch_embed, cosine_similarity
+- `app/infrastructure/database.py` - async_session_factory
+- `app/infrastructure/websocket_manager.py` - ws_manager.broadcast()
+- `app/config.py` - settings.DATABASE_URL
+- `app/main.py` - lifespan startup/shutdown
+- `tests/conftest.py` - OpenAIStub, test fixtures
 
 **Test stub note:** The `OpenAIStub` in `tests/conftest.py` returns a flat dict that satisfies multiple schemas. For the graph tests, we'll need to update it to also return proper `skills` data when the skills extraction schema is detected.
 
@@ -46,7 +46,7 @@ We'll decompose `generate_candidate_dna()` into separate graph nodes (extract_sk
 | 4 | Write graph tests | CREATE | `backend/tests/test_resume_graph.py` |
 | 5 | Wire into candidates API | MODIFY | `backend/app/api/candidates.py` |
 | | | MODIFY | `backend/app/main.py` |
-| 6 | Run full test suite | — | verify all 147+ tests still pass |
+| 6 | Run full test suite | - | verify all 147+ tests still pass |
 
 **3 new files, 4 modified files.**
 
