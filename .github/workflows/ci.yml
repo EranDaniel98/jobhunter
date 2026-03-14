@@ -74,7 +74,7 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - name: npm audit security scan
-        run: npm audit --audit-level=critical  # TODO: upgrade wrangler to fix undici high vulns, then use --audit-level=high
+        run: npm audit --audit-level=high
 
   e2e:
     runs-on: ubuntu-latest
