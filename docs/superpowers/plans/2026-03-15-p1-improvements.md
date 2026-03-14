@@ -331,6 +331,26 @@ async def test_admin_invite_batch(authenticated_admin_client, db_session):
     data = resp.json()
     assert data["invited"] == 3
     assert data["failed"] == 0
+
+
+@pytest.mark.asyncio
+async def test_admin_invite_quota_exceeded(authenticated_admin_client, db_session, redis_client):
+    """429 returned with Retry-After when daily quota exceeded."""
+    from app.models.waitlist import WaitlistEntry
+    from app.config import settings
+
+    entry = WaitlistEntry(email="quota@example.com", source="landing")
+    db_session.add(entry)
+    await db_session.commit()
+    await db_session.refresh(entry)
+
+    # Set quota to max
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    await redis_client.set(f"waitlist:invites:daily:{today}", str(settings.MAX_DAILY_INVITES))
+
+    resp = await authenticated_admin_client.post(f"/api/v1/admin/waitlist/{entry.id}/invite")
+    assert resp.status_code == 429
+    assert "Retry-After" in resp.headers
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -441,7 +461,16 @@ async def invite_waitlist_entry(
     quota_key = f"waitlist:invites:daily:{today}"
     current = int(await redis.get(quota_key) or 0)
     if current >= settings.MAX_DAILY_INVITES:
-        raise HTTPException(429, "Daily invite quota exceeded")
+        logger.warning("waitlist.quota_exceeded", extra={
+            "feature": "waitlist_invites", "action": "invite_single",
+            "detail": {"requested": 1, "remaining": 0},
+        })
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Daily invite quota exceeded"},
+            headers={"Retry-After": "86400"},
+        )
 
     # Reserve quota before sending (spec: decrement before processing)
     await redis.incr(quota_key)
@@ -467,14 +496,21 @@ async def invite_waitlist_entry(
         entry.status = "invite_failed"
         entry.invite_error = str(e)
         await redis.decr(quota_key)  # Release reserved quota on failure
-        logger.error("waitlist.invite_failed", extra={"item_id": entry_id, "detail": {"error": str(e)}})
+        logger.error("waitlist.invite_failed", extra={
+            "feature": "waitlist_invites", "action": "invite_sent",
+            "item_id": str(entry_id), "status": "failure",
+            "detail": {"error": str(e)},
+        })
 
     await db.commit()
 
     # Audit log
     await admin_service.create_audit_log(db, admin.id, "invite_waitlist", details={"email": entry.email})
 
-    logger.info("waitlist.invite_sent", extra={"item_id": entry_id, "status": entry.status})
+    logger.info("waitlist.invite_sent", extra={
+        "feature": "waitlist_invites", "action": "invite_sent",
+        "item_id": str(entry_id), "status": entry.status,
+    })
     return WaitlistInviteResponse(code=invite.code, email=entry.email, expires_at=invite.expires_at)
 
 
@@ -494,7 +530,16 @@ async def invite_waitlist_batch(
     current = int(await redis.get(quota_key) or 0)
     remaining = settings.MAX_DAILY_INVITES - current
     if remaining < len(body.ids):
-        raise HTTPException(429, f"Daily quota insufficient: {remaining} remaining, {len(body.ids)} requested")
+        logger.warning("waitlist.quota_exceeded", extra={
+            "feature": "waitlist_invites", "action": "invite_batch",
+            "detail": {"requested": len(body.ids), "remaining": remaining},
+        })
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=429,
+            content={"detail": f"Daily quota insufficient: {remaining} remaining, {len(body.ids)} requested"},
+            headers={"Retry-After": "86400"},
+        )
 
     invited = 0
     skipped = 0
@@ -785,6 +830,26 @@ async def test_dns_health_dmarc_missing_is_warning():
 
     assert result["overall"] == "warning"
     assert result["dmarc"]["status"] == "fail"
+
+
+@pytest.mark.asyncio
+async def test_dns_health_uses_configurable_dkim_selector():
+    """DKIM lookup uses the configured selector from settings."""
+    with patch("app.services.dns_health_service._resolve_txt") as mock_resolve:
+        queried_names = []
+        async def resolver(qname):
+            queried_names.append(qname)
+            return "v=spf1 include:amazonses.com ~all"
+        mock_resolve.side_effect = resolver
+
+        with patch("app.services.dns_health_service.settings") as mock_settings:
+            mock_settings.DKIM_SELECTOR = "custom_selector"
+            mock_settings.SPF_EXPECTED_INCLUDES = ["amazonses.com"]
+            mock_settings.DNS_LOOKUP_TIMEOUT = 3.0
+            mock_settings.DNS_HEALTH_CACHE_TTL = 0  # disable cache for test
+            await check_email_dns_health("example.com", force=True)
+
+    assert any("custom_selector._domainkey" in name for name in queried_names)
 ```
 
 - [ ] **Step 4: Run tests to verify they fail**
@@ -820,8 +885,16 @@ async def _resolve_txt(qname: str) -> str | None:
         return " ".join(texts)
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
         return None
-    except dns.resolver.LifetimeTimeout:
+    except (dns.resolver.LifetimeTimeout, dns.exception.Timeout):
+        logger.warning("dns_health.lookup_timeout", extra={
+            "feature": "dns_health", "detail": {"qname": qname},
+        })
         raise TimeoutError(f"DNS lookup timed out for {qname}")
+    except Exception:
+        logger.error("dns_health.lookup_error", extra={
+            "feature": "dns_health", "detail": {"qname": qname},
+        })
+        return None
 
 
 async def check_email_dns_health(domain: str, force: bool = False) -> dict:
@@ -978,6 +1051,7 @@ Create `frontend/src/components/admin/email-health-card.tsx`:
 - Expandable details showing raw DNS record
 - Overall status badge
 - "Refresh" button calling `GET /api/v1/admin/email-health?force=true`
+- Link to `docs/email-domain-setup.md` for setup instructions
 - Uses existing component patterns from the admin dashboard
 
 Reference: existing admin components for styling conventions.
@@ -1065,6 +1139,9 @@ from app.config import settings
 
 logger = structlog.get_logger()
 
+# NOTE: When using pgBouncer in transaction mode, do NOT use session.begin_nested()
+# or SAVEPOINTs — they are not supported through transaction-mode pgBouncer.
+
 
 def _get_engine_config() -> dict:
     """Determine engine URL and pool settings based on PGBOUNCER_URL."""
@@ -1114,12 +1191,29 @@ async def get_session() -> AsyncSession:
         yield session
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [ ] **Step 5: Add health check response test**
+
+Add to `tests/test_pgbouncer.py`:
+
+```python
+@pytest.mark.asyncio
+async def test_health_reports_connection_mode(authenticated_client):
+    """Health endpoint reports connection mode and db_reachable."""
+    resp = await authenticated_client.get("/api/v1/health")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "connection_mode" in data
+    assert data["connection_mode"] in ("direct", "pgbouncer")
+    assert "db_reachable" in data
+    assert data["db_reachable"] is True
+```
+
+- [ ] **Step 6: Run tests to verify they pass**
 
 Run: `cd jobhunter/backend && uv run python -m pytest tests/test_pgbouncer.py -xvs`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add app/config.py app/infrastructure/database.py tests/test_pgbouncer.py
@@ -1144,6 +1238,16 @@ In `app/api/health.py`, add to the response dict (after the Redis check):
     from app.infrastructure.database import _config
     checks["connection_mode"] = _config["mode"]
     checks["pgbouncer_configured"] = bool(settings.PGBOUNCER_URL)
+
+    # Verify DB reachable through active connection path
+    try:
+        await db.execute(text("SELECT 1"))
+        checks["db_reachable"] = True
+    except Exception as e:
+        checks["db_reachable"] = False
+        logger.error("database.health_check_failed", extra={
+            "feature": "pgbouncer", "detail": {"error": str(e)},
+        })
 ```
 
 - [ ] **Step 2: Add pool stats admin endpoint**
@@ -1276,6 +1380,17 @@ async def test_cache_miss_returns_none(redis_client):
 
 
 @pytest.mark.asyncio
+async def test_cache_ttl_expiry(redis_client):
+    """Cached entry expires after TTL."""
+    import asyncio
+    data = {"culture_summary": "Expires soon"}
+    await cache_dossier("ttl.com", "hash1", data, ttl=1)  # 1 second TTL
+    assert await get_cached_dossier("ttl.com", "hash1") is not None
+    await asyncio.sleep(1.5)
+    assert await get_cached_dossier("ttl.com", "hash1") is None
+
+
+@pytest.mark.asyncio
 async def test_invalidate_dossier(redis_client):
     """Invalidation removes cached entries."""
     await cache_dossier("acme.com", "hash1", {"a": 1}, ttl=60)
@@ -1378,6 +1493,9 @@ async def release_stampede_lock(domain: str) -> None:
 async def wait_for_cache(domain: str, input_hash: str, max_wait: int = 30, interval: int = 2) -> dict | None:
     """Poll cache waiting for another generator to populate it."""
     import asyncio
+    logger.info("dossier_cache.stampede_wait", extra={
+        "feature": "dossier_cache", "detail": {"domain": domain},
+    })
     elapsed = 0
     while elapsed < max_wait:
         result = await get_cached_dossier(domain, input_hash)
@@ -1422,14 +1540,14 @@ In `app/services/company_service.py`, replace `DOSSIER_SCHEMA` (lines 49-115) an
 - Keep: company context, web context
 - Instruct to generate only generic fields
 
-**`DOSSIER_GENERIC_SCHEMA`** — JSON schema with `additionalProperties: false`, all fields `required`:
+**`DOSSIER_GENERIC_SCHEMA`** — JSON schema with `"additionalProperties": false` and ALL fields listed in the `"required"` array (project rule: OpenAI structured output rejects schemas without this). Fields:
 - `culture_summary`, `culture_score`, `red_flags`, `interview_format`, `interview_questions`, `compensation_data`, `key_people`, `recent_news`
 
 **`DOSSIER_PERSONAL_PROMPT`** — new prompt:
 - Receives generic dossier output + candidate DNA summary
 - Instructs to generate: why_hire_me, resume_bullets, fit_score_tips
 
-**`DOSSIER_PERSONAL_SCHEMA`** — JSON schema with `additionalProperties: false`, all fields `required`:
+**`DOSSIER_PERSONAL_SCHEMA`** — JSON schema with `"additionalProperties": false` and ALL fields in `"required"` array:
 - `why_hire_me`, `resume_bullets`, `fit_score_tips`
 
 Remember: escape all literal braces as `{{` and `}}` in prompt templates that use `.format()`.
@@ -1463,7 +1581,7 @@ In `app/graphs/company_research.py`, modify `generate_dossier_node` (lines 166-2
 1. After loading company and candidate DNA, compute `input_hash` from company fields
 2. Check cache via `get_cached_dossier(domain, input_hash)`
 3. On cache hit: use cached generic data, skip OpenAI generic call
-4. On cache miss: acquire stampede lock, generate with `DOSSIER_GENERIC_SCHEMA`, cache result, release lock
+4. On cache miss: log `dossier_cache.miss` with `{"domain": domain, "hash": input_hash}`. Acquire stampede lock, generate with `DOSSIER_GENERIC_SCHEMA`, cache result, release lock
 5. Always: call `parse_structured()` with `DOSSIER_PERSONAL_SCHEMA` + generic data + candidate DNA
 6. Merge generic + personal into existing dossier record fields
 
@@ -1634,6 +1752,11 @@ async def _process_chunk(
     sem = asyncio.Semaphore(concurrency)
     results = {"succeeded": 0, "failed": 0}
 
+    logger.info("chunk.started", extra={
+        "feature": "arq_batch", "action": job_name,
+        "detail": {"chunk_size": len(items)},
+    })
+
     async def _run(item_id):
         async with sem:
             try:
@@ -1720,7 +1843,7 @@ async def _acquire_run_lock(job_name: str, ttl: int) -> bool:
 
 Refactor `check_followup_due` (lines 48-157) into:
 
-1. `check_followup_due(ctx)` — coordinator: acquire lock, query due follow-ups, chunk IDs, enqueue `process_followup_chunk` per chunk
+1. `check_followup_due(ctx)` — coordinator: acquire lock, query due follow-ups, cap at `MAX_CHUNKS_PER_RUN * CHUNK_SIZE` items (log `cron.overflow` with `total_items`, `processing`, `deferred` counts if items exceed cap), chunk IDs, enqueue `process_followup_chunk` per chunk, log `cron.started` with items found and chunks enqueued
 2. `process_followup_chunk(ctx, message_ids: list[str])` — worker: process each message with the existing per-message logic (dedup checks + outreach graph), using `_process_chunk` for concurrency
 
 The per-message processing logic from the current function body moves into a `_process_single_followup(message_id)` async function called by the chunk processor.
@@ -1745,9 +1868,9 @@ Update `WorkerSettings` at the bottom of `app/worker.py`:
 class WorkerSettings:
     functions = [
         send_approved_message,
-        process_followup_chunk,
-        process_scout_chunk,
-        process_analytics_chunk,
+        func(process_followup_chunk, timeout=600),
+        func(process_scout_chunk, timeout=600),
+        func(process_analytics_chunk, timeout=600),
     ]
     cron_jobs = [
         cron(check_followup_due, minute={0, 15, 30, 45}),
@@ -1818,3 +1941,27 @@ Check that `backend/.env.example` includes all new env vars:
 git add -A
 git commit -m "chore: P1 improvements integration cleanup"
 ```
+
+---
+
+## Deployment Order and Rollback
+
+Per the spec, the recommended deployment sequence (lowest risk first):
+
+1. **Feature 3 (pgBouncer)** — infrastructure only, zero app code risk
+2. **Feature 2 (DNS Health)** — read-only, low risk
+3. **Feature 4 (Dossier Caching)** — cost savings start immediately
+4. **Feature 5 (Batch ARQ)** — scalability improvement
+5. **Feature 1 (Waitlist Invites)** — user-facing, deploy last to allow soak time on infra changes
+
+**Rollback procedures:**
+
+| Feature | Rollback |
+|---------|----------|
+| 1 - Waitlist Invites | Migration is additive (new columns with defaults) — backward-compatible. Revert API deploy; old code ignores new columns. |
+| 2 - DNS Health | Remove endpoint + frontend card. No data changes. |
+| 3 - pgBouncer | Unset `PGBOUNCER_URL`, restart app. Falls back to direct connection. |
+| 4 - Dossier Caching | Revert to previous `company_service.py`. Cache keys in Redis expire naturally via TTL. |
+| 5 - Batch ARQ | Revert `worker.py`. Crons fall back to sequential processing. |
+
+**Security note:** All admin endpoints (`/api/v1/admin/*`) are protected by the existing `require_admin` dependency which validates JWT tokens and checks the user's `is_admin` flag. No changes needed.
