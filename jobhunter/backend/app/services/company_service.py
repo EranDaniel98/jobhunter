@@ -10,6 +10,7 @@ from app.dependencies import get_hunter, get_openai
 from app.models.candidate import CandidateDNA
 from app.models.company import Company
 from app.models.contact import Contact
+from app.models.enums import CompanyStatus
 from app.services.embedding_service import cosine_similarity, embed_text
 
 logger = structlog.get_logger()
@@ -391,7 +392,7 @@ async def add_company_manual(db: AsyncSession, candidate_id: uuid.UUID, domain: 
     company.status = "approved"  # Manual adds are auto-approved
 
     # Also create contacts from Hunter data
-    await _create_contacts_from_hunter(db, candidate_id, company.id, data)
+    await _create_contacts_from_hunter(db, candidate_id, company.id, data, size_range=data.get("size"))
 
     await db.commit()
     await db.refresh(company)
@@ -404,6 +405,9 @@ async def approve_company(db: AsyncSession, company_id: uuid.UUID) -> Company:
     company = result.scalar_one_or_none()
     if not company:
         raise ValueError("Company not found")
+
+    if company.status == CompanyStatus.REJECTED:
+        raise ValueError("Cannot approve a rejected company")
 
     company.status = "approved"
     await db.commit()
@@ -471,6 +475,7 @@ async def _create_contacts_from_hunter(
     candidate_id: uuid.UUID,
     company_id: uuid.UUID,
     hunter_data: dict,
+    size_range: str | None = None,
 ) -> list[Contact]:
     """Create Contact records from Hunter.io emails data."""
     contacts = []
@@ -485,21 +490,9 @@ async def _create_contacts_from_hunter(
         if existing.scalar_one_or_none():
             continue
 
-        position = (email_data.get("position") or "").lower()
-        role_type = "recruiter"
-        is_decision_maker = False
-        priority = 0
-
-        if any(t in position for t in ["vp", "director", "head", "cto", "ceo"]):
-            role_type = "hiring_manager"
-            is_decision_maker = True
-            priority = 3
-        elif any(t in position for t in ["manager", "lead"]):
-            role_type = "team_lead"
-            priority = 2
-        elif "recruit" in position:
-            role_type = "recruiter"
-            priority = 1
+        role_type, is_decision_maker, priority = compute_contact_priority(
+            email_data.get("position") or "", get_company_size_tier(size_range)
+        )
 
         contact = Contact(
             id=uuid.uuid4(),
