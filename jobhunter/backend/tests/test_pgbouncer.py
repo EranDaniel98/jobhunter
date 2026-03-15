@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from app.infrastructure.database import _get_engine_config
 
 
@@ -27,9 +29,9 @@ def test_pgbouncer_mode_reduces_pool():
 
 
 @pytest.mark.asyncio
-async def test_health_reports_connection_mode(authenticated_client):
+async def test_health_reports_connection_mode(client, auth_headers):
     """Health endpoint reports connection mode and db_reachable."""
-    resp = await authenticated_client.get("/api/v1/health")
+    resp = await client.get("/api/v1/health", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     checks = data.get("checks", data)  # health endpoint wraps in "checks" key

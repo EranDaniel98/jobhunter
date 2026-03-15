@@ -1,15 +1,16 @@
 """Tests for the follow-up scheduler logic."""
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.models.contact import Contact
-from app.models.company import Company
 from app.models.candidate import Candidate, CandidateDNA
+from app.models.company import Company
+from app.models.contact import Contact
 from app.models.outreach import OutreachMessage
 from app.models.pending_action import PendingAction
 from app.utils.security import hash_password
@@ -73,7 +74,7 @@ def _create_message(
         subject="Test subject",
         body="Test body",
         status=status,
-        sent_at=sent_at or datetime.now(timezone.utc),
+        sent_at=sent_at or datetime.now(UTC),
     )
 
 
@@ -83,7 +84,7 @@ async def test_no_followup_before_threshold(db_session: AsyncSession, scheduler_
     data = scheduler_data
     msg = _create_message(
         data["candidate"].id, data["contact"].id,
-        sent_at=datetime.now(timezone.utc) - timedelta(days=1),
+        sent_at=datetime.now(UTC) - timedelta(days=1),
     )
     db_session.add(msg)
     await db_session.flush()
@@ -102,7 +103,7 @@ async def test_followup_due_after_3_days(db_session: AsyncSession, scheduler_dat
     msg = _create_message(
         data["candidate"].id, data["contact"].id,
         message_type="initial", status="sent",
-        sent_at=datetime.now(timezone.utc) - timedelta(days=4),
+        sent_at=datetime.now(UTC) - timedelta(days=4),
     )
     db_session.add(msg)
     await db_session.flush()
@@ -110,7 +111,7 @@ async def test_followup_due_after_3_days(db_session: AsyncSession, scheduler_dat
     # The message meets criteria: sent > 3 days ago, type=initial, status=sent
     # Verify it can be found by the scheduler query
     from app.worker import FOLLOWUP_THRESHOLDS
-    cutoff = datetime.now(timezone.utc) - timedelta(days=FOLLOWUP_THRESHOLDS["initial"][1])
+    cutoff = datetime.now(UTC) - timedelta(days=FOLLOWUP_THRESHOLDS["initial"][1])
 
     result = await db_session.execute(
         select(OutreachMessage).where(
@@ -132,14 +133,14 @@ async def test_no_followup_if_replied(db_session: AsyncSession, scheduler_data):
     msg = _create_message(
         data["candidate"].id, data["contact"].id,
         message_type="initial", status="replied",
-        sent_at=datetime.now(timezone.utc) - timedelta(days=10),
+        sent_at=datetime.now(UTC) - timedelta(days=10),
     )
     db_session.add(msg)
     await db_session.flush()
 
     # Scheduler only looks for status in (sent, delivered)
     from app.worker import FOLLOWUP_THRESHOLDS
-    cutoff = datetime.now(timezone.utc) - timedelta(days=FOLLOWUP_THRESHOLDS["initial"][1])
+    cutoff = datetime.now(UTC) - timedelta(days=FOLLOWUP_THRESHOLDS["initial"][1])
 
     result = await db_session.execute(
         select(OutreachMessage).where(
@@ -158,7 +159,7 @@ async def test_no_followup_if_pending_exists(db_session: AsyncSession, scheduler
     data = scheduler_data
     msg = _create_message(
         data["candidate"].id, data["contact"].id,
-        sent_at=datetime.now(timezone.utc) - timedelta(days=4),
+        sent_at=datetime.now(UTC) - timedelta(days=4),
     )
     db_session.add(msg)
 
@@ -191,7 +192,7 @@ async def test_breakup_is_final(db_session: AsyncSession, scheduler_data):
     msg = _create_message(
         data["candidate"].id, data["contact"].id,
         message_type="breakup", status="sent",
-        sent_at=datetime.now(timezone.utc) - timedelta(days=10),
+        sent_at=datetime.now(UTC) - timedelta(days=10),
     )
     db_session.add(msg)
     await db_session.flush()
@@ -214,7 +215,7 @@ async def test_check_followup_due_launches_graph(
     msg = _create_message(
         data["candidate"].id, data["contact"].id,
         message_type="initial", status="sent",
-        sent_at=datetime.now(timezone.utc) - timedelta(days=4),
+        sent_at=datetime.now(UTC) - timedelta(days=4),
     )
     db_session.add(msg)
     await db_session.commit()
@@ -233,9 +234,13 @@ async def test_check_followup_due_launches_graph(
     deps._openai_client = OpenAIStub()
     deps._email_client = ResendStub()
 
+    mock_redis = AsyncMock()
+    mock_redis.enqueue_job = AsyncMock()
+
     try:
         # Run the cron function - graph will pause at interrupt()
-        await check_followup_due(ctx={})
+        with patch("app.worker._acquire_run_lock", return_value=True):
+            await check_followup_due(ctx={"redis": mock_redis})
     finally:
         db_mod.async_session_factory = original_factory
         deps._openai_client = None

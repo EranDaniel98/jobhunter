@@ -78,7 +78,8 @@ async def acquire_stampede_lock(domain: str, ttl: int = 60) -> bool:
     """Try to acquire a lock for generating a dossier. Returns True if acquired."""
     redis = get_redis()
     lock_key = f"dossier:lock:{domain}"
-    return await redis.set(lock_key, "1", nx=True, ex=ttl)
+    result = await redis.set(lock_key, "1", nx=True, ex=ttl)
+    return result is not None  # Redis SET NX returns None if key exists, True if set
 
 
 async def release_stampede_lock(domain: str) -> None:
