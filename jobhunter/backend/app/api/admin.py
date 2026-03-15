@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_current_admin, get_db, get_email_client
+from app.infrastructure.dossier_cache import invalidate_dossier
 from app.infrastructure.protocols import EmailClientProtocol
 from app.infrastructure.redis_client import get_redis
 from app.models.candidate import Candidate
@@ -267,6 +268,15 @@ async def get_db_pool_stats(
         "overflow": pool.overflow(),
         "checked_in": pool.checkedin(),
     }
+
+
+@router.delete("/cache/dossier/{domain}")
+async def clear_dossier_cache(
+    domain: str,
+    _: Candidate = Depends(get_current_admin),
+):
+    deleted = await invalidate_dossier(domain)
+    return {"deleted": deleted, "domain": domain}
 
 
 @router.get("/email-health")
