@@ -261,12 +261,8 @@ export default function ResumePage() {
 
       {hasDna && dnaQuery.data && (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <CompletenessCard dna={dnaQuery.data} skills={skillsQuery.data || []} />
-            <div className="md:col-span-2">
-              <DnaProfile dna={dnaQuery.data} />
-            </div>
-          </div>
+          <CompletenessCard dna={dnaQuery.data} skills={skillsQuery.data || []} />
+          <DnaProfile dna={dnaQuery.data} />
           <SkillsGrid skills={skillsQuery.data?.length ? skillsQuery.data : dnaQuery.data.skills} />
           <ResumeHistoryCard />
           {gapSkills.length > 0 && (
