@@ -10,9 +10,50 @@ from app.dependencies import get_hunter, get_openai
 from app.models.candidate import CandidateDNA
 from app.models.company import Company
 from app.models.contact import Contact
+from app.models.enums import CompanyStatus
 from app.services.embedding_service import cosine_similarity, embed_text
 
 logger = structlog.get_logger()
+
+
+def get_company_size_tier(size_range: str | None) -> str:
+    if not size_range:
+        return "medium"
+    s = size_range.strip().rstrip("+")
+    try:
+        upper = int(s.split("-")[1].strip()) if "-" in s else int(s)
+    except (ValueError, IndexError):
+        return "medium"
+    if upper <= 50:
+        return "small"
+    if upper <= 500:
+        return "medium"
+    return "large"
+
+
+PRIORITY_MATRIX = {
+    "hiring_manager": {"small": 3, "medium": 2, "large": 1},
+    "team_lead": {"small": 2, "medium": 3, "large": 2},
+    "recruiter": {"small": 1, "medium": 2, "large": 3},
+}
+
+
+def compute_contact_priority(position: str, size_tier: str) -> tuple[str, bool, int]:
+    pos = position.lower()
+    if any(t in pos for t in ["vp", "director", "head", "cto", "ceo"]):
+        role_type = "hiring_manager"
+        is_decision_maker = True
+    elif any(t in pos for t in ["manager", "lead"]):
+        role_type = "team_lead"
+        is_decision_maker = False
+    elif "recruit" in pos:
+        role_type = "recruiter"
+        is_decision_maker = False
+    else:
+        return "other", False, 0
+    priority = PRIORITY_MATRIX[role_type][size_tier]
+    return role_type, is_decision_maker, priority
+
 
 DOSSIER_GENERIC_PROMPT = """
 You are a company research analyst. Based on the following company data, generate a comprehensive generic dossier.
@@ -139,7 +180,7 @@ INSTRUCTIONS:
 - Prefer companies that are actively hiring or growing
 - Include a mix of well-known and emerging companies
 - For each company include its primary industry, approximate employee size range
-  (e.g. "51-200", "201-500"), and known tech stack
+  (e.g. "51-200", "201-500"), headquarters location (city, country), and known tech stack
 - Strictly follow ALL requirements marked (STRICT) above"""
 
 DISCOVERY_SCHEMA = {
@@ -155,12 +196,13 @@ DISCOVERY_SCHEMA = {
                     "reason": {"type": "string"},
                     "industry": {"type": "string"},
                     "size": {"type": "string"},
+                    "location": {"type": "string"},
                     "tech_stack": {
                         "type": "array",
                         "items": {"type": "string"},
                     },
                 },
-                "required": ["domain", "name", "reason", "industry", "size", "tech_stack"],
+                "required": ["domain", "name", "reason", "industry", "size", "location", "tech_stack"],
                 "additionalProperties": False,
             },
         },
@@ -168,6 +210,46 @@ DISCOVERY_SCHEMA = {
     "required": ["companies"],
     "additionalProperties": False,
 }
+
+
+def _parse_size_range(size_str: str) -> tuple[int, int] | None:
+    s = size_str.strip().rstrip("+")
+    try:
+        if "-" in s:
+            parts = s.split("-")
+            return int(parts[0].strip()), int(parts[1].strip())
+        else:
+            n = int(s)
+            return n, n
+    except (ValueError, IndexError):
+        return None
+
+
+def _validate_discovery_result(company: dict, filters: dict) -> tuple[bool, str | None]:
+    # Size check
+    filter_size = filters.get("company_size")
+    if filter_size:
+        company_size = company.get("size", "")
+        if company_size:
+            filter_range = _parse_size_range(filter_size)
+            company_range = _parse_size_range(company_size)
+            if filter_range and company_range:
+                a1, b1 = filter_range
+                a2, b2 = company_range
+                if not (a1 <= b2 and a2 <= b1):
+                    return False, f"{company.get('name', '?')} size {company_size} outside filter {filter_size}"
+
+    # Location check
+    filter_locations = filters.get("locations", [])
+    includes_remote = filters.get("includes_remote", False)
+    if filter_locations and not includes_remote:
+        company_location = company.get("location", "")
+        if company_location:
+            loc_lower = company_location.lower()
+            if not any(fl.lower() in loc_lower for fl in filter_locations):
+                return False, f"{company.get('name', '?')} location '{company_location}' not in {filter_locations}"
+
+    return True, None
 
 
 async def recalculate_fit_scores(db: AsyncSession, candidate_id: uuid.UUID) -> int:
@@ -302,9 +384,64 @@ async def discover_companies(
 
     suggestions = await client.parse_structured(prompt, "", DISCOVERY_SCHEMA)
 
+    # Validate results against filters
+    raw_companies = suggestions.get("companies", [])
+    filters = {
+        "company_size": company_size,
+        "locations": physical_locations,
+        "includes_remote": includes_remote,
+    }
+    valid_companies: list[dict] = []
+    violations: list[str] = []
+    for raw in raw_companies:
+        ok, reason = _validate_discovery_result(raw, filters)
+        if ok:
+            valid_companies.append(raw)
+        else:
+            violations.append(reason or "unknown")
+
+    if violations:
+        logger.info(
+            "discovery.validation_filtered",
+            candidate_id=str(candidate_id),
+            filtered_count=len(violations),
+            violations=violations,
+        )
+
+    # Retry once with reinforced prompt if too few valid results
+    if len(valid_companies) < 3 and violations:
+        violation_summary = "; ".join(violations)
+        retry_prompt = (
+            f"{prompt}\n\n"
+            f"IMPORTANT CORRECTION: Your previous suggestions violated the filter requirements.\n"
+            f"Violations: {violation_summary}\n"
+            f"Please suggest NEW companies that strictly satisfy ALL filter constraints above."
+        )
+        retry_suggestions = await client.parse_structured(retry_prompt, "", DISCOVERY_SCHEMA)
+        retry_raw = retry_suggestions.get("companies", [])
+        retry_valid: list[dict] = []
+        for raw in retry_raw:
+            ok, _ = _validate_discovery_result(raw, filters)
+            if ok:
+                retry_valid.append(raw)
+
+        # Merge dedup by domain
+        existing_valid_domains = {c["domain"].strip().lower() for c in valid_companies}
+        for raw in retry_valid:
+            if raw["domain"].strip().lower() not in existing_valid_domains:
+                valid_companies.append(raw)
+                existing_valid_domains.add(raw["domain"].strip().lower())
+
+    if not valid_companies:
+        logger.warning(
+            "discovery.validation_exhausted",
+            candidate_id=str(candidate_id),
+            violations=violations,
+        )
+
     companies = []
     seen_domains = set(existing_domains)
-    for suggestion in suggestions.get("companies", []):
+    for suggestion in valid_companies:
         domain = suggestion["domain"].strip().lower()
 
         # Skip if already exists or already processed in this batch
@@ -351,7 +488,7 @@ async def add_company_manual(db: AsyncSession, candidate_id: uuid.UUID, domain: 
     company.status = "approved"  # Manual adds are auto-approved
 
     # Also create contacts from Hunter data
-    await _create_contacts_from_hunter(db, candidate_id, company.id, data)
+    await _create_contacts_from_hunter(db, candidate_id, company.id, data, size_range=data.get("size"))
 
     await db.commit()
     await db.refresh(company)
@@ -364,6 +501,9 @@ async def approve_company(db: AsyncSession, company_id: uuid.UUID) -> Company:
     company = result.scalar_one_or_none()
     if not company:
         raise ValueError("Company not found")
+
+    if company.status == CompanyStatus.REJECTED:
+        raise ValueError("Cannot approve a rejected company")
 
     company.status = "approved"
     await db.commit()
@@ -431,6 +571,7 @@ async def _create_contacts_from_hunter(
     candidate_id: uuid.UUID,
     company_id: uuid.UUID,
     hunter_data: dict,
+    size_range: str | None = None,
 ) -> list[Contact]:
     """Create Contact records from Hunter.io emails data."""
     contacts = []
@@ -445,21 +586,9 @@ async def _create_contacts_from_hunter(
         if existing.scalar_one_or_none():
             continue
 
-        position = (email_data.get("position") or "").lower()
-        role_type = "recruiter"
-        is_decision_maker = False
-        priority = 0
-
-        if any(t in position for t in ["vp", "director", "head", "cto", "ceo"]):
-            role_type = "hiring_manager"
-            is_decision_maker = True
-            priority = 3
-        elif any(t in position for t in ["manager", "lead"]):
-            role_type = "team_lead"
-            priority = 2
-        elif "recruit" in position:
-            role_type = "recruiter"
-            priority = 1
+        role_type, is_decision_maker, priority = compute_contact_priority(
+            email_data.get("position") or "", get_company_size_tier(size_range)
+        )
 
         contact = Contact(
             id=uuid.uuid4(),

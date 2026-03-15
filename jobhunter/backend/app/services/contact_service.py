@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_hunter
 from app.models.contact import Contact
+from app.services.company_service import compute_contact_priority, get_company_size_tier
 
 logger = structlog.get_logger()
 
@@ -39,21 +40,8 @@ async def find_contact(
         contact.email_confidence = data.get("confidence")
         contact.title = data.get("position") or contact.title
     else:
-        position = (data.get("position") or "").lower()
-        role_type = "recruiter"
-        is_decision_maker = False
-        priority = 0
-
-        if any(t in position for t in ["vp", "director", "head", "cto", "ceo"]):
-            role_type = "hiring_manager"
-            is_decision_maker = True
-            priority = 3
-        elif any(t in position for t in ["manager", "lead"]):
-            role_type = "team_lead"
-            priority = 2
-        elif "recruit" in position:
-            role_type = "recruiter"
-            priority = 1
+        size_tier = get_company_size_tier(company.size_range)
+        role_type, is_decision_maker, priority = compute_contact_priority(data.get("position") or "", size_tier)
 
         contact = Contact(
             id=uuid.uuid4(),

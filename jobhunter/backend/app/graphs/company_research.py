@@ -310,7 +310,12 @@ async def create_contacts_node(state: CompanyResearchState) -> dict:
 
     async with _db_mod.async_session_factory() as db:
         try:
-            contacts = await _create_contacts_from_hunter(db, candidate_id, company_id, hunter_data)
+            company_result = await db.execute(select(Company).where(Company.id == company_id))
+            company_obj = company_result.scalar_one_or_none()
+            size_range = company_obj.size_range if company_obj else None
+            contacts = await _create_contacts_from_hunter(
+                db, candidate_id, company_id, hunter_data, size_range=size_range
+            )
             await db.commit()
         except Exception as e:
             logger.error("graph_create_contacts_failed", company_id=str(company_id), error=str(e))
