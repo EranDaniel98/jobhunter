@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -89,6 +91,35 @@ async def test_company_approve_reject_flow(client: AsyncClient, auth_headers: di
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "rejected"
+
+
+@pytest.mark.asyncio
+async def test_approve_rejected_company_returns_400(client: AsyncClient, auth_headers: dict, db_session):
+    """Approving a rejected company must return 400."""
+
+    from app.models.company import Company
+
+    # Get the authenticated candidate's id
+    resp = await client.get(f"{API}/auth/me", headers=auth_headers)
+    candidate_id = uuid.UUID(resp.json()["id"])
+
+    # Directly insert a company with status=rejected
+    company = Company(
+        id=uuid.uuid4(),
+        candidate_id=candidate_id,
+        name="Rejected Corp",
+        domain="rejected-corp.example.com",
+        status="rejected",
+        research_status="pending",
+    )
+    db_session.add(company)
+    await db_session.commit()
+
+    resp = await client.post(
+        f"{API}/companies/{company.id}/approve",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 400
 
 
 @pytest.mark.asyncio

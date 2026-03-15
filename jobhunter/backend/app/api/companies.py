@@ -156,7 +156,10 @@ async def approve_company(
     company = await _get_candidate_company(db, company_id, candidate.id)
     old_status = company.status
     old_research_status = company.research_status
-    company = await company_service.approve_company(db, company.id)
+    try:
+        company = await company_service.approve_company(db, company.id)
+    except ValueError as e:
+        raise safe_400(e, "Cannot approve this company") from e
 
     # Only trigger background tasks if the company wasn't already approved
     if old_status != CompanyStatus.APPROVED:
@@ -382,6 +385,10 @@ async def _research_background(company_id):
             company = result.scalar_one_or_none()
             if not company:
                 logger.error("background_research_company_not_found", company_id=str(company_id))
+                return
+
+            if company.status == CompanyStatus.REJECTED:
+                logger.warning("research_skipped_rejected", company_id=str(company_id))
                 return
 
             candidate_id = str(company.candidate_id)
