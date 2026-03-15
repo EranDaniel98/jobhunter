@@ -28,42 +28,35 @@ export function SkillsGrid({ skills }: SkillsGridProps) {
       <CardHeader>
         <CardTitle>Skills</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-5">
         {Object.entries(grouped).map(([category, catSkills]) => (
           <div key={category}>
-            <h4 className="mb-3 text-sm font-medium capitalize text-muted-foreground">
+            <h4 className="mb-2 text-sm font-medium capitalize text-muted-foreground">
               {category} skills
             </h4>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="divide-y rounded-md border">
               {catSkills.map((skill) => (
                 <div
                   key={skill.id}
-                  className="rounded-lg border p-3 space-y-2"
+                  className="flex items-center justify-between px-3 py-2.5 sm:px-4"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-sm">{skill.name}</span>
-                      {skill.evidence ? (
-                        <span title="Evidence-backed"><BadgeCheck className="h-3.5 w-3.5 text-primary shrink-0" /></span>
-                      ) : (
-                        <span title="Inferred"><CircleDashed className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" /></span>
-                      )}
-                    </div>
-                    <Badge className={categoryColors[category] || "bg-muted text-muted-foreground"}>
-                      {category}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    {skill.proficiency && <span>{skill.proficiency}</span>}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="font-medium text-sm">{skill.name}</span>
+                    {skill.evidence ? (
+                      <span title="Evidence-backed"><BadgeCheck className="h-3.5 w-3.5 text-primary shrink-0" /></span>
+                    ) : (
+                      <span title="Inferred"><CircleDashed className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" /></span>
+                    )}
+                    {skill.proficiency && (
+                      <span className="text-xs text-muted-foreground hidden sm:inline">{skill.proficiency}</span>
+                    )}
                     {skill.years_experience !== null && (
-                      <span>{skill.years_experience}y exp</span>
+                      <span className="text-xs text-muted-foreground hidden sm:inline">{skill.years_experience}y</span>
                     )}
                   </div>
-                  {skill.evidence && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {skill.evidence}
-                    </p>
-                  )}
+                  <Badge className={`shrink-0 ${categoryColors[category] || "bg-muted text-muted-foreground"}`}>
+                    {category}
+                  </Badge>
                 </div>
               ))}
             </div>

@@ -8,7 +8,7 @@ interface DnaProfileProps {
 
 export function DnaProfile({ dna }: DnaProfileProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-6 md:grid-cols-2">
       <Card className="md:col-span-2">
         <CardHeader>
           <CardTitle>Experience Summary</CardTitle>
@@ -25,14 +25,14 @@ export function DnaProfile({ dna }: DnaProfileProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-l-4 border-l-green-500">
         <CardHeader>
-          <CardTitle className="text-primary">Strengths</CardTitle>
+          <CardTitle className="text-green-600 dark:text-green-400">Strengths</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2">
             {dna.strengths?.map((s, i) => (
-              <Badge key={i} className="bg-primary/15 text-primary whitespace-normal text-left h-auto py-1">
+              <Badge key={i} className="bg-green-500/15 text-green-700 dark:text-green-300 whitespace-normal text-left h-auto py-1 text-sm">
                 {s}
               </Badge>
             )) || <span className="text-sm text-muted-foreground">None identified</span>}
@@ -40,37 +40,20 @@ export function DnaProfile({ dna }: DnaProfileProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-l-4 border-l-red-500">
         <CardHeader>
-          <CardTitle className="text-chart-3">Gaps</CardTitle>
+          <CardTitle className="text-red-600 dark:text-red-400">Gaps</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2">
             {dna.gaps?.map((g, i) => (
-              <Badge key={i} className="bg-accent text-accent-foreground whitespace-normal text-left h-auto py-1">
+              <Badge key={i} className="bg-red-500/15 text-red-700 dark:text-red-300 whitespace-normal text-left h-auto py-1 text-sm">
                 {g}
               </Badge>
             )) || <span className="text-sm text-muted-foreground">None identified</span>}
           </div>
         </CardContent>
       </Card>
-
-      {dna.transferable_skills && Object.keys(dna.transferable_skills).length > 0 && (
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Transferable Skills</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(dna.transferable_skills).map(([key, value]) => (
-                <Badge key={key} variant="secondary" className="whitespace-normal text-left h-auto py-1">
-                  {key}: {String(value)}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

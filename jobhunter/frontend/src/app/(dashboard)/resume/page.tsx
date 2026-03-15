@@ -43,14 +43,24 @@ function calculateCompleteness(dna: CandidateDNAResponse, skills: SkillResponse[
 
 function CompletenessCard({ dna, skills }: { dna: CandidateDNAResponse; skills: SkillResponse[] }) {
   const { score, checks } = calculateCompleteness(dna, skills);
+
+  if (score === 100) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 text-sm text-primary">
+        <CheckCircle2 className="h-4 w-4" />
+        <span className="font-medium">DNA profile complete</span>
+      </div>
+    );
+  }
+
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <Card>
-      <CardContent className="flex items-center gap-6 py-4">
-        <div className="relative h-16 w-16 shrink-0">
+    <Card className="bg-muted/40">
+      <CardContent className="flex items-center gap-6 py-5">
+        <div className="relative h-20 w-20 shrink-0">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
             <circle cx="60" cy="60" r={radius} fill="none" strokeWidth="10" className="stroke-muted" />
             <circle
@@ -63,16 +73,16 @@ function CompletenessCard({ dna, skills }: { dna: CandidateDNAResponse; skills: 
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-sm font-bold">{score}%</span>
+            <span className="text-lg font-bold">{score}%</span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 flex-1">
           {checks.map((check) => (
-            <div key={check.label} className="flex items-center gap-1.5 text-xs">
+            <div key={check.label} className="flex items-center gap-1.5 text-sm">
               {check.done ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
               ) : (
-                <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
               )}
               <span className={check.done ? "" : "text-muted-foreground"}>{check.label}</span>
             </div>
@@ -173,6 +183,16 @@ function ResumeHistoryCard() {
   );
 }
 
+function SectionNav() {
+  return (
+    <nav className="sticky top-0 z-10 -mx-1 flex gap-1 border-b bg-background/95 backdrop-blur px-1 py-1.5">
+      <Button variant="ghost" size="sm" asChild><a href="#dna-profile">Profile</a></Button>
+      <Button variant="ghost" size="sm" asChild><a href="#skills">Skills</a></Button>
+      <Button variant="ghost" size="sm" asChild><a href="#history">History</a></Button>
+    </nav>
+  );
+}
+
 export default function ResumePage() {
   const [uploadedRecently, setUploadedRecently] = useState(false);
 
@@ -220,13 +240,17 @@ export default function ResumePage() {
     .slice(0, 10);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Resume & DNA"
         description="Upload your resume to generate your candidate DNA profile"
       />
 
-      <UploadZone onUploadSuccess={() => setUploadedRecently(true)} />
+      {hasDna ? (
+        <UploadZone compact onUploadSuccess={() => setUploadedRecently(true)} />
+      ) : (
+        <UploadZone onUploadSuccess={() => setUploadedRecently(true)} />
+      )}
 
       {isLoading && (
         <div className="grid gap-4 md:grid-cols-2">
@@ -261,30 +285,45 @@ export default function ResumePage() {
 
       {hasDna && dnaQuery.data && (
         <>
-          <CompletenessCard dna={dnaQuery.data} skills={skillsQuery.data || []} />
-          <DnaProfile dna={dnaQuery.data} />
-          <SkillsGrid skills={skillsQuery.data?.length ? skillsQuery.data : dnaQuery.data.skills} />
-          <ResumeHistoryCard />
-          {gapSkills.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Skills Gap Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Skills frequently required in job postings that are not in your profile:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {gapSkills.map(([skill, count]) => (
-                    <Badge key={skill} variant="outline" className="text-sm">
-                      {skill}
-                      <span className="ml-1 text-xs text-muted-foreground">({count})</span>
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <SectionNav />
+
+          {/* Resume files — right after upload */}
+          <section id="history" className="space-y-4">
+            <ResumeHistoryCard />
+          </section>
+
+          {/* DNA Profile section */}
+          <section id="dna-profile" className="space-y-6">
+            <h2 className="text-lg font-semibold">DNA Profile</h2>
+            <CompletenessCard dna={dnaQuery.data} skills={skillsQuery.data || []} />
+            <DnaProfile dna={dnaQuery.data} />
+          </section>
+
+          {/* Skills section */}
+          <section id="skills" className="space-y-6">
+            <h2 className="text-lg font-semibold">Skills Inventory</h2>
+            <SkillsGrid skills={skillsQuery.data?.length ? skillsQuery.data : dnaQuery.data.skills} />
+            {gapSkills.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Skills Gap Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Skills frequently required in job postings that are not in your profile:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {gapSkills.map(([skill, count]) => (
+                      <Badge key={skill} variant="outline" className="text-sm">
+                        {skill}
+                        <span className="ml-1 text-xs text-muted-foreground">({count})</span>
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </section>
         </>
       )}
     </div>

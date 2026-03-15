@@ -5,12 +5,14 @@ import { useMutation } from "@tanstack/react-query";
 import * as candidatesApi from "@/lib/api/candidates";
 import { toast } from "sonner";
 import { Upload, Loader2, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface UploadZoneProps {
   onUploadSuccess?: () => void;
+  compact?: boolean;
 }
 
-export function UploadZone({ onUploadSuccess }: UploadZoneProps) {
+export function UploadZone({ onUploadSuccess, compact }: UploadZoneProps) {
   const [dragOver, setDragOver] = useState(false);
 
   const uploadMutation = useMutation({
@@ -61,10 +63,48 @@ export function UploadZone({ onUploadSuccess }: UploadZoneProps) {
     [handleFile]
   );
 
+  if (compact) {
+    return (
+      <label
+        aria-live="polite"
+        className={`flex cursor-pointer items-center justify-between rounded-lg border border-dashed px-4 py-3 transition-colors ${
+          dragOver
+            ? "border-primary bg-primary/5"
+            : "border-muted-foreground/25 bg-card hover:border-primary/50"
+        }`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+      >
+        {uploadMutation.isPending ? (
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Uploading...</span>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Upload a new resume to update your profile</p>
+        )}
+        <Button variant="outline" size="sm" asChild>
+          <span>Replace resume</span>
+        </Button>
+        <input
+          type="file"
+          accept=".pdf,.docx"
+          className="sr-only"
+          aria-label="Upload resume file"
+          onChange={handleInput}
+        />
+      </label>
+    );
+  }
+
   return (
     <label
       aria-live="polite"
-      className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors ${
+      className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 sm:p-8 transition-colors ${
         dragOver
           ? "border-primary bg-primary/5"
           : "border-muted-foreground/25 bg-card hover:border-primary/50"
