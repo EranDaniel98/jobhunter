@@ -58,21 +58,23 @@ async def check_email_dns_health(domain: str, force: bool = False) -> dict:
     dmarc_record = None
     dmarc_recommendation = None
 
-    # SPF
+    # SPF — check both root domain and "send" subdomain (Resend uses send.domain)
     try:
-        txt = await _resolve_txt(domain)
-        if txt and "v=spf1" in txt:
-            spf_record = txt
-            if any(inc in txt for inc in settings.SPF_EXPECTED_INCLUDES):
-                spf_status = "pass"
+        for spf_domain in [domain, f"send.{domain}"]:
+            txt = await _resolve_txt(spf_domain)
+            if txt and "v=spf1" in txt:
+                spf_record = txt
+                if any(inc in txt for inc in settings.SPF_EXPECTED_INCLUDES):
+                    spf_status = "pass"
+                    break
     except TimeoutError:
         spf_status = "timeout"
 
-    # DKIM
+    # DKIM — check for v=DKIM1, k=rsa, or bare p= key (Resend omits v=DKIM1)
     try:
         dkim_qname = f"{settings.DKIM_SELECTOR}._domainkey.{domain}"
         txt = await _resolve_txt(dkim_qname)
-        if txt and ("v=DKIM1" in txt or "k=rsa" in txt):
+        if txt and ("v=DKIM1" in txt or "k=rsa" in txt or "p=" in txt):
             dkim_status = "pass"
     except TimeoutError:
         dkim_status = "timeout"
