@@ -24,3 +24,15 @@ def test_pgbouncer_mode_reduces_pool():
         assert config["pool_size"] == 5
         assert config["max_overflow"] == 5
         assert config["mode"] == "pgbouncer"
+
+
+@pytest.mark.asyncio
+async def test_health_reports_connection_mode(authenticated_client):
+    """Health endpoint reports connection mode and db_reachable."""
+    resp = await authenticated_client.get("/api/v1/health")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "connection_mode" in data
+    assert data["connection_mode"] in ("direct", "pgbouncer")
+    assert "db_reachable" in data
+    assert data["db_reachable"] is True

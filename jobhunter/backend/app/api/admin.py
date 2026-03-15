@@ -35,6 +35,7 @@ from app.schemas.admin import (
 )
 from app.schemas.billing import UpdatePlanRequest
 from app.services import admin_service
+from app.services.dns_health_service import check_email_dns_health
 from app.services.invite_service import create_system_invite
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -251,6 +252,21 @@ async def get_api_costs(
         }
         for row in rows
     ]
+
+
+@router.get("/db-pool-stats")
+async def get_db_pool_stats(
+    _: Candidate = Depends(get_current_admin),
+):
+    from app.infrastructure.database import engine, _config
+    pool = engine.pool
+    return {
+        "connection_mode": _config["mode"],
+        "pool_size": pool.size(),
+        "checked_out": pool.checkedout(),
+        "overflow": pool.overflow(),
+        "checked_in": pool.checkedin(),
+    }
 
 
 @router.get("/analytics/registrations", response_model=list[RegistrationTrend])
