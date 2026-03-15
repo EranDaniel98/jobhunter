@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
+    PGBOUNCER_URL: str = ""
 
     # App
     APP_NAME: str = "JobHunter AI"
