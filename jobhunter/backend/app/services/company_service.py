@@ -14,6 +14,46 @@ from app.services.embedding_service import cosine_similarity, embed_text
 
 logger = structlog.get_logger()
 
+
+def get_company_size_tier(size_range: str | None) -> str:
+    if not size_range:
+        return "medium"
+    s = size_range.strip().rstrip("+")
+    try:
+        upper = int(s.split("-")[1].strip()) if "-" in s else int(s)
+    except (ValueError, IndexError):
+        return "medium"
+    if upper <= 50:
+        return "small"
+    if upper <= 500:
+        return "medium"
+    return "large"
+
+
+PRIORITY_MATRIX = {
+    "hiring_manager": {"small": 3, "medium": 2, "large": 1},
+    "team_lead": {"small": 2, "medium": 3, "large": 2},
+    "recruiter": {"small": 1, "medium": 2, "large": 3},
+}
+
+
+def compute_contact_priority(position: str, size_tier: str) -> tuple[str, bool, int]:
+    pos = position.lower()
+    if any(t in pos for t in ["vp", "director", "head", "cto", "ceo"]):
+        role_type = "hiring_manager"
+        is_decision_maker = True
+    elif any(t in pos for t in ["manager", "lead"]):
+        role_type = "team_lead"
+        is_decision_maker = False
+    elif "recruit" in pos:
+        role_type = "recruiter"
+        is_decision_maker = False
+    else:
+        return "other", False, 0
+    priority = PRIORITY_MATRIX[role_type][size_tier]
+    return role_type, is_decision_maker, priority
+
+
 DOSSIER_GENERIC_PROMPT = """
 You are a company research analyst. Based on the following company data, generate a comprehensive generic dossier.
 
