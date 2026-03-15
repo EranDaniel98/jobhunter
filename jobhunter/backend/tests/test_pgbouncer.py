@@ -32,7 +32,8 @@ async def test_health_reports_connection_mode(authenticated_client):
     resp = await authenticated_client.get("/api/v1/health")
     assert resp.status_code == 200
     data = resp.json()
-    assert "connection_mode" in data
-    assert data["connection_mode"] in ("direct", "pgbouncer")
-    assert "db_reachable" in data
-    assert data["db_reachable"] is True
+    checks = data.get("checks", data)  # health endpoint wraps in "checks" key
+    assert "connection_mode" in checks
+    assert checks["connection_mode"] in ("direct", "pgbouncer")
+    assert "db_reachable" in checks
+    assert checks["db_reachable"] is True
