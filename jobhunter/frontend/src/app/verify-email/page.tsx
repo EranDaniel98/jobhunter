@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { verifyEmail } from "@/lib/api/auth";
+import { useAuth } from "@/providers/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Loader2, Briefcase } from "lucide-react";
@@ -14,6 +15,7 @@ function VerifyEmailContent() {
   const attempted = useRef(false);
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
     if (!token || attempted.current) {
@@ -26,7 +28,8 @@ function VerifyEmailContent() {
     attempted.current = true;
 
     verifyEmail(token)
-      .then(() => {
+      .then(async () => {
+        await refreshUser();
         setStatus("success");
         setMessage("Your email has been verified successfully!");
       })
@@ -34,7 +37,7 @@ function VerifyEmailContent() {
         setStatus("error");
         setMessage("This verification link is invalid or has expired.");
       });
-  }, [token]);
+  }, [token, refreshUser]);
 
   return (
     <Card>

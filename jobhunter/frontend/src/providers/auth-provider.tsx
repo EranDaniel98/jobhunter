@@ -13,6 +13,7 @@ interface AuthContextType {
   register: (email: string, password: string, fullName: string, inviteCode: string, preferences?: Record<string, unknown>) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: CandidateUpdate) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -78,6 +79,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(updated);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const me = await authApi.getMe();
+      setUser(me);
+    } catch {
+      // Ignore - user may not be authenticated
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -88,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         updateProfile,
+        refreshUser,
       }}
     >
       {children}
