@@ -1,14 +1,19 @@
 import uuid
+from datetime import UTC, datetime
 from typing import Literal
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.dependencies import get_current_admin, get_db, get_email_client
 from app.infrastructure.protocols import EmailClientProtocol
+from app.infrastructure.redis_client import get_redis
 from app.models.candidate import Candidate
+from app.models.waitlist import WaitlistEntry
 from app.rate_limit import limiter
 from app.schemas.admin import (
     ActivityFeedItem,
@@ -23,9 +28,14 @@ from app.schemas.admin import (
     TopUserItem,
     UserDetail,
     UserListResponse,
+    WaitlistBatchRequest,
+    WaitlistBatchResponse,
+    WaitlistInviteResponse,
+    WaitlistListResponse,
 )
 from app.schemas.billing import UpdatePlanRequest
 from app.services import admin_service
+from app.services.invite_service import create_system_invite
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 logger = structlog.get_logger()
@@ -268,3 +278,264 @@ async def get_top_users(
     db: AsyncSession = Depends(get_db),
 ):
     return await admin_service.get_top_users(db, metric=metric, limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Waitlist management
+# ---------------------------------------------------------------------------
+
+DAILY_INVITE_QUOTA_KEY = "admin:daily_invites:{date}"
+
+
+async def _get_daily_quota_used(redis) -> int:
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    key = DAILY_INVITE_QUOTA_KEY.format(date=today)
+    val = await redis.get(key)
+    return int(val) if val else 0
+
+
+async def _increment_daily_quota(redis, amount: int = 1) -> int:
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    key = DAILY_INVITE_QUOTA_KEY.format(date=today)
+    new_val = await redis.incrby(key, amount)
+    # Set TTL to 48 hours so the key auto-expires after the day rolls over
+    await redis.expire(key, 172800)
+    return new_val
+
+
+@router.get("/waitlist", response_model=WaitlistListResponse)
+async def list_waitlist(
+    status: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """List waitlist entries, optionally filtered by status."""
+    q = select(WaitlistEntry).order_by(WaitlistEntry.created_at.asc())
+    if status:
+        q = q.where(WaitlistEntry.status == status)
+
+    total_result = await db.execute(select(func.count()).select_from(q.subquery()))
+    total = total_result.scalar() or 0
+
+    entries_result = await db.execute(q.offset(skip).limit(limit))
+    entries = list(entries_result.scalars().all())
+
+    return WaitlistListResponse(entries=entries, total=total)
+
+
+@router.post("/waitlist/{entry_id}/invite", response_model=WaitlistInviteResponse)
+async def invite_waitlist_entry(
+    entry_id: int,
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+    email_client: EmailClientProtocol = Depends(get_email_client),
+    redis=Depends(get_redis),
+):
+    """Send an invite to a single waitlist entry. Idempotent for already-invited entries."""
+    # Fetch entry
+    result = await db.execute(select(WaitlistEntry).where(WaitlistEntry.id == entry_id))
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Waitlist entry not found")
+
+    # Idempotent: already invited — return existing invite code
+    if entry.status == "invited" and entry.invite_code_id is not None:
+        from app.models.invite import InviteCode
+        code_result = await db.execute(
+            select(InviteCode).where(InviteCode.id == entry.invite_code_id)
+        )
+        existing_code = code_result.scalar_one_or_none()
+        if existing_code:
+            return WaitlistInviteResponse(
+                code=existing_code.code,
+                email=entry.email,
+                expires_at=existing_code.expires_at,
+            )
+
+    # Quota check
+    used = await _get_daily_quota_used(redis)
+    if used >= settings.MAX_DAILY_INVITES:
+        logger.warning(
+            "waitlist_invite_quota_exceeded",
+            feature="waitlist",
+            action="invite",
+            admin_id=str(admin.id),
+            used=used,
+            limit=settings.MAX_DAILY_INVITES,
+        )
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Daily invite quota exceeded. Resets at midnight UTC."},
+            headers={"Retry-After": "86400"},
+        )
+
+    # Reserve quota before sending
+    await _increment_daily_quota(redis, 1)
+
+    # Create invite code and update entry
+    invite = await create_system_invite(db, entry.email)
+    entry.status = "invited"
+    entry.invited_at = datetime.now(UTC)
+    entry.invite_code_id = invite.id
+    entry.invite_error = None
+    await db.commit()
+    await db.refresh(invite)
+
+    # Send email
+    try:
+        await email_client.send(
+            to=entry.email,
+            from_email=settings.SENDER_EMAIL,
+            subject="You're invited to JobHunter!",
+            body=(
+                f"Hi,\n\nYou're invited to join JobHunter. Use the link below to register:\n\n"
+                f"https://app.hunter-job.com/register?code={invite.code}\n\n"
+                f"This invite expires in {settings.INVITE_EXPIRE_DAYS} days.\n\nGood luck!"
+            ),
+        )
+    except Exception as exc:
+        logger.error(
+            "waitlist_invite_email_failed",
+            feature="waitlist",
+            action="invite",
+            entry_id=entry_id,
+            email=entry.email,
+            error=str(exc),
+        )
+        entry.invite_error = str(exc)
+        await db.commit()
+
+    # Audit log
+    await admin_service.create_audit_log(
+        db,
+        admin.id,
+        "invite_waitlist",
+        details={"entry_id": entry_id, "email": entry.email, "invite_code": invite.code},
+    )
+
+    logger.info(
+        "waitlist_entry_invited",
+        feature="waitlist",
+        action="invite",
+        entry_id=entry_id,
+        email=entry.email,
+        admin_id=str(admin.id),
+    )
+
+    return WaitlistInviteResponse(
+        code=invite.code,
+        email=entry.email,
+        expires_at=invite.expires_at,
+    )
+
+
+@router.post("/waitlist/invite-batch", response_model=WaitlistBatchResponse)
+async def invite_waitlist_batch(
+    body: WaitlistBatchRequest,
+    admin: Candidate = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+    email_client: EmailClientProtocol = Depends(get_email_client),
+    redis=Depends(get_redis),
+):
+    """Send invites to a batch of waitlist entries (max 50). Best-effort per item."""
+    if len(body.ids) > 50:
+        raise HTTPException(status_code=400, detail="Batch size cannot exceed 50")
+
+    # Quota check up-front
+    used = await _get_daily_quota_used(redis)
+    remaining = settings.MAX_DAILY_INVITES - used
+    if remaining <= 0:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Daily invite quota exceeded. Resets at midnight UTC."},
+            headers={"Retry-After": "86400"},
+        )
+
+    invited = 0
+    skipped = 0
+    failed = 0
+    errors: list[str] = []
+
+    for entry_id in body.ids:
+        # Re-check quota per item
+        used = await _get_daily_quota_used(redis)
+        if used >= settings.MAX_DAILY_INVITES:
+            skipped += len(body.ids) - invited - skipped - failed
+            break
+
+        result = await db.execute(select(WaitlistEntry).where(WaitlistEntry.id == entry_id))
+        entry = result.scalar_one_or_none()
+
+        if not entry:
+            skipped += 1
+            errors.append(f"Entry {entry_id} not found")
+            continue
+
+        if entry.status == "invited":
+            skipped += 1
+            continue
+
+        try:
+            # Reserve quota
+            await _increment_daily_quota(redis, 1)
+
+            invite = await create_system_invite(db, entry.email)
+            entry.status = "invited"
+            entry.invited_at = datetime.now(UTC)
+            entry.invite_code_id = invite.id
+            entry.invite_error = None
+            await db.flush()
+            await db.refresh(invite)
+
+            await email_client.send(
+                to=entry.email,
+                from_email=settings.SENDER_EMAIL,
+                subject="You're invited to JobHunter!",
+                body=(
+                    f"Hi,\n\nYou're invited to join JobHunter. Use the link below to register:\n\n"
+                    f"https://app.hunter-job.com/register?code={invite.code}\n\n"
+                    f"This invite expires in {settings.INVITE_EXPIRE_DAYS} days.\n\nGood luck!"
+                ),
+            )
+            invited += 1
+        except Exception as exc:
+            failed += 1
+            errors.append(f"Entry {entry_id} ({entry.email}): {exc}")
+            logger.error(
+                "waitlist_batch_invite_item_failed",
+                feature="waitlist",
+                action="invite_batch",
+                entry_id=entry_id,
+                error=str(exc),
+            )
+
+    await db.commit()
+
+    # Audit log for the batch
+    await admin_service.create_audit_log(
+        db,
+        admin.id,
+        "invite_waitlist_batch",
+        details={"ids": body.ids, "invited": invited, "skipped": skipped, "failed": failed},
+    )
+
+    logger.info(
+        "waitlist_batch_invite_complete",
+        feature="waitlist",
+        action="invite_batch",
+        admin_id=str(admin.id),
+        invited=invited,
+        skipped=skipped,
+        failed=failed,
+    )
+
+    final_used = await _get_daily_quota_used(redis)
+    return WaitlistBatchResponse(
+        invited=invited,
+        skipped=skipped,
+        failed=failed,
+        errors=errors,
+        daily_quota_remaining=max(0, settings.MAX_DAILY_INVITES - final_used),
+    )
