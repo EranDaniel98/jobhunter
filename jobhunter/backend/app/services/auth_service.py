@@ -80,7 +80,7 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
     # Send verification email (best-effort, don't block registration)
     try:
         token = create_verification_token(str(candidate.id))
-        verify_url = f"{settings.FRONTEND_URL}/login?verify={token}"
+        verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
         email_client = get_email_client()
         await email_client.send(
             to=candidate.email,

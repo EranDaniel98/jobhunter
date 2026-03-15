@@ -230,7 +230,7 @@ async def resend_verification(
     await redis_safe_setex(cooldown_key, 300, "1")  # 5 min cooldown
 
     token = create_verification_token(str(candidate.id))
-    verify_url = f"{settings.FRONTEND_URL}/login?verify={token}"
+    verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
     email_client = get_email_client()
     await email_client.send(
         to=candidate.email,
