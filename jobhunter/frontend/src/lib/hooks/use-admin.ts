@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as adminApi from "@/lib/api/admin";
+import type { WaitlistStatus } from "@/lib/types";
 
 export function useSystemOverview() {
   return useQuery({
@@ -113,6 +114,58 @@ export function useBroadcast() {
       adminApi.sendBroadcast(subject, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "audit-log"] });
+    },
+  });
+}
+
+// Waitlist
+export function useWaitlist(params?: {
+  status?: WaitlistStatus | "all";
+  skip?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: ["admin", "waitlist", params],
+    queryFn: () => adminApi.getWaitlist(params),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60000,
+  });
+}
+
+export function useInviteWaitlistEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.inviteWaitlistEntry(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "waitlist"] });
+    },
+  });
+}
+
+export function useInviteWaitlistBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => adminApi.inviteWaitlistBatch(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "waitlist"] });
+    },
+  });
+}
+
+export function useEmailHealth() {
+  return useQuery({
+    queryKey: ["admin", "email-health"],
+    queryFn: () => adminApi.getEmailHealth(false),
+    staleTime: 5 * 60 * 1000, // 5 minutes – DNS records don't change often
+  });
+}
+
+export function useRefreshEmailHealth() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => adminApi.getEmailHealth(true),
+    onSuccess: (data) => {
+      qc.setQueryData(["admin", "email-health"], data);
     },
   });
 }

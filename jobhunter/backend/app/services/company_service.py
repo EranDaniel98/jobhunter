@@ -14,8 +14,8 @@ from app.services.embedding_service import cosine_similarity, embed_text
 
 logger = structlog.get_logger()
 
-DOSSIER_PROMPT = """
-You are a company research analyst. Based on the following company data, generate a comprehensive dossier.
+DOSSIER_GENERIC_PROMPT = """
+You are a company research analyst. Based on the following company data, generate a comprehensive generic dossier.
 
 Company: {company_name} ({domain})
 Industry: {industry}
@@ -24,46 +24,25 @@ Location: {location}
 Description: {description}
 Tech Stack: {tech_stack}
 
-Also consider this candidate's background when generating "why_hire_me":
-{candidate_summary}
-
 Generate a JSON dossier with:
 - culture_summary: 2-3 sentences about company culture
 - culture_score: 1-10 rating
 - red_flags: array of potential concerns (empty if none)
 - interview_format: typical interview process
 - interview_questions: array of likely questions
-- compensation_data: object with range, equity, benefits
-- key_people: array of {{name, title}} for leadership
-- why_hire_me: 2-3 sentences explaining why THIS candidate would be valuable to THIS company
-- recent_news: array of {{title, date}} for notable events
-- resume_bullets: array of 3-5 specific bullet points the candidate should add or emphasize on their resume
-  to be a stronger match for THIS company. Reference specific skills, technologies, or experiences that align
-  with the company's needs. Each bullet should be actionable
-  (e.g. "Highlight your experience with distributed systems - their tech stack relies heavily on microservices").
-- fit_score_tips: array of 3-5 tips explaining what gaps exist between the candidate's profile and this
-  company's ideal hire, and how to close them. Focus on skills, technologies, domain knowledge, or experience
-  gaps. Example: "Learn Kubernetes basics - this company heavily uses container orchestration" or
-  "Their stack is Python-heavy, which aligns well with your experience - emphasize this"."""
+- compensation_data: salary range, equity, and benefits as a single summary string
+- key_people: array of {{name, title, linkedin}} for leadership
+- recent_news: array of notable recent events as strings"""
 
-DOSSIER_SCHEMA = {
+DOSSIER_GENERIC_SCHEMA = {
     "type": "object",
     "properties": {
         "culture_summary": {"type": "string"},
-        "culture_score": {"type": "number"},
+        "culture_score": {"type": "integer"},
         "red_flags": {"type": "array", "items": {"type": "string"}},
         "interview_format": {"type": "string"},
         "interview_questions": {"type": "array", "items": {"type": "string"}},
-        "compensation_data": {
-            "type": "object",
-            "properties": {
-                "range": {"type": "string"},
-                "equity": {"type": "string"},
-                "benefits": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": ["range", "equity", "benefits"],
-            "additionalProperties": False,
-        },
+        "compensation_data": {"type": "string"},
         "key_people": {
             "type": "array",
             "items": {
@@ -71,32 +50,13 @@ DOSSIER_SCHEMA = {
                 "properties": {
                     "name": {"type": "string"},
                     "title": {"type": "string"},
+                    "linkedin": {"type": "string"},
                 },
-                "required": ["name", "title"],
+                "required": ["name", "title", "linkedin"],
                 "additionalProperties": False,
             },
         },
-        "why_hire_me": {"type": "string"},
-        "resume_bullets": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "fit_score_tips": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "recent_news": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "date": {"type": "string"},
-                },
-                "required": ["title", "date"],
-                "additionalProperties": False,
-            },
-        },
+        "recent_news": {"type": "array", "items": {"type": "string"}},
     },
     "required": [
         "culture_summary",
@@ -106,10 +66,49 @@ DOSSIER_SCHEMA = {
         "interview_questions",
         "compensation_data",
         "key_people",
+        "recent_news",
+    ],
+    "additionalProperties": False,
+}
+
+DOSSIER_PERSONAL_PROMPT = """
+You are a career advisor. Based on the generic company dossier data and the candidate's background,
+generate personalized recommendations for this candidate applying to this company.
+
+Generic Company Dossier:
+{generic_dossier}
+
+Candidate Background:
+{candidate_summary}
+
+Generate a JSON response with:
+- why_hire_me: 2-3 sentences explaining why THIS candidate would be valuable to THIS company
+- resume_bullets: array of 3-5 specific bullet points the candidate should add or emphasize on their resume
+  to be a stronger match for THIS company. Reference specific skills, technologies, or experiences that align
+  with the company's needs. Each bullet should be actionable
+  (e.g. "Highlight your experience with distributed systems - their tech stack relies heavily on microservices").
+- fit_score_tips: array of 3-5 tips explaining what gaps exist between the candidate's profile and this
+  company's ideal hire, and how to close them. Focus on skills, technologies, domain knowledge, or experience
+  gaps. Example: "Learn Kubernetes basics - this company heavily uses container orchestration" or
+  "Their stack is Python-heavy, which aligns well with your experience - emphasize this"."""
+
+DOSSIER_PERSONAL_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "why_hire_me": {"type": "string"},
+        "resume_bullets": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "fit_score_tips": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+    },
+    "required": [
         "why_hire_me",
         "resume_bullets",
         "fit_score_tips",
-        "recent_news",
     ],
     "additionalProperties": False,
 }

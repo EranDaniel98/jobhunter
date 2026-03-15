@@ -237,6 +237,39 @@ export interface BroadcastResponse {
   skipped_count: number;
 }
 
+// Waitlist
+export type WaitlistStatus = "pending" | "invited" | "invite_failed" | "registered";
+
+export interface WaitlistEntry {
+  id: string;
+  email: string;
+  source: string | null;
+  status: WaitlistStatus;
+  error_message: string | null;
+  created_at: string;
+  invited_at: string | null;
+}
+
+export interface WaitlistListResponse {
+  entries: WaitlistEntry[];
+  total: number;
+  quota_remaining: number;
+  status_counts: Record<WaitlistStatus, number>;
+}
+
+export interface WaitlistInviteResponse {
+  id: string;
+  status: WaitlistStatus;
+  invited_at: string | null;
+  error_message: string | null;
+}
+
+export interface WaitlistBatchInviteResponse {
+  invited: number;
+  failed: number;
+  errors: Record<string, string>;
+}
+
 // Plans
 export type PlanTier = "free" | "explorer" | "hunter";
 
@@ -387,4 +420,23 @@ export interface ApplyAnalysisResponse {
   missing_skills: string[];
   matching_skills: string[];
   status: string;
+}
+
+// DNS / Email Health
+export type DnsCheckStatus = "pass" | "fail" | "warning" | "timeout";
+
+export interface DnsCheckResult {
+  status: DnsCheckStatus;
+  record?: string | null;
+  recommendation?: string | null;
+  selector?: string;
+}
+
+export interface EmailHealthResponse {
+  domain: string;
+  overall: DnsCheckStatus;
+  spf: DnsCheckResult;
+  dkim: DnsCheckResult;
+  dmarc: DnsCheckResult;
+  checked_at: string;
 }

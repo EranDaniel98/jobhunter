@@ -745,7 +745,7 @@ export default function LandingPage() {
               {
                 icon: Shield,
                 label: "Enterprise Security",
-                desc: "DKIM, SPF, DMARC email auth. CSP headers. Encrypted data at rest.",
+                desc: "Email deliverability monitoring. CSP headers. Encrypted data at rest.",
               },
               {
                 icon: BrainCircuit,

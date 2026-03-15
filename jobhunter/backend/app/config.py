@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # Invites
     INVITE_EXPIRE_DAYS: int = 7
+    MAX_DAILY_INVITES: int = 200
 
     # Stripe billing
     STRIPE_SECRET_KEY: str = ""
@@ -74,6 +75,7 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
+    PGBOUNCER_URL: str = ""
 
     # App
     APP_NAME: str = "JobHunter AI"
@@ -85,11 +87,23 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET_NAME: str = ""
 
+    # ARQ Batching
+    ARQ_CHUNK_SIZE: int = 10
+    ARQ_CHUNK_CONCURRENCY: int = 5
+    ARQ_MAX_CHUNKS_PER_RUN: int = 50
+
     # TTLs (seconds)
+    DOSSIER_CACHE_TTL: int = 604800  # 7 days
     REDIS_APPLY_ANALYSIS_TTL: int = 86400 * 7  # 7 days
     REDIS_WEBHOOK_DEDUP_TTL: int = 86400  # 24 hours
     REDIS_QUOTA_TTL: int = 86400  # 24 hours
     PENDING_ACTION_MAX_AGE_DAYS: int = 30
+
+    # DNS Health
+    DKIM_SELECTOR: str = "resend"
+    SPF_EXPECTED_INCLUDES: list[str] = ["amazonses.com", "resend.com"]
+    DNS_HEALTH_CACHE_TTL: int = 300
+    DNS_LOOKUP_TIMEOUT: float = 3.0
 
     # Paths
     UPLOAD_DIR: str = str(BASE_DIR / "data" / "uploads")

@@ -19,6 +19,7 @@ import { CardSkeleton, TableSkeleton } from "@/components/shared/loading-skeleto
 import { OverviewStats } from "@/components/admin/overview-stats";
 import { UsersTable } from "@/components/admin/users-table";
 import { InviteChain } from "@/components/admin/invite-chain";
+import { EmailHealthCard } from "@/components/admin/email-health-card";
 
 // Lazy-loaded tab components
 const RegistrationChart = dynamic(
@@ -137,6 +138,8 @@ export default function AdminPage() {
           ) : overviewQuery.data ? (
             <OverviewStats data={overviewQuery.data} />
           ) : null}
+
+          <EmailHealthCard />
 
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
