@@ -4,6 +4,8 @@ Handles:
 - Follow-up scheduling: scans for due follow-ups every 15 min
 - Approved message sending: sends outreach after approval
 - Stale action expiration: expires old pending actions daily
+- Daily scout: runs scout pipeline for all active candidates
+- Weekly analytics: generates analytics insights for all active candidates
 """
 
 import asyncio
@@ -12,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
 import structlog
-from arq import cron
+from arq import cron, func
 from arq.connections import RedisSettings
 from sqlalchemy import exists, select
 
@@ -99,116 +101,327 @@ async def shutdown(ctx):
     logger.info("arq_worker_stopped")
 
 
+# ---------------------------------------------------------------------------
+# Follow-up cron: coordinator + chunk worker
+# ---------------------------------------------------------------------------
+
 async def check_followup_due(ctx):
-    """Scan for messages needing follow-up and auto-draft them."""
+    """Coordinator: find all due follow-ups and enqueue chunks for processing."""
+    if not await _acquire_run_lock("followup_due", ttl=300):
+        logger.info("cron.skipped_overlap", extra={"feature": "arq_batch", "action": "check_followup_due"})
+        return
+
     from app.infrastructure.database import async_session_factory
     from app.models.outreach import OutreachMessage
-    from app.models.pending_action import PendingAction
 
-    logger.info("followup_check_started")
     now = datetime.now(UTC)
-    drafted_count = 0
+    all_message_ids: list = []
 
     async with async_session_factory() as db:
-        for prev_type, (next_type, days_threshold) in FOLLOWUP_THRESHOLDS.items():
+        for prev_type, (_next_type, days_threshold) in FOLLOWUP_THRESHOLDS.items():
             cutoff = now - timedelta(days=days_threshold)
 
-            # Find sent/delivered messages of this type that are old enough
-            # and have no newer message for the same contact+candidate+channel
-            # Find sent/delivered messages of this type that are old enough.
-            # Per-message dedup (newer message check, pending action check)
-            # happens in the loop below - kept out of the query to avoid
-            # a broken self-join that compared columns to themselves.
-            query = select(OutreachMessage).where(
+            query = select(OutreachMessage.id).where(
                 OutreachMessage.status.in_([MessageStatus.SENT, MessageStatus.DELIVERED]),
                 OutreachMessage.channel == "email",
                 OutreachMessage.message_type == prev_type,
                 OutreachMessage.sent_at <= cutoff,
             )
-
             result = await db.execute(query)
-            due_messages = result.scalars().all()
+            all_message_ids.extend(result.scalars().all())
 
-            for msg in due_messages:
-                try:
-                    # Check there's no newer message for this contact (proper subquery)
-                    newer_check = await db.execute(
-                        select(OutreachMessage.id)
-                        .where(
-                            OutreachMessage.contact_id == msg.contact_id,
-                            OutreachMessage.candidate_id == msg.candidate_id,
-                            OutreachMessage.channel == "email",
-                            OutreachMessage.created_at > msg.created_at,
-                        )
-                        .limit(1)
-                    )
-                    if newer_check.scalar_one_or_none():
-                        continue  # Skip - newer message exists
+    total = len(all_message_ids)
+    max_items = settings.ARQ_MAX_CHUNKS_PER_RUN * settings.ARQ_CHUNK_SIZE
+    processing_ids = all_message_ids[:max_items]
+    deferred = total - len(processing_ids)
 
-                    # Skip if a pending action already exists for this message
-                    pending_check = await db.execute(
-                        select(PendingAction.id)
-                        .where(
-                            PendingAction.entity_id == msg.id,
-                            PendingAction.status == ActionStatus.PENDING,
-                        )
-                        .limit(1)
-                    )
-                    if pending_check.scalar_one_or_none():
-                        continue  # Skip - pending action already exists
+    if deferred > 0:
+        logger.warning("cron.overflow", extra={
+            "feature": "arq_batch",
+            "action": "check_followup_due",
+            "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
+        })
 
-                    # Launch the outreach graph for follow-up drafting
-                    # Graph handles: context → draft → quality check → approval → interrupt
-                    from app.graphs.outreach import get_outreach_pipeline
+    chunks = _chunk_list(processing_ids, settings.ARQ_CHUNK_SIZE)
+    for chunk in chunks:
+        await ctx["redis"].enqueue_job("process_followup_chunk", chunk)
 
-                    # Look up candidate plan_tier
-                    from app.models.candidate import Candidate
+    logger.info("cron.started", extra={
+        "feature": "arq_batch",
+        "action": "check_followup_due",
+        "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
+    })
 
-                    cand_result = await db.execute(select(Candidate).where(Candidate.id == msg.candidate_id))
-                    cand = cand_result.scalar_one_or_none()
-                    plan_tier = cand.plan_tier if cand else "free"
 
-                    thread_id = f"outreach-followup-{uuid.uuid4()}"
-                    state = {
-                        "candidate_id": str(msg.candidate_id),
-                        "contact_id": str(msg.contact_id),
-                        "plan_tier": plan_tier,
-                        "language": "en",
-                        "variant": None,
-                        "attach_resume": True,
-                        "context": None,
-                        "message_type": None,
-                        "outreach_message_id": None,
-                        "draft_data": None,
-                        "action_id": None,
-                        "approval_decision": None,
-                        "external_message_id": None,
-                        "status": "pending",
-                        "error": None,
-                    }
+async def process_followup_chunk(ctx, message_ids: list):
+    """Worker: process a chunk of follow-up message IDs."""
+    from app.infrastructure.database import async_session_factory
 
-                    graph = get_outreach_pipeline()
-                    await graph.ainvoke(
-                        state,
-                        config={"configurable": {"thread_id": thread_id}},
-                    )
+    async def process_one_message(message_id):
+        from app.infrastructure.database import async_session_factory as sf
+        from app.models.candidate import Candidate
+        from app.models.outreach import OutreachMessage
+        from app.models.pending_action import PendingAction
 
-                    drafted_count += 1
-                    logger.info(
-                        "followup_graph_launched",
-                        prev_message_id=str(msg.id),
-                        followup_type=next_type,
-                        candidate_id=str(msg.candidate_id),
-                        thread_id=thread_id,
-                    )
-                except Exception as e:
-                    logger.error(
-                        "followup_draft_failed",
-                        message_id=str(msg.id),
-                        error=str(e),
-                    )
+        async with sf() as db:
+            result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == message_id))
+            msg = result.scalar_one_or_none()
+            if msg is None:
+                return
 
-    logger.info("followup_check_completed", drafted=drafted_count)
+            # Check there's no newer message for this contact
+            newer_check = await db.execute(
+                select(OutreachMessage.id)
+                .where(
+                    OutreachMessage.contact_id == msg.contact_id,
+                    OutreachMessage.candidate_id == msg.candidate_id,
+                    OutreachMessage.channel == "email",
+                    OutreachMessage.created_at > msg.created_at,
+                )
+                .limit(1)
+            )
+            if newer_check.scalar_one_or_none():
+                return  # Skip - newer message exists
+
+            # Skip if a pending action already exists for this message
+            pending_check = await db.execute(
+                select(PendingAction.id)
+                .where(
+                    PendingAction.entity_id == msg.id,
+                    PendingAction.status == ActionStatus.PENDING,
+                )
+                .limit(1)
+            )
+            if pending_check.scalar_one_or_none():
+                return  # Skip - pending action already exists
+
+            # Look up candidate plan_tier
+            cand_result = await db.execute(select(Candidate).where(Candidate.id == msg.candidate_id))
+            cand = cand_result.scalar_one_or_none()
+            plan_tier = cand.plan_tier if cand else "free"
+
+        # Launch the outreach graph for follow-up drafting
+        # Graph handles: context → draft → quality check → approval → interrupt
+        from app.graphs.outreach import get_outreach_pipeline
+
+        # Determine next_type from FOLLOWUP_THRESHOLDS for logging
+        _next_type, _days = FOLLOWUP_THRESHOLDS.get(msg.message_type, (None, 0))
+
+        thread_id = f"outreach-followup-{uuid.uuid4()}"
+        state = {
+            "candidate_id": str(msg.candidate_id),
+            "contact_id": str(msg.contact_id),
+            "plan_tier": plan_tier,
+            "language": "en",
+            "variant": None,
+            "attach_resume": True,
+            "context": None,
+            "message_type": None,
+            "outreach_message_id": None,
+            "draft_data": None,
+            "action_id": None,
+            "approval_decision": None,
+            "external_message_id": None,
+            "status": "pending",
+            "error": None,
+        }
+
+        graph = get_outreach_pipeline()
+        await graph.ainvoke(
+            state,
+            config={"configurable": {"thread_id": thread_id}},
+        )
+
+        logger.info(
+            "followup_graph_launched",
+            prev_message_id=str(msg.id),
+            followup_type=_next_type,
+            candidate_id=str(msg.candidate_id),
+            thread_id=thread_id,
+        )
+
+    await _process_chunk(
+        message_ids,
+        process_one_message,
+        settings.ARQ_CHUNK_CONCURRENCY,
+        "process_followup_chunk",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Daily scout cron: coordinator + chunk worker
+# ---------------------------------------------------------------------------
+
+async def run_daily_scout(ctx):
+    """Coordinator: find active candidates with DNA and enqueue scout chunks."""
+    if not await _acquire_run_lock("daily_scout", ttl=82800):
+        logger.info("cron.skipped_overlap", extra={"feature": "arq_batch", "action": "run_daily_scout"})
+        return
+
+    from app.infrastructure.database import async_session_factory
+    from app.models.candidate import Candidate, CandidateDNA
+
+    async with async_session_factory() as db:
+        result = await db.execute(
+            select(Candidate.id).where(
+                Candidate.is_active,
+                exists(select(CandidateDNA.id).where(CandidateDNA.candidate_id == Candidate.id)),
+            )
+        )
+        all_candidate_ids = result.scalars().all()
+
+    total = len(all_candidate_ids)
+    max_items = settings.ARQ_MAX_CHUNKS_PER_RUN * settings.ARQ_CHUNK_SIZE
+    processing_ids = list(all_candidate_ids)[:max_items]
+    deferred = total - len(processing_ids)
+
+    if deferred > 0:
+        logger.warning("cron.overflow", extra={
+            "feature": "arq_batch",
+            "action": "run_daily_scout",
+            "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
+        })
+
+    chunks = _chunk_list(processing_ids, settings.ARQ_CHUNK_SIZE)
+    for chunk in chunks:
+        await ctx["redis"].enqueue_job("process_scout_chunk", chunk)
+
+    logger.info("cron.started", extra={
+        "feature": "arq_batch",
+        "action": "run_daily_scout",
+        "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
+    })
+
+
+async def process_scout_chunk(ctx, candidate_ids: list):
+    """Worker: run scout pipeline for a chunk of candidate IDs."""
+
+    async def process_one_candidate(candidate_id):
+        from app.graphs.scout_pipeline import get_scout_pipeline
+        from app.infrastructure.database import async_session_factory as sf
+        from app.models.candidate import Candidate
+
+        async with sf() as db:
+            cand_result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+            cand = cand_result.scalar_one_or_none()
+            plan_tier = cand.plan_tier if cand else "free"
+
+        thread_id = f"scout-cron-{uuid.uuid4()}"
+        state = {
+            "candidate_id": str(candidate_id),
+            "plan_tier": plan_tier,
+            "search_queries": None,
+            "raw_articles": None,
+            "parsed_companies": None,
+            "scored_companies": None,
+            "companies_created": 0,
+            "status": "pending",
+            "error": None,
+        }
+
+        graph = get_scout_pipeline()
+        await graph.ainvoke(
+            state,
+            config={"configurable": {"thread_id": thread_id}},
+        )
+        logger.info("daily_scout_candidate_done", candidate_id=str(candidate_id), thread_id=thread_id)
+
+    await _process_chunk(
+        candidate_ids,
+        process_one_candidate,
+        settings.ARQ_CHUNK_CONCURRENCY,
+        "process_scout_chunk",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Weekly analytics cron: coordinator + chunk worker
+# ---------------------------------------------------------------------------
+
+async def run_weekly_analytics(ctx):
+    """Coordinator: find active candidates with DNA and enqueue analytics chunks."""
+    if not await _acquire_run_lock("weekly_analytics", ttl=590400):
+        logger.info("cron.skipped_overlap", extra={"feature": "arq_batch", "action": "run_weekly_analytics"})
+        return
+
+    from app.infrastructure.database import async_session_factory
+    from app.models.candidate import Candidate, CandidateDNA
+
+    async with async_session_factory() as db:
+        result = await db.execute(
+            select(Candidate.id).where(
+                Candidate.is_active,
+                exists(select(CandidateDNA.id).where(CandidateDNA.candidate_id == Candidate.id)),
+            )
+        )
+        all_candidate_ids = result.scalars().all()
+
+    total = len(all_candidate_ids)
+    max_items = settings.ARQ_MAX_CHUNKS_PER_RUN * settings.ARQ_CHUNK_SIZE
+    processing_ids = list(all_candidate_ids)[:max_items]
+    deferred = total - len(processing_ids)
+
+    if deferred > 0:
+        logger.warning("cron.overflow", extra={
+            "feature": "arq_batch",
+            "action": "run_weekly_analytics",
+            "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
+        })
+
+    chunks = _chunk_list(processing_ids, settings.ARQ_CHUNK_SIZE)
+    for chunk in chunks:
+        await ctx["redis"].enqueue_job("process_analytics_chunk", chunk)
+
+    logger.info("cron.started", extra={
+        "feature": "arq_batch",
+        "action": "run_weekly_analytics",
+        "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
+    })
+
+
+async def process_analytics_chunk(ctx, candidate_ids: list):
+    """Worker: run analytics pipeline for a chunk of candidate IDs."""
+
+    async def process_one_candidate(candidate_id):
+        from app.graphs.analytics_pipeline import get_analytics_pipeline
+
+        thread_id = f"analytics-weekly-{uuid.uuid4()}"
+        graph = get_analytics_pipeline()
+        await graph.ainvoke(
+            {
+                "candidate_id": str(candidate_id),
+                "include_email": True,
+                "raw_data": None,
+                "insights": None,
+                "insights_saved": 0,
+                "status": "pending",
+                "error": None,
+            },
+            config={"configurable": {"thread_id": thread_id}},
+        )
+        logger.info("weekly_analytics_candidate_done", candidate_id=str(candidate_id), thread_id=thread_id)
+
+    await _process_chunk(
+        candidate_ids,
+        process_one_candidate,
+        settings.ARQ_CHUNK_CONCURRENCY,
+        "process_analytics_chunk",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Unchanged: stale-action expiration and approved message sender
+# ---------------------------------------------------------------------------
+
+async def expire_stale_actions(ctx):
+    """Expire pending actions older than 30 days."""
+    from app.infrastructure.database import async_session_factory
+    from app.services.approval_service import expire_stale_actions as _expire
+
+    async with async_session_factory() as db:
+        count = await _expire(db)
+        if count:
+            logger.info("stale_actions_expired_by_cron", count=count)
 
 
 async def send_approved_message(ctx, outreach_id: str):
@@ -218,7 +431,6 @@ async def send_approved_message(ctx, outreach_id: str):
 
     async with async_session_factory() as db:
         try:
-            # Look up candidate plan_tier for quota enforcement
             from sqlalchemy import select
 
             from app.models.candidate import Candidate
@@ -238,109 +450,13 @@ async def send_approved_message(ctx, outreach_id: str):
             logger.error("approved_message_send_failed", message_id=outreach_id, error=str(e))
 
 
-async def run_daily_scout(ctx):
-    """Run the scout agent for all active candidates with CandidateDNA."""
-    from app.infrastructure.database import async_session_factory
-    from app.models.candidate import Candidate, CandidateDNA
-
-    logger.info("daily_scout_started")
-    processed = 0
-    failed = 0
-
-    async with async_session_factory() as db:
-        # Find all active candidates that have DNA
-        result = await db.execute(
-            select(Candidate).where(
-                Candidate.is_active,
-                exists(select(CandidateDNA.id).where(CandidateDNA.candidate_id == Candidate.id)),
-            )
-        )
-        candidates = result.scalars().all()
-
-    for cand in candidates:
-        try:
-            from app.graphs.scout_pipeline import get_scout_pipeline
-
-            thread_id = f"scout-cron-{uuid.uuid4()}"
-            state = {
-                "candidate_id": str(cand.id),
-                "plan_tier": cand.plan_tier,
-                "search_queries": None,
-                "raw_articles": None,
-                "parsed_companies": None,
-                "scored_companies": None,
-                "companies_created": 0,
-                "status": "pending",
-                "error": None,
-            }
-
-            graph = get_scout_pipeline()
-            await graph.ainvoke(
-                state,
-                config={"configurable": {"thread_id": thread_id}},
-            )
-            processed += 1
-            logger.info("daily_scout_candidate_done", candidate_id=str(cand.id), thread_id=thread_id)
-        except Exception as e:
-            failed += 1
-            logger.error("daily_scout_candidate_failed", candidate_id=str(cand.id), error=str(e))
-
-    logger.info("daily_scout_completed", processed=processed, failed=failed)
-
-
-async def expire_stale_actions(ctx):
-    """Expire pending actions older than 30 days."""
-    from app.infrastructure.database import async_session_factory
-    from app.services.approval_service import expire_stale_actions as _expire
-
-    async with async_session_factory() as db:
-        count = await _expire(db)
-        if count:
-            logger.info("stale_actions_expired_by_cron", count=count)
-
-
-async def run_weekly_analytics(ctx):
-    """Generate weekly analytics insights for all active candidates."""
-    from app.infrastructure.database import async_session_factory
-    from app.models.candidate import Candidate, CandidateDNA
-
-    logger.info("weekly_analytics_started")
-
-    async with async_session_factory() as db:
-        result = await db.execute(
-            select(Candidate).where(
-                Candidate.is_active,
-                exists(select(CandidateDNA.id).where(CandidateDNA.candidate_id == Candidate.id)),
-            )
-        )
-        candidates = result.scalars().all()
-
-    for cand in candidates:
-        try:
-            from app.graphs.analytics_pipeline import get_analytics_pipeline
-
-            thread_id = f"analytics-weekly-{uuid.uuid4()}"
-            graph = get_analytics_pipeline()
-            await graph.ainvoke(
-                {
-                    "candidate_id": str(cand.id),
-                    "include_email": True,
-                    "raw_data": None,
-                    "insights": None,
-                    "insights_saved": 0,
-                    "status": "pending",
-                    "error": None,
-                },
-                config={"configurable": {"thread_id": thread_id}},
-            )
-        except Exception as e:
-            logger.error("weekly_analytics_failed", candidate_id=str(cand.id), error=str(e))
-
-    logger.info("weekly_analytics_completed")
-
-
 class WorkerSettings:
-    functions: ClassVar[list] = [send_approved_message]
+    functions: ClassVar[list] = [
+        send_approved_message,
+        func(process_followup_chunk, timeout=600),
+        func(process_scout_chunk, timeout=600),
+        func(process_analytics_chunk, timeout=600),
+    ]
     cron_jobs: ClassVar[list] = [
         cron(check_followup_due, minute={0, 15, 30, 45}),
         cron(expire_stale_actions, hour={3}, minute={0}),  # Daily at 3 AM
