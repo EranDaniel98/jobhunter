@@ -125,6 +125,9 @@ export default function AdminPage() {
           <TabsTrigger value="invites">Invites</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="broadcast">Broadcast</TabsTrigger>
+          <TabsTrigger value="waitlist" asChild>
+            <a href="/admin/waitlist">Waitlist</a>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-4">
