@@ -73,3 +73,13 @@ export async function resetPassword(token: string, newPassword: string): Promise
   });
   return data;
 }
+
+export async function completeOnboarding(): Promise<CandidateResponse> {
+  const { data } = await api.post<CandidateResponse>("/auth/complete-onboarding");
+  return data;
+}
+
+export async function completeTour(): Promise<CandidateResponse> {
+  const { data } = await api.post<CandidateResponse>("/auth/complete-tour");
+  return data;
+}
