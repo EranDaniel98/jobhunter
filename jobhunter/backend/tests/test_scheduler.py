@@ -1,4 +1,5 @@
 """Tests for the follow-up scheduler logic."""
+
 import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
@@ -62,8 +63,12 @@ async def scheduler_data(db_session: AsyncSession):
 
 
 def _create_message(
-    candidate_id, contact_id, message_type="initial", status="sent",
-    sent_at=None, channel="email",
+    candidate_id,
+    contact_id,
+    message_type="initial",
+    status="sent",
+    sent_at=None,
+    channel="email",
 ) -> OutreachMessage:
     return OutreachMessage(
         id=uuid.uuid4(),
@@ -83,16 +88,15 @@ async def test_no_followup_before_threshold(db_session: AsyncSession, scheduler_
     """Message sent 1 day ago should NOT trigger follow-up."""
     data = scheduler_data
     msg = _create_message(
-        data["candidate"].id, data["contact"].id,
+        data["candidate"].id,
+        data["contact"].id,
         sent_at=datetime.now(UTC) - timedelta(days=1),
     )
     db_session.add(msg)
     await db_session.flush()
 
     # Verify no pending actions exist
-    result = await db_session.execute(
-        select(PendingAction).where(PendingAction.candidate_id == data["candidate"].id)
-    )
+    result = await db_session.execute(select(PendingAction).where(PendingAction.candidate_id == data["candidate"].id))
     assert result.scalars().all() == []
 
 
@@ -101,8 +105,10 @@ async def test_followup_due_after_3_days(db_session: AsyncSession, scheduler_dat
     """Initial message sent 4 days ago should make it eligible for followup_1."""
     data = scheduler_data
     msg = _create_message(
-        data["candidate"].id, data["contact"].id,
-        message_type="initial", status="sent",
+        data["candidate"].id,
+        data["contact"].id,
+        message_type="initial",
+        status="sent",
         sent_at=datetime.now(UTC) - timedelta(days=4),
     )
     db_session.add(msg)
@@ -111,6 +117,7 @@ async def test_followup_due_after_3_days(db_session: AsyncSession, scheduler_dat
     # The message meets criteria: sent > 3 days ago, type=initial, status=sent
     # Verify it can be found by the scheduler query
     from app.worker import FOLLOWUP_THRESHOLDS
+
     cutoff = datetime.now(UTC) - timedelta(days=FOLLOWUP_THRESHOLDS["initial"][1])
 
     result = await db_session.execute(
@@ -131,8 +138,10 @@ async def test_no_followup_if_replied(db_session: AsyncSession, scheduler_data):
     """Replied messages should NOT trigger follow-ups."""
     data = scheduler_data
     msg = _create_message(
-        data["candidate"].id, data["contact"].id,
-        message_type="initial", status="replied",
+        data["candidate"].id,
+        data["contact"].id,
+        message_type="initial",
+        status="replied",
         sent_at=datetime.now(UTC) - timedelta(days=10),
     )
     db_session.add(msg)
@@ -140,6 +149,7 @@ async def test_no_followup_if_replied(db_session: AsyncSession, scheduler_data):
 
     # Scheduler only looks for status in (sent, delivered)
     from app.worker import FOLLOWUP_THRESHOLDS
+
     cutoff = datetime.now(UTC) - timedelta(days=FOLLOWUP_THRESHOLDS["initial"][1])
 
     result = await db_session.execute(
@@ -158,7 +168,8 @@ async def test_no_followup_if_pending_exists(db_session: AsyncSession, scheduler
     """Existing pending action should prevent duplicate draft."""
     data = scheduler_data
     msg = _create_message(
-        data["candidate"].id, data["contact"].id,
+        data["candidate"].id,
+        data["contact"].id,
         sent_at=datetime.now(UTC) - timedelta(days=4),
     )
     db_session.add(msg)
@@ -190,8 +201,10 @@ async def test_breakup_is_final(db_session: AsyncSession, scheduler_data):
     """No follow-up should be generated after a breakup message."""
     data = scheduler_data
     msg = _create_message(
-        data["candidate"].id, data["contact"].id,
-        message_type="breakup", status="sent",
+        data["candidate"].id,
+        data["contact"].id,
+        message_type="breakup",
+        status="sent",
         sent_at=datetime.now(UTC) - timedelta(days=10),
     )
     db_session.add(msg)
@@ -199,13 +212,12 @@ async def test_breakup_is_final(db_session: AsyncSession, scheduler_data):
 
     # breakup is not in FOLLOWUP_THRESHOLDS, so it won't be queried
     from app.worker import FOLLOWUP_THRESHOLDS
+
     assert "breakup" not in FOLLOWUP_THRESHOLDS
 
 
 @pytest.mark.asyncio
-async def test_check_followup_due_launches_graph(
-    db_session: AsyncSession, test_engine, scheduler_data, redis
-):
+async def test_check_followup_due_launches_graph(db_session: AsyncSession, test_engine, scheduler_data, redis):
     """Call check_followup_due() end-to-end and verify graph creates draft + PendingAction."""
     from app.worker import check_followup_due
 
@@ -213,24 +225,26 @@ async def test_check_followup_due_launches_graph(
 
     # Create a sent initial message from 4 days ago
     msg = _create_message(
-        data["candidate"].id, data["contact"].id,
-        message_type="initial", status="sent",
+        data["candidate"].id,
+        data["contact"].id,
+        message_type="initial",
+        status="sent",
         sent_at=datetime.now(UTC) - timedelta(days=4),
     )
     db_session.add(msg)
     await db_session.commit()
 
     # Monkeypatch DB session factory so graph nodes use the test DB
-    graph_session_factory = async_sessionmaker(
-        test_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    graph_session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
     import app.infrastructure.database as db_mod
+
     original_factory = db_mod.async_session_factory
     db_mod.async_session_factory = graph_session_factory
 
     # Monkeypatch OpenAI + email stubs
     import app.dependencies as deps
     from tests.conftest import OpenAIStub, ResendStub
+
     deps._openai_client = OpenAIStub()
     deps._email_client = ResendStub()
 
@@ -238,7 +252,7 @@ async def test_check_followup_due_launches_graph(
     mock_redis.enqueue_job = AsyncMock()
 
     try:
-        # Run the cron function - graph will pause at interrupt()
+        # Run the coordinator — it now enqueues chunks instead of processing directly
         with patch("app.worker._acquire_run_lock", return_value=True):
             await check_followup_due(ctx={"redis": mock_redis})
     finally:
@@ -246,27 +260,12 @@ async def test_check_followup_due_launches_graph(
         deps._openai_client = None
         deps._email_client = None
 
-    # Verify: a new followup_1 draft was created
-    async with graph_session_factory() as check_db:
-        result = await check_db.execute(
-            select(OutreachMessage).where(
-                OutreachMessage.candidate_id == data["candidate"].id,
-                OutreachMessage.contact_id == data["contact"].id,
-                OutreachMessage.message_type == "followup_1",
-            )
-        )
-        followup = result.scalar_one_or_none()
-        assert followup is not None, "Expected a followup_1 message to be created"
-        assert followup.status == "draft"
-
-        # Verify: PendingAction with thread_id was created
-        action_result = await check_db.execute(
-            select(PendingAction).where(
-                PendingAction.candidate_id == data["candidate"].id,
-                PendingAction.entity_id == followup.id,
-            )
-        )
-        action = action_result.scalar_one_or_none()
-        assert action is not None, "Expected a PendingAction for the followup"
-        assert action.action_type == "send_email"
-        assert "thread_id" in (action.metadata_ or {})
+    # Verify: coordinator enqueued a chunk job with the message ID
+    mock_redis.enqueue_job.assert_called()
+    call_args = mock_redis.enqueue_job.call_args_list
+    assert len(call_args) >= 1, "Expected at least one chunk to be enqueued"
+    # First arg is the job name, second is the chunk of message IDs
+    job_name = call_args[0][0][0]
+    chunk = call_args[0][0][1]
+    assert job_name == "process_followup_chunk"
+    assert str(msg.id) in [str(mid) for mid in chunk]
