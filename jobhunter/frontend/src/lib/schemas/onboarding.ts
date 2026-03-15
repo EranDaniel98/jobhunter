@@ -10,4 +10,4 @@ export const onboardingProfileSchema = z.object({
   salary_max: z.coerce.number().nonnegative().optional().or(z.literal("")),
 });
 
-export type OnboardingProfileFormData = z.infer<typeof onboardingProfileSchema>;
+export type OnboardingProfileFormData = z.input<typeof onboardingProfileSchema>;
