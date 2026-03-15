@@ -49,13 +49,13 @@ function CompletenessCard({ dna, skills }: { dna: CandidateDNAResponse; skills: 
 
   return (
     <Card>
-      <CardContent className="flex flex-col items-center py-6">
-        <div className="relative h-32 w-32">
+      <CardContent className="flex items-center gap-6 py-4">
+        <div className="relative h-16 w-16 shrink-0">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r={radius} fill="none" strokeWidth="8" className="stroke-muted" />
+            <circle cx="60" cy="60" r={radius} fill="none" strokeWidth="10" className="stroke-muted" />
             <circle
               cx="60" cy="60" r={radius}
-              fill="none" strokeWidth="8"
+              fill="none" strokeWidth="10"
               strokeDasharray={circumference}
               strokeDashoffset={offset}
               strokeLinecap="round"
@@ -63,17 +63,16 @@ function CompletenessCard({ dna, skills }: { dna: CandidateDNAResponse; skills: 
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-bold">{score}%</span>
-            <span className="text-xs text-muted-foreground">Complete</span>
+            <span className="text-sm font-bold">{score}%</span>
           </div>
         </div>
-        <div className="mt-4 w-full space-y-2">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 flex-1">
           {checks.map((check) => (
-            <div key={check.label} className="flex items-center gap-2 text-sm">
+            <div key={check.label} className="flex items-center gap-1.5 text-xs">
               {check.done ? (
-                <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
               ) : (
-                <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               )}
               <span className={check.done ? "" : "text-muted-foreground"}>{check.label}</span>
             </div>
