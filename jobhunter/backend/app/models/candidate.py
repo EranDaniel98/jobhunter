@@ -1,7 +1,8 @@
 import uuid
+from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +30,8 @@ class Candidate(TimestampMixin, Base):
     stripe_customer_id: Mapped[str | None] = mapped_column(String(255), unique=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), unique=True)
     subscription_status: Mapped[str] = mapped_column(String(50), default="inactive", server_default="inactive")
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    tour_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
     resumes: Mapped[list["Resume"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
