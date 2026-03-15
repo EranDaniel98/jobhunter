@@ -9,6 +9,10 @@ import type {
   ActivityFeedItem,
   AuditLogItem,
   BroadcastResponse,
+  WaitlistListResponse,
+  WaitlistInviteResponse,
+  WaitlistBatchInviteResponse,
+  WaitlistStatus,
 } from "../types";
 
 export async function getOverview(): Promise<SystemOverview> {
@@ -118,6 +122,30 @@ export async function sendBroadcast(
   const { data } = await api.post<BroadcastResponse>("/admin/broadcast", {
     subject,
     body,
+  });
+  return data;
+}
+
+// Waitlist
+export async function getWaitlist(params?: {
+  status?: WaitlistStatus | "all";
+  skip?: number;
+  limit?: number;
+}): Promise<WaitlistListResponse> {
+  const { data } = await api.get<WaitlistListResponse>("/admin/waitlist", {
+    params: params?.status === "all" ? { skip: params.skip, limit: params.limit } : params,
+  });
+  return data;
+}
+
+export async function inviteWaitlistEntry(id: string): Promise<WaitlistInviteResponse> {
+  const { data } = await api.post<WaitlistInviteResponse>(`/admin/waitlist/${id}/invite`);
+  return data;
+}
+
+export async function inviteWaitlistBatch(ids: string[]): Promise<WaitlistBatchInviteResponse> {
+  const { data } = await api.post<WaitlistBatchInviteResponse>("/admin/waitlist/invite-batch", {
+    ids,
   });
   return data;
 }

@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as adminApi from "@/lib/api/admin";
+import type { WaitlistStatus } from "@/lib/types";
 
 export function useSystemOverview() {
   return useQuery({
@@ -113,6 +114,40 @@ export function useBroadcast() {
       adminApi.sendBroadcast(subject, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "audit-log"] });
+    },
+  });
+}
+
+// Waitlist
+export function useWaitlist(params?: {
+  status?: WaitlistStatus | "all";
+  skip?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: ["admin", "waitlist", params],
+    queryFn: () => adminApi.getWaitlist(params),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60000,
+  });
+}
+
+export function useInviteWaitlistEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.inviteWaitlistEntry(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "waitlist"] });
+    },
+  });
+}
+
+export function useInviteWaitlistBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => adminApi.inviteWaitlistBatch(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "waitlist"] });
     },
   });
 }
