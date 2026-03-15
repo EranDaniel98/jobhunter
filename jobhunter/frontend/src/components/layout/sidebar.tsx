@@ -91,7 +91,7 @@ export function Sidebar({ lastEvent = null, onCollapseChange }: SidebarProps) {
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         {navSections.map((section) => (
-          <div key={section.label} className="mb-3">
+          <div key={section.label} data-tour={`nav-${section.label.toLowerCase()}`} className="mb-3">
             {!collapsed && (
               <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
                 {section.label}
