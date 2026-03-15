@@ -32,8 +32,8 @@ export function DnaProfile({ dna }: DnaProfileProps) {
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {dna.strengths?.map((s, i) => (
-              <Badge key={i} className="bg-primary/15 text-primary">
-                {s}
+              <Badge key={i} className="bg-primary/15 text-primary max-w-full">
+                <span className="truncate">{s}</span>
               </Badge>
             )) || <span className="text-sm text-muted-foreground">None identified</span>}
           </div>
@@ -47,8 +47,8 @@ export function DnaProfile({ dna }: DnaProfileProps) {
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {dna.gaps?.map((g, i) => (
-              <Badge key={i} className="bg-accent text-accent-foreground">
-                {g}
+              <Badge key={i} className="bg-accent text-accent-foreground max-w-full">
+                <span className="truncate">{g}</span>
               </Badge>
             )) || <span className="text-sm text-muted-foreground">None identified</span>}
           </div>
@@ -63,8 +63,8 @@ export function DnaProfile({ dna }: DnaProfileProps) {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {Object.entries(dna.transferable_skills).map(([key, value]) => (
-                <Badge key={key} variant="secondary">
-                  {key}: {String(value)}
+                <Badge key={key} variant="secondary" className="max-w-full">
+                  <span className="truncate">{key}: {String(value)}</span>
                 </Badge>
               ))}
             </div>
