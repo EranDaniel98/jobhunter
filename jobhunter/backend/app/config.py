@@ -92,6 +92,12 @@ class Settings(BaseSettings):
     REDIS_QUOTA_TTL: int = 86400  # 24 hours
     PENDING_ACTION_MAX_AGE_DAYS: int = 30
 
+    # DNS Health
+    DKIM_SELECTOR: str = "resend"
+    SPF_EXPECTED_INCLUDES: list[str] = ["amazonses.com", "resend.com"]
+    DNS_HEALTH_CACHE_TTL: int = 300
+    DNS_LOOKUP_TIMEOUT: float = 3.0
+
     # Paths
     UPLOAD_DIR: str = str(BASE_DIR / "data" / "uploads")
 
