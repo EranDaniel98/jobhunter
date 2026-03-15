@@ -421,3 +421,22 @@ export interface ApplyAnalysisResponse {
   matching_skills: string[];
   status: string;
 }
+
+// DNS / Email Health
+export type DnsCheckStatus = "pass" | "fail" | "warning" | "timeout";
+
+export interface DnsCheckResult {
+  status: DnsCheckStatus;
+  record?: string | null;
+  recommendation?: string | null;
+  selector?: string;
+}
+
+export interface EmailHealthResponse {
+  domain: string;
+  overall: DnsCheckStatus;
+  spf: DnsCheckResult;
+  dkim: DnsCheckResult;
+  dmarc: DnsCheckResult;
+  checked_at: string;
+}

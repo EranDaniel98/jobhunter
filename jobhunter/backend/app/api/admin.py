@@ -269,6 +269,16 @@ async def get_db_pool_stats(
     }
 
 
+@router.get("/email-health")
+async def get_email_health(
+    force: bool = False,
+    _: Candidate = Depends(get_current_admin),
+):
+    """Check SPF, DKIM, and DMARC health for the configured sender domain."""
+    domain = settings.SENDER_EMAIL.split("@")[1] if "@" in settings.SENDER_EMAIL else settings.SENDER_EMAIL
+    return await check_email_dns_health(domain, force=force)
+
+
 @router.get("/analytics/registrations", response_model=list[RegistrationTrend])
 async def get_registrations(
     days: int = Query(30, ge=1, le=365),

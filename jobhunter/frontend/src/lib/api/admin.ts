@@ -13,6 +13,7 @@ import type {
   WaitlistInviteResponse,
   WaitlistBatchInviteResponse,
   WaitlistStatus,
+  EmailHealthResponse,
 } from "../types";
 
 export async function getOverview(): Promise<SystemOverview> {
@@ -146,6 +147,13 @@ export async function inviteWaitlistEntry(id: string): Promise<WaitlistInviteRes
 export async function inviteWaitlistBatch(ids: string[]): Promise<WaitlistBatchInviteResponse> {
   const { data } = await api.post<WaitlistBatchInviteResponse>("/admin/waitlist/invite-batch", {
     ids,
+  });
+  return data;
+}
+
+export async function getEmailHealth(force = false): Promise<EmailHealthResponse> {
+  const { data } = await api.get<EmailHealthResponse>("/admin/email-health", {
+    params: force ? { force: true } : undefined,
   });
   return data;
 }

@@ -1,6 +1,7 @@
 """Tests for the DNS health check service."""
 import pytest
 from unittest.mock import AsyncMock, patch
+from httpx import AsyncClient, ASGITransport
 
 import app.services.dns_health_service as dns_mod
 from app.services.dns_health_service import check_email_dns_health
@@ -117,3 +118,59 @@ async def test_dns_health_uses_configurable_dkim_selector():
         f"Expected DKIM qname '{dkim_qname}' in lookups, got: {captured_qnames}"
     )
     assert result["dkim"]["selector"] == custom_selector
+
+
+@pytest.mark.asyncio
+async def test_admin_email_health_endpoint(client):
+    """GET /api/v1/admin/email-health returns overall/spf/dkim/dmarc keys."""
+    import uuid
+    from app.models.candidate import Candidate
+    from app.utils.security import hash_password
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    # We need a db session – use the client fixture's underlying session via the app's
+    # dependency override. Instead, create an admin user via the registration + direct
+    # DB approach used elsewhere. Here we use the client fixture (which has db_session
+    # injected) by monkey-patching the dependency in the test itself.
+
+    mapping = {
+        DOMAIN: SPF_PASS,
+        f"resend._domainkey.{DOMAIN}": DKIM_PASS,
+        f"_dmarc.{DOMAIN}": DMARC_PASS,
+    }
+
+    from app.main import app as _app
+    from app.dependencies import get_current_admin
+    from app.models.candidate import Candidate as _Candidate
+
+    # Create a fake admin candidate for DI override
+    fake_admin = _Candidate(
+        id=uuid.uuid4(),
+        email="admin-health-test@example.com",
+        full_name="Health Admin",
+        is_admin=True,
+        password_hash=hash_password("x"),
+    )
+
+    async def _override_admin():
+        return fake_admin
+
+    _app.dependency_overrides[get_current_admin] = _override_admin
+
+    try:
+        with patch(
+            "app.services.dns_health_service._resolve_txt",
+            side_effect=_make_resolve_txt(mapping),
+        ):
+            with patch("app.api.admin.settings") as mock_settings:
+                mock_settings.SENDER_EMAIL = f"noreply@{DOMAIN}"
+                resp = await client.get("/api/v1/admin/email-health?force=true")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "overall" in body
+        assert "spf" in body
+        assert "dkim" in body
+        assert "dmarc" in body
+    finally:
+        _app.dependency_overrides.pop(get_current_admin, None)

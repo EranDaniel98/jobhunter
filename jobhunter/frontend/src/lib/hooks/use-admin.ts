@@ -151,3 +151,21 @@ export function useInviteWaitlistBatch() {
     },
   });
 }
+
+export function useEmailHealth() {
+  return useQuery({
+    queryKey: ["admin", "email-health"],
+    queryFn: () => adminApi.getEmailHealth(false),
+    staleTime: 5 * 60 * 1000, // 5 minutes – DNS records don't change often
+  });
+}
+
+export function useRefreshEmailHealth() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => adminApi.getEmailHealth(true),
+    onSuccess: (data) => {
+      qc.setQueryData(["admin", "email-health"], data);
+    },
+  });
+}
