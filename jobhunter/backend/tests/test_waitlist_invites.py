@@ -201,3 +201,32 @@ async def test_admin_invite_quota_exceeded(
     resp = await client.post(f"{API}/admin/waitlist/{entry.id}/invite", headers=headers)
     assert resp.status_code == 429
     assert "Retry-After" in resp.headers
+
+
+@pytest.mark.asyncio
+async def test_registration_updates_waitlist_status(db_session):
+    """Registering with an invite code updates the matching waitlist entry to 'registered'."""
+    from app.models.waitlist import WaitlistEntry
+    from app.services.invite_service import create_system_invite
+    from app.services.auth_service import register
+    from app.schemas.auth import RegisterRequest
+
+    entry = WaitlistEntry(email="hook@example.com", source="landing", status="invited")
+    db_session.add(entry)
+    await db_session.flush()
+
+    invite = await create_system_invite(db_session, "hook@example.com")
+    entry.invite_code_id = invite.id
+    await db_session.commit()
+
+    req = RegisterRequest(
+        email="hook@example.com",
+        password="testpass123",
+        full_name="Test User",
+        invite_code=invite.code,
+    )
+    candidate = await register(db_session, req)
+    assert candidate is not None
+
+    await db_session.refresh(entry)
+    assert entry.status == "registered"

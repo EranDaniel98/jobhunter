@@ -50,6 +50,27 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
     # Validate and atomically consume invite code (race-condition safe)
     await invite_service.validate_and_consume(db, data.invite_code, candidate.id)
 
+    # Update matching waitlist entry
+    if data.invite_code:
+        from app.models.invite import InviteCode
+        from app.models.waitlist import WaitlistEntry
+        invite_result = await db.execute(
+            select(InviteCode).where(InviteCode.code == data.invite_code)
+        )
+        invite_code_obj = invite_result.scalar_one_or_none()
+        if invite_code_obj and invite_code_obj.email:
+            waitlist_result = await db.execute(
+                select(WaitlistEntry).where(WaitlistEntry.email == invite_code_obj.email)
+            )
+            waitlist_entry = waitlist_result.scalar_one_or_none()
+            if waitlist_entry:
+                waitlist_entry.status = "registered"
+                logger.info("waitlist.registration_matched", extra={
+                    "feature": "waitlist_invites",
+                    "item_id": str(waitlist_entry.id),
+                    "detail": {"email": waitlist_entry.email},
+                })
+
     await db.commit()
     await db.refresh(candidate)
     logger.info("candidate_registered", candidate_id=str(candidate.id), invite_code=data.invite_code)
