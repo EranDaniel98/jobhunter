@@ -87,7 +87,13 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET_NAME: str = ""
 
+    # ARQ Batching
+    ARQ_CHUNK_SIZE: int = 10
+    ARQ_CHUNK_CONCURRENCY: int = 5
+    ARQ_MAX_CHUNKS_PER_RUN: int = 50
+
     # TTLs (seconds)
+    DOSSIER_CACHE_TTL: int = 604800  # 7 days
     REDIS_APPLY_ANALYSIS_TTL: int = 86400 * 7  # 7 days
     REDIS_WEBHOOK_DEDUP_TTL: int = 86400  # 24 hours
     REDIS_QUOTA_TTL: int = 86400  # 24 hours
