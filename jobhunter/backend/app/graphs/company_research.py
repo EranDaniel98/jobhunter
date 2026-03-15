@@ -229,7 +229,9 @@ async def generate_dossier_node(state: CompanyResearchState) -> dict:
 
                         hunter_data = state.get("hunter_data") or {}
                         generic_data = await client.parse_structured(
-                            generic_prompt, json.dumps(hunter_data), DOSSIER_GENERIC_SCHEMA,
+                            generic_prompt,
+                            json.dumps(hunter_data),
+                            DOSSIER_GENERIC_SCHEMA,
                         )
                         await cache_dossier(company.domain, input_hash, generic_data)
                     finally:
@@ -254,7 +256,9 @@ async def generate_dossier_node(state: CompanyResearchState) -> dict:
 
                         hunter_data = state.get("hunter_data") or {}
                         generic_data = await client.parse_structured(
-                            generic_prompt, json.dumps(hunter_data), DOSSIER_GENERIC_SCHEMA,
+                            generic_prompt,
+                            json.dumps(hunter_data),
+                            DOSSIER_GENERIC_SCHEMA,
                         )
 
             # --- Phase 2: Personal dossier (always fresh) ---
@@ -263,7 +267,9 @@ async def generate_dossier_node(state: CompanyResearchState) -> dict:
                 candidate_summary=candidate_summary,
             )
             personal_data = await client.parse_structured(
-                personal_prompt, "", DOSSIER_PERSONAL_SCHEMA,
+                personal_prompt,
+                "",
+                DOSSIER_PERSONAL_SCHEMA,
             )
 
             # --- Merge and save ---

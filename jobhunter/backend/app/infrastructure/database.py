@@ -1,5 +1,5 @@
 import structlog
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
 from app.middleware.tenant import install_rls_listener
@@ -38,10 +38,13 @@ engine = create_async_engine(
     pool_pre_ping=True,
 )
 
-logger.info("database.pool_mode", extra={
-    "feature": "pgbouncer",
-    "detail": {"mode": _config["mode"], "pool_size": _config["pool_size"], "max_overflow": _config["max_overflow"]},
-})
+logger.info(
+    "database.pool_mode",
+    extra={
+        "feature": "pgbouncer",
+        "detail": {"mode": _config["mode"], "pool_size": _config["pool_size"], "max_overflow": _config["max_overflow"]},
+    },
+)
 
 # Install RLS listener if enabled (must be done before sessions are created)
 install_rls_listener(engine)

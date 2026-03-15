@@ -1,8 +1,11 @@
 import time
-import structlog
+from datetime import UTC
+
 import dns.asyncresolver
-import dns.resolver
 import dns.exception
+import dns.resolver
+import structlog
+
 from app.config import settings
 
 logger = structlog.get_logger()
@@ -23,14 +26,22 @@ async def _resolve_txt(qname: str) -> str | None:
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
         return None
     except (dns.resolver.LifetimeTimeout, dns.exception.Timeout):
-        logger.warning("dns_health.lookup_timeout", extra={
-            "feature": "dns_health", "detail": {"qname": qname},
-        })
-        raise TimeoutError(f"DNS lookup timed out for {qname}")
+        logger.warning(
+            "dns_health.lookup_timeout",
+            extra={
+                "feature": "dns_health",
+                "detail": {"qname": qname},
+            },
+        )
+        raise TimeoutError(f"DNS lookup timed out for {qname}") from None
     except Exception:
-        logger.error("dns_health.lookup_error", extra={
-            "feature": "dns_health", "detail": {"qname": qname},
-        })
+        logger.error(
+            "dns_health.lookup_error",
+            extra={
+                "feature": "dns_health",
+                "detail": {"qname": qname},
+            },
+        )
         return None
 
 
@@ -86,7 +97,8 @@ async def check_email_dns_health(domain: str, force: bool = False) -> dict:
     else:
         overall = "warning"
 
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     result = {
         "domain": domain,
         "spf": {"status": spf_status, "record": spf_record},
@@ -97,15 +109,18 @@ async def check_email_dns_health(domain: str, force: bool = False) -> dict:
             "recommendation": dmarc_recommendation,
         },
         "overall": overall,
-        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "checked_at": datetime.now(UTC).isoformat(),
     }
 
     _cache["result"] = result
     _cache["expires_at"] = now + settings.DNS_HEALTH_CACHE_TTL
 
-    logger.info("dns_health.check_complete", extra={
-        "feature": "dns_health",
-        "detail": {"spf": spf_status, "dkim": dkim_status, "dmarc": dmarc_status, "overall": overall},
-    })
+    logger.info(
+        "dns_health.check_complete",
+        extra={
+            "feature": "dns_health",
+            "detail": {"spf": spf_status, "dkim": dkim_status, "dmarc": dmarc_status, "overall": overall},
+        },
+    )
 
     return result

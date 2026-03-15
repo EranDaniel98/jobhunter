@@ -36,6 +36,7 @@ async def health_check(
         logger.error("health_check_redis_failed", error=str(e))
 
     from app.infrastructure.database import _config
+
     checks["connection_mode"] = _config["mode"]
     checks["pgbouncer_configured"] = bool(settings.PGBOUNCER_URL)
 
@@ -45,9 +46,13 @@ async def health_check(
         checks["db_reachable"] = True
     except Exception as e:
         checks["db_reachable"] = False
-        logger.error("database.health_check_failed", extra={
-            "feature": "pgbouncer", "detail": {"error": str(e)},
-        })
+        logger.error(
+            "database.health_check_failed",
+            extra={
+                "feature": "pgbouncer",
+                "detail": {"error": str(e)},
+            },
+        )
 
     # Migration version check (informational - does not affect healthy/unhealthy)
     try:

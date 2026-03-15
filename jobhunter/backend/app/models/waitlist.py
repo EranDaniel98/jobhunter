@@ -1,6 +1,5 @@
-from datetime import UTC, datetime
-from typing import Optional
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -16,13 +15,11 @@ class WaitlistEntry(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     source: Mapped[str] = mapped_column(String(100), default="landing_page")
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
-    invited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    invite_code_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    invited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invite_code_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("invite_codes.id"), nullable=True
     )
-    invite_error: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    invite_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    __table_args__ = (
-        Index("ix_waitlist_entries_status_created", "status", "created_at"),
-    )
+    __table_args__ = (Index("ix_waitlist_entries_status_created", "status", "created_at"),)

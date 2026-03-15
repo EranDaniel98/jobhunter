@@ -54,9 +54,8 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
     if data.invite_code:
         from app.models.invite import InviteCode
         from app.models.waitlist import WaitlistEntry
-        invite_result = await db.execute(
-            select(InviteCode).where(InviteCode.code == data.invite_code)
-        )
+
+        invite_result = await db.execute(select(InviteCode).where(InviteCode.code == data.invite_code))
         invite_code_obj = invite_result.scalar_one_or_none()
         if invite_code_obj and invite_code_obj.email:
             waitlist_result = await db.execute(
@@ -65,11 +64,14 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
             waitlist_entry = waitlist_result.scalar_one_or_none()
             if waitlist_entry:
                 waitlist_entry.status = "registered"
-                logger.info("waitlist.registration_matched", extra={
-                    "feature": "waitlist_invites",
-                    "item_id": str(waitlist_entry.id),
-                    "detail": {"email": waitlist_entry.email},
-                })
+                logger.info(
+                    "waitlist.registration_matched",
+                    extra={
+                        "feature": "waitlist_invites",
+                        "item_id": str(waitlist_entry.id),
+                        "detail": {"email": waitlist_entry.email},
+                    },
+                )
 
     await db.commit()
     await db.refresh(candidate)

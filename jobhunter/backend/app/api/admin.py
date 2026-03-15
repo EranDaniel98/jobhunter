@@ -259,7 +259,8 @@ async def get_api_costs(
 async def get_db_pool_stats(
     _: Candidate = Depends(get_current_admin),
 ):
-    from app.infrastructure.database import engine, _config
+    from app.infrastructure.database import _config, engine
+
     pool = engine.pool
     return {
         "connection_mode": _config["mode"],
@@ -379,9 +380,8 @@ async def invite_waitlist_entry(
     # Idempotent: already invited — return existing invite code
     if entry.status == "invited" and entry.invite_code_id is not None:
         from app.models.invite import InviteCode
-        code_result = await db.execute(
-            select(InviteCode).where(InviteCode.id == entry.invite_code_id)
-        )
+
+        code_result = await db.execute(select(InviteCode).where(InviteCode.id == entry.invite_code_id))
         existing_code = code_result.scalar_one_or_none()
         if existing_code:
             return WaitlistInviteResponse(

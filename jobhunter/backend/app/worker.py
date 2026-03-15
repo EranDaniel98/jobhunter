@@ -26,7 +26,7 @@ logger = structlog.get_logger()
 
 def _chunk_list(items: list, chunk_size: int) -> list[list]:
     """Split a list into chunks of chunk_size."""
-    return [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
+    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
 
 
 async def _process_chunk(
@@ -39,10 +39,14 @@ async def _process_chunk(
     sem = asyncio.Semaphore(concurrency)
     results = {"succeeded": 0, "failed": 0}
 
-    logger.info("chunk.started", extra={
-        "feature": "arq_batch", "action": job_name,
-        "detail": {"chunk_size": len(items)},
-    })
+    logger.info(
+        "chunk.started",
+        extra={
+            "feature": "arq_batch",
+            "action": job_name,
+            "detail": {"chunk_size": len(items)},
+        },
+    )
 
     async def _run(item_id):
         async with sem:
@@ -51,26 +55,33 @@ async def _process_chunk(
                 results["succeeded"] += 1
             except Exception as e:
                 results["failed"] += 1
-                logger.error("chunk.item_failed", extra={
-                    "feature": "arq_batch",
-                    "action": job_name,
-                    "item_id": str(item_id),
-                    "status": "failure",
-                    "detail": {"error": str(e), "type": type(e).__name__},
-                })
+                logger.error(
+                    "chunk.item_failed",
+                    extra={
+                        "feature": "arq_batch",
+                        "action": job_name,
+                        "item_id": str(item_id),
+                        "status": "failure",
+                        "detail": {"error": str(e), "type": type(e).__name__},
+                    },
+                )
 
     await asyncio.gather(*[_run(item) for item in items], return_exceptions=True)
-    logger.info("chunk.complete", extra={
-        "feature": "arq_batch",
-        "action": job_name,
-        "detail": results,
-    })
+    logger.info(
+        "chunk.complete",
+        extra={
+            "feature": "arq_batch",
+            "action": job_name,
+            "detail": results,
+        },
+    )
     return results
 
 
 async def _acquire_run_lock(job_name: str, ttl: int) -> bool:
     """Acquire a Redis-based run lock for cron deduplication."""
     from app.infrastructure.redis_client import get_redis
+
     redis = get_redis()
     lock_key = f"lock:cron:{job_name}"
     return await redis.set(lock_key, "1", nx=True, ex=ttl)
@@ -105,6 +116,7 @@ async def shutdown(ctx):
 # Follow-up cron: coordinator + chunk worker
 # ---------------------------------------------------------------------------
 
+
 async def check_followup_due(ctx):
     """Coordinator: find all due follow-ups and enqueue chunks for processing."""
     if not await _acquire_run_lock("followup_due", ttl=300):
@@ -136,26 +148,31 @@ async def check_followup_due(ctx):
     deferred = total - len(processing_ids)
 
     if deferred > 0:
-        logger.warning("cron.overflow", extra={
-            "feature": "arq_batch",
-            "action": "check_followup_due",
-            "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
-        })
+        logger.warning(
+            "cron.overflow",
+            extra={
+                "feature": "arq_batch",
+                "action": "check_followup_due",
+                "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
+            },
+        )
 
     chunks = _chunk_list(processing_ids, settings.ARQ_CHUNK_SIZE)
     for chunk in chunks:
         await ctx["redis"].enqueue_job("process_followup_chunk", chunk)
 
-    logger.info("cron.started", extra={
-        "feature": "arq_batch",
-        "action": "check_followup_due",
-        "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
-    })
+    logger.info(
+        "cron.started",
+        extra={
+            "feature": "arq_batch",
+            "action": "check_followup_due",
+            "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
+        },
+    )
 
 
 async def process_followup_chunk(ctx, message_ids: list):
     """Worker: process a chunk of follow-up message IDs."""
-    from app.infrastructure.database import async_session_factory
 
     async def process_one_message(message_id):
         from app.infrastructure.database import async_session_factory as sf
@@ -252,6 +269,7 @@ async def process_followup_chunk(ctx, message_ids: list):
 # Daily scout cron: coordinator + chunk worker
 # ---------------------------------------------------------------------------
 
+
 async def run_daily_scout(ctx):
     """Coordinator: find active candidates with DNA and enqueue scout chunks."""
     if not await _acquire_run_lock("daily_scout", ttl=82800):
@@ -276,21 +294,27 @@ async def run_daily_scout(ctx):
     deferred = total - len(processing_ids)
 
     if deferred > 0:
-        logger.warning("cron.overflow", extra={
-            "feature": "arq_batch",
-            "action": "run_daily_scout",
-            "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
-        })
+        logger.warning(
+            "cron.overflow",
+            extra={
+                "feature": "arq_batch",
+                "action": "run_daily_scout",
+                "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
+            },
+        )
 
     chunks = _chunk_list(processing_ids, settings.ARQ_CHUNK_SIZE)
     for chunk in chunks:
         await ctx["redis"].enqueue_job("process_scout_chunk", chunk)
 
-    logger.info("cron.started", extra={
-        "feature": "arq_batch",
-        "action": "run_daily_scout",
-        "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
-    })
+    logger.info(
+        "cron.started",
+        extra={
+            "feature": "arq_batch",
+            "action": "run_daily_scout",
+            "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
+        },
+    )
 
 
 async def process_scout_chunk(ctx, candidate_ids: list):
@@ -338,6 +362,7 @@ async def process_scout_chunk(ctx, candidate_ids: list):
 # Weekly analytics cron: coordinator + chunk worker
 # ---------------------------------------------------------------------------
 
+
 async def run_weekly_analytics(ctx):
     """Coordinator: find active candidates with DNA and enqueue analytics chunks."""
     if not await _acquire_run_lock("weekly_analytics", ttl=590400):
@@ -362,21 +387,27 @@ async def run_weekly_analytics(ctx):
     deferred = total - len(processing_ids)
 
     if deferred > 0:
-        logger.warning("cron.overflow", extra={
-            "feature": "arq_batch",
-            "action": "run_weekly_analytics",
-            "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
-        })
+        logger.warning(
+            "cron.overflow",
+            extra={
+                "feature": "arq_batch",
+                "action": "run_weekly_analytics",
+                "detail": {"total": total, "processing": len(processing_ids), "deferred": deferred},
+            },
+        )
 
     chunks = _chunk_list(processing_ids, settings.ARQ_CHUNK_SIZE)
     for chunk in chunks:
         await ctx["redis"].enqueue_job("process_analytics_chunk", chunk)
 
-    logger.info("cron.started", extra={
-        "feature": "arq_batch",
-        "action": "run_weekly_analytics",
-        "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
-    })
+    logger.info(
+        "cron.started",
+        extra={
+            "feature": "arq_batch",
+            "action": "run_weekly_analytics",
+            "detail": {"items_found": total, "chunks_enqueued": len(chunks)},
+        },
+    )
 
 
 async def process_analytics_chunk(ctx, candidate_ids: list):
@@ -412,6 +443,7 @@ async def process_analytics_chunk(ctx, candidate_ids: list):
 # ---------------------------------------------------------------------------
 # Unchanged: stale-action expiration and approved message sender
 # ---------------------------------------------------------------------------
+
 
 async def expire_stale_actions(ctx):
     """Expire pending actions older than 30 days."""
