@@ -30,10 +30,10 @@ export function DnaProfile({ dna }: DnaProfileProps) {
           <CardTitle className="text-primary">Strengths</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2">
             {dna.strengths?.map((s, i) => (
-              <Badge key={i} className="bg-primary/15 text-primary max-w-full">
-                <span className="truncate">{s}</span>
+              <Badge key={i} className="bg-primary/15 text-primary whitespace-normal text-left h-auto py-1">
+                {s}
               </Badge>
             )) || <span className="text-sm text-muted-foreground">None identified</span>}
           </div>
@@ -45,10 +45,10 @@ export function DnaProfile({ dna }: DnaProfileProps) {
           <CardTitle className="text-chart-3">Gaps</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2">
             {dna.gaps?.map((g, i) => (
-              <Badge key={i} className="bg-accent text-accent-foreground max-w-full">
-                <span className="truncate">{g}</span>
+              <Badge key={i} className="bg-accent text-accent-foreground whitespace-normal text-left h-auto py-1">
+                {g}
               </Badge>
             )) || <span className="text-sm text-muted-foreground">None identified</span>}
           </div>
@@ -63,8 +63,8 @@ export function DnaProfile({ dna }: DnaProfileProps) {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {Object.entries(dna.transferable_skills).map(([key, value]) => (
-                <Badge key={key} variant="secondary" className="max-w-full">
-                  <span className="truncate">{key}: {String(value)}</span>
+                <Badge key={key} variant="secondary" className="whitespace-normal text-left h-auto py-1">
+                  {key}: {String(value)}
                 </Badge>
               ))}
             </div>
