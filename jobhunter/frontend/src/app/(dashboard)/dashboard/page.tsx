@@ -96,7 +96,7 @@ export default function DashboardPage() {
 
       {/* Next Actions - contextual prompts */}
       {nextActions.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div data-tour="next-actions" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {nextActions.slice(0, 3).map((action) => {
             const Icon = action.icon;
             return (
@@ -135,7 +135,7 @@ export default function DashboardPage() {
           <CardSkeleton />
         </div>
       ) : (
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div data-tour="stats-cards" className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Companies"
             value={totalCompanies}
@@ -171,7 +171,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {pipeline && (
-            <Card className="h-full">
+            <Card data-tour="pipeline" className="h-full">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Pipeline Overview</CardTitle>
                 <Link href="/analytics">
@@ -253,7 +253,7 @@ export default function DashboardPage() {
 
       {/* Recent companies */}
       {recentCompanies.length > 0 && (
-        <Card>
+        <Card data-tour="recent-companies">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Recent Companies</CardTitle>
             <Link href="/companies">
