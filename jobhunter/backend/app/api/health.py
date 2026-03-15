@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.infrastructure.database import get_session
 from app.infrastructure.redis_client import get_redis
 
@@ -33,6 +34,25 @@ async def health_check(
     except Exception as e:
         checks["redis"] = f"unhealthy: {e}"
         logger.error("health_check_redis_failed", error=str(e))
+
+    from app.infrastructure.database import _config
+
+    checks["connection_mode"] = _config["mode"]
+    checks["pgbouncer_configured"] = bool(settings.PGBOUNCER_URL)
+
+    # Verify DB reachable through active connection path
+    try:
+        await db.execute(text("SELECT 1"))
+        checks["db_reachable"] = True
+    except Exception as e:
+        checks["db_reachable"] = False
+        logger.error(
+            "database.health_check_failed",
+            extra={
+                "feature": "pgbouncer",
+                "detail": {"error": str(e)},
+            },
+        )
 
     # Migration version check (informational - does not affect healthy/unhealthy)
     try:

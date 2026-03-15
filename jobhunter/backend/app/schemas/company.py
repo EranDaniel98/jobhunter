@@ -38,6 +38,23 @@ class CompanyListResponse(BaseModel):
     total: int
 
 
+class CompanyDossierGeneric(BaseModel):
+    culture_summary: str
+    culture_score: int
+    red_flags: list[str]
+    interview_format: str
+    interview_questions: list[str]
+    compensation_data: str
+    key_people: list[dict]
+    recent_news: list[str]
+
+
+class CompanyDossierPersonal(BaseModel):
+    why_hire_me: str
+    resume_bullets: list[str]
+    fit_score_tips: list[str]
+
+
 class CompanyDossierResponse(BaseModel):
     id: str
     culture_summary: str | None = None

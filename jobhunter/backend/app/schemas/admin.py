@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class SystemOverview(BaseModel):
@@ -93,3 +93,38 @@ class BroadcastRequest(BaseModel):
 class BroadcastResponse(BaseModel):
     sent_count: int
     skipped_count: int
+
+
+class WaitlistEntryResponse(BaseModel):
+    id: int
+    email: str
+    source: str | None
+    status: str
+    created_at: datetime
+    invited_at: datetime | None
+    invite_error: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WaitlistListResponse(BaseModel):
+    entries: list[WaitlistEntryResponse]
+    total: int
+
+
+class WaitlistInviteResponse(BaseModel):
+    code: str
+    email: str
+    expires_at: datetime
+
+
+class WaitlistBatchRequest(BaseModel):
+    ids: list[int]
+
+
+class WaitlistBatchResponse(BaseModel):
+    invited: int
+    skipped: int
+    failed: int
+    errors: list[str]
+    daily_quota_remaining: int

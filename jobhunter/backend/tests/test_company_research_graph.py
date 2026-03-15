@@ -8,16 +8,15 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.models.candidate import Candidate, CandidateDNA
-from app.models.company import Company, CompanyDossier
-from app.models.contact import Contact
-from app.utils.security import hash_password
 from app.graphs.company_research import (
     CompanyResearchState,
     build_company_research_graph,
     get_company_research_pipeline_no_checkpointer,
 )
-
+from app.models.candidate import Candidate, CandidateDNA
+from app.models.company import Company, CompanyDossier
+from app.models.contact import Contact
+from app.utils.security import hash_password
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -42,7 +41,7 @@ async def patch_graph_db(graph_session_factory, monkeypatch):
 async def patch_stubs(monkeypatch):
     """Ensure the graph nodes use OpenAIStub and HunterStub via get_openai()/get_hunter()."""
     import app.dependencies as deps
-    from tests.conftest import OpenAIStub, HunterStub
+    from tests.conftest import HunterStub, OpenAIStub
     deps._openai_client = OpenAIStub()
     deps._hunter_client = HunterStub()
     yield
@@ -148,7 +147,13 @@ async def test_full_pipeline_with_stubs(
     mock_ddgs_instance.__enter__ = MagicMock(return_value=mock_ddgs_instance)
     mock_ddgs_instance.__exit__ = MagicMock(return_value=False)
 
-    with patch("duckduckgo_search.DDGS", return_value=mock_ddgs_instance):
+    with (
+        patch("duckduckgo_search.DDGS", return_value=mock_ddgs_instance),
+        patch("app.graphs.company_research.get_cached_dossier", return_value=None),
+        patch("app.graphs.company_research.acquire_stampede_lock", return_value=True),
+        patch("app.graphs.company_research.release_stampede_lock", return_value=None),
+        patch("app.graphs.company_research.cache_dossier", return_value=None),
+    ):
         pipeline = get_company_research_pipeline_no_checkpointer()
         result = await pipeline.ainvoke(
             _initial_state(company_id, candidate_id)

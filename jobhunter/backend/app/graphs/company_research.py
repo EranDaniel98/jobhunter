@@ -20,13 +20,23 @@ from typing_extensions import TypedDict
 
 from app.dependencies import get_hunter, get_openai
 from app.infrastructure import database as _db_mod
+from app.infrastructure.dossier_cache import (
+    _compute_input_hash,
+    acquire_stampede_lock,
+    cache_dossier,
+    get_cached_dossier,
+    release_stampede_lock,
+    wait_for_cache,
+)
 from app.infrastructure.websocket_manager import ws_manager
 from app.models.candidate import CandidateDNA
 from app.models.company import Company, CompanyDossier
 from app.models.enums import ResearchStatus
 from app.services.company_service import (
-    DOSSIER_PROMPT,
-    DOSSIER_SCHEMA,
+    DOSSIER_GENERIC_PROMPT,
+    DOSSIER_GENERIC_SCHEMA,
+    DOSSIER_PERSONAL_PROMPT,
+    DOSSIER_PERSONAL_SCHEMA,
     _create_contacts_from_hunter,
 )
 from app.services.embedding_service import embed_text
@@ -164,7 +174,7 @@ async def web_search_node(state: CompanyResearchState) -> dict:
 
 
 async def generate_dossier_node(state: CompanyResearchState) -> dict:
-    """Build enriched prompt, call OpenAI structured parse, create/update CompanyDossier."""
+    """Two-phase dossier generation: generic (cached) + personal (fresh)."""
     company_id = uuid.UUID(state["company_id"])
     candidate_id = uuid.UUID(state["candidate_id"])
     web_context = state.get("web_context") or ""
@@ -183,26 +193,88 @@ async def generate_dossier_node(state: CompanyResearchState) -> dict:
 
         try:
             client = get_openai()
+            tech_stack_str = ", ".join(company.tech_stack or [])
 
-            # Build prompt with web context appended
-            prompt_filled = DOSSIER_PROMPT.format(
-                company_name=company.name,
+            # --- Phase 1: Generic dossier (cached) ---
+            input_hash = _compute_input_hash(
+                name=company.name,
                 domain=company.domain,
-                industry=company.industry or "Unknown",
-                size=company.size_range or "Unknown",
-                location=company.location_hq or "Unknown",
-                description=company.description or "No description available",
-                tech_stack=", ".join(company.tech_stack or []),
-                candidate_summary=candidate_summary,
+                industry=company.industry,
+                size=company.size_range,
+                description=company.description,
+                tech_stack=tech_stack_str,
             )
 
-            if web_context:
-                prompt_filled += f"\n\nAdditional web research context:\n{web_context}"
+            generic_data = await get_cached_dossier(company.domain, input_hash)
 
-            hunter_data = state.get("hunter_data") or {}
-            dossier_data = await client.parse_structured(prompt_filled, json.dumps(hunter_data), DOSSIER_SCHEMA)
+            if generic_data:
+                logger.info("dossier_cache.hit", domain=company.domain)
+            else:
+                logger.info("dossier_cache.miss", domain=company.domain)
+                lock_acquired = await acquire_stampede_lock(company.domain)
 
-            # Create or update dossier
+                if lock_acquired:
+                    try:
+                        generic_prompt = DOSSIER_GENERIC_PROMPT.format(
+                            company_name=company.name,
+                            domain=company.domain,
+                            industry=company.industry or "Unknown",
+                            size=company.size_range or "Unknown",
+                            location=company.location_hq or "Unknown",
+                            description=company.description or "No description available",
+                            tech_stack=tech_stack_str,
+                        )
+                        if web_context:
+                            generic_prompt += f"\n\nAdditional web research context:\n{web_context}"
+
+                        hunter_data = state.get("hunter_data") or {}
+                        generic_data = await client.parse_structured(
+                            generic_prompt,
+                            json.dumps(hunter_data),
+                            DOSSIER_GENERIC_SCHEMA,
+                        )
+                        await cache_dossier(company.domain, input_hash, generic_data)
+                    finally:
+                        await release_stampede_lock(company.domain)
+                else:
+                    # Another worker is generating — wait for cache
+                    generic_data = await wait_for_cache(company.domain, input_hash)
+                    if not generic_data:
+                        # Timeout — generate anyway
+                        logger.warning("dossier_cache.stampede_fallback", domain=company.domain)
+                        generic_prompt = DOSSIER_GENERIC_PROMPT.format(
+                            company_name=company.name,
+                            domain=company.domain,
+                            industry=company.industry or "Unknown",
+                            size=company.size_range or "Unknown",
+                            location=company.location_hq or "Unknown",
+                            description=company.description or "No description available",
+                            tech_stack=tech_stack_str,
+                        )
+                        if web_context:
+                            generic_prompt += f"\n\nAdditional web research context:\n{web_context}"
+
+                        hunter_data = state.get("hunter_data") or {}
+                        generic_data = await client.parse_structured(
+                            generic_prompt,
+                            json.dumps(hunter_data),
+                            DOSSIER_GENERIC_SCHEMA,
+                        )
+
+            # --- Phase 2: Personal dossier (always fresh) ---
+            personal_prompt = DOSSIER_PERSONAL_PROMPT.format(
+                generic_dossier=json.dumps(generic_data, indent=2),
+                candidate_summary=candidate_summary,
+            )
+            personal_data = await client.parse_structured(
+                personal_prompt,
+                "",
+                DOSSIER_PERSONAL_SCHEMA,
+            )
+
+            # --- Merge and save ---
+            dossier_data = {**generic_data, **personal_data}
+
             existing = await db.execute(select(CompanyDossier).where(CompanyDossier.company_id == company_id))
             dossier = existing.scalar_one_or_none()
             if not dossier:
