@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # Invites
     INVITE_EXPIRE_DAYS: int = 7
+    MAX_DAILY_INVITES: int = 200
 
     # Stripe billing
     STRIPE_SECRET_KEY: str = ""
