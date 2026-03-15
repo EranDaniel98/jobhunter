@@ -6,6 +6,7 @@ Handles:
 - Stale action expiration: expires old pending actions daily
 """
 
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar
@@ -19,6 +20,59 @@ from app.config import settings
 from app.models.enums import ActionStatus, MessageStatus
 
 logger = structlog.get_logger()
+
+
+def _chunk_list(items: list, chunk_size: int) -> list[list]:
+    """Split a list into chunks of chunk_size."""
+    return [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
+
+
+async def _process_chunk(
+    items: list,
+    processor,
+    concurrency: int,
+    job_name: str,
+) -> dict:
+    """Process items concurrently with error isolation."""
+    sem = asyncio.Semaphore(concurrency)
+    results = {"succeeded": 0, "failed": 0}
+
+    logger.info("chunk.started", extra={
+        "feature": "arq_batch", "action": job_name,
+        "detail": {"chunk_size": len(items)},
+    })
+
+    async def _run(item_id):
+        async with sem:
+            try:
+                await processor(item_id)
+                results["succeeded"] += 1
+            except Exception as e:
+                results["failed"] += 1
+                logger.error("chunk.item_failed", extra={
+                    "feature": "arq_batch",
+                    "action": job_name,
+                    "item_id": str(item_id),
+                    "status": "failure",
+                    "detail": {"error": str(e), "type": type(e).__name__},
+                })
+
+    await asyncio.gather(*[_run(item) for item in items], return_exceptions=True)
+    logger.info("chunk.complete", extra={
+        "feature": "arq_batch",
+        "action": job_name,
+        "detail": results,
+    })
+    return results
+
+
+async def _acquire_run_lock(job_name: str, ttl: int) -> bool:
+    """Acquire a Redis-based run lock for cron deduplication."""
+    from app.infrastructure.redis_client import get_redis
+    redis = get_redis()
+    lock_key = f"lock:cron:{job_name}"
+    return await redis.set(lock_key, "1", nx=True, ex=ttl)
+
 
 # Follow-up timing thresholds (days since last sent message)
 FOLLOWUP_THRESHOLDS = {
