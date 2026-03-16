@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC
 
 import pytest
 from httpx import AsyncClient
@@ -67,21 +68,24 @@ async def test_429_response_is_structured_json(client: AsyncClient, auth_headers
     which may return a plain-text 429 before the quota check runs. This test calls
     the quota service directly to verify the structured response.
     """
-    from app.services.quota_service import check_and_increment
     from fastapi import HTTPException
+
+    from app.services.quota_service import check_and_increment
 
     resp = await client.get(f"{API}/auth/me", headers=auth_headers)
     candidate_id = resp.json()["id"]
 
     # Set the discovery counter to the free limit (3)
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     redis = get_redis()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     key = f"quota:{candidate_id}:discovery:{today}"
     await redis.set(key, "3")
 
     # Directly call quota service to verify the structured 429
     import pytest as _pytest
+
     with _pytest.raises(HTTPException) as exc_info:
         await check_and_increment(candidate_id, "discovery", "free")
 
@@ -154,15 +158,23 @@ async def test_admin_rejects_invalid_plan_tier(client: AsyncClient, db_session: 
 
 @pytest.mark.asyncio
 async def test_billing_stubs_return_coming_soon(client: AsyncClient, auth_headers: dict):
-    """Billing endpoints return coming_soon status."""
-    resp = await client.post(
-        f"{API}/billing/create-checkout-session",
-        headers=auth_headers,
-        json={"tier": "explorer"},
-    )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "coming_soon"
+    """Billing endpoints return coming_soon status when Stripe is not configured."""
 
-    resp = await client.get(f"{API}/billing/portal", headers=auth_headers)
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "coming_soon"
+    from app.config import settings as _settings
+
+    original = _settings.STRIPE_SECRET_KEY
+    _settings.STRIPE_SECRET_KEY = ""
+    try:
+        resp = await client.post(
+            f"{API}/billing/create-checkout-session",
+            headers=auth_headers,
+            json={"tier": "explorer"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "coming_soon"
+
+        resp = await client.get(f"{API}/billing/portal", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "coming_soon"
+    finally:
+        _settings.STRIPE_SECRET_KEY = original

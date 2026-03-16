@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.resume_service import (
+    _extract_text_from_docx,
     _extract_text_from_pdf,
     parse_resume,
     upload_resume,
@@ -40,11 +41,8 @@ class TestExtractTextFromPdf:
         mock_reader = MagicMock()
         mock_reader.pages = [mock_page]
 
-        # PdfReader is imported locally inside _extract_text_from_pdf, patch at source
         with patch("pypdf.PdfReader", return_value=mock_reader):
-            from app.services.resume_service import _extract_text_from_pdf as fn
-
-            result = fn(b"fake-pdf")
+            result = _extract_text_from_pdf(b"fake-pdf")
 
         assert result == "Hello World"
 
@@ -65,10 +63,7 @@ class TestExtractTextFromDocx:
         mock_doc = MagicMock()
         mock_doc.paragraphs = [para1, para2]
 
-        # Document is imported locally inside _extract_text_from_docx, patch at source
         with patch("docx.Document", return_value=mock_doc):
-            from app.services.resume_service import _extract_text_from_docx
-
             result = _extract_text_from_docx(b"fake-docx")
 
         assert result == "First paragraph\nSecond paragraph"
@@ -79,8 +74,6 @@ class TestExtractTextFromDocx:
         mock_doc.paragraphs = []
 
         with patch("docx.Document", return_value=mock_doc):
-            from app.services.resume_service import _extract_text_from_docx
-
             result = _extract_text_from_docx(b"fake-docx")
 
         assert result == ""
