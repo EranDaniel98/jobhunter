@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as approvalsApi from "@/lib/api/approvals";
+import { toastError } from "@/lib/api/error-utils";
 
 export function useApprovals(params?: { status?: string; action_type?: string }) {
   return useQuery({
@@ -26,6 +27,7 @@ export function useApproveAction() {
       qc.invalidateQueries({ queryKey: ["approvals"] });
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
+    onError: (err) => toastError(err, "Action failed"),
   });
 }
 
@@ -36,5 +38,6 @@ export function useRejectAction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["approvals"] });
     },
+    onError: (err) => toastError(err, "Action failed"),
   });
 }

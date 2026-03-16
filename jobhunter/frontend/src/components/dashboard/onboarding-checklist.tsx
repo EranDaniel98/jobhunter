@@ -15,7 +15,8 @@ interface OnboardingChecklistProps {
 export function OnboardingChecklist({ hasResume, hasCompanies, hasSentMessages }: OnboardingChecklistProps) {
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
-    return localStorage.getItem("onboarding_dismissed") === "true";
+    try { return localStorage.getItem("onboarding_dismissed") === "true"; }
+    catch { return false; }
   });
 
   const steps = [
@@ -40,7 +41,7 @@ export function OnboardingChecklist({ hasResume, hasCompanies, hasSentMessages }
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={() => { localStorage.setItem("onboarding_dismissed", "true"); setDismissed(true); }}
+          onClick={() => { try { localStorage.setItem("onboarding_dismissed", "true"); } catch { /* private browsing */ } setDismissed(true); }}
           aria-label="Dismiss getting started"
         >
           <X className="h-4 w-4" />

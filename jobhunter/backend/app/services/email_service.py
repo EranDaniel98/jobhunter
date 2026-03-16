@@ -239,7 +239,9 @@ async def send_outreach(
     if not message.subject:
         raise ValueError("Cannot send email without a subject")
 
+    send_attempted = False
     try:
+        send_attempted = True
         result = await email_client.send(
             to=contact.email,
             from_email=from_email,
@@ -312,16 +314,17 @@ async def send_outreach(
     except Exception as e:
         message.status = MessageStatus.FAILED
         await db.commit()
-        # Restore quota - email was never sent
-        try:
-            from app.services.quota_service import QUOTA_KEY
+        # Restore quota only if send was actually attempted
+        if send_attempted:
+            try:
+                from app.services.quota_service import QUOTA_KEY
 
-            today = datetime.now(UTC).strftime("%Y-%m-%d")
-            key = QUOTA_KEY.format(candidate_id=str(message.candidate_id), quota_type="email", date=today)
-            redis = get_redis()
-            await redis.decr(key)
-        except Exception as e:
-            logger.warning("quota_decr_failed_after_send_error", message_id=str(message.id), error=str(e))
+                today = datetime.now(UTC).strftime("%Y-%m-%d")
+                key = QUOTA_KEY.format(candidate_id=str(message.candidate_id), quota_type="email", date=today)
+                redis = get_redis()
+                await redis.decr(key)
+            except Exception as quota_err:
+                logger.warning("quota_decr_failed_after_send_error", message_id=str(message.id), error=str(quota_err))
         logger.error("email_send_failed", error=str(e), message_id=str(message.id))
         raise ValueError(f"Failed to send email: {e}") from e
 

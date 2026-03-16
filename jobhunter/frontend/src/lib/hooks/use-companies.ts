@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as companiesApi from "@/lib/api/companies";
+import { toastError } from "@/lib/api/error-utils";
 
 export function useCompanies(status?: string) {
   return useQuery({
@@ -67,6 +68,7 @@ export function useApproveCompany() {
       qc.invalidateQueries({ queryKey: ["companies"] });
       qc.invalidateQueries({ queryKey: ["company", id] });
     },
+    onError: (err) => toastError(err, "Failed to approve company"),
   });
 }
 
@@ -98,5 +100,6 @@ export function useRejectCompany() {
       qc.invalidateQueries({ queryKey: ["companies"] });
       qc.invalidateQueries({ queryKey: ["company", id] });
     },
+    onError: (err) => toastError(err, "Failed to reject company"),
   });
 }

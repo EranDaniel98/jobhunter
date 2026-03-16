@@ -87,6 +87,20 @@ async def approve(
                     )
                 except Exception as e:
                     logger.error("graph_resume_approve_failed", action_id=action_id, thread_id=thread_id, error=str(e))
+                    # Clean up stranded message
+                    try:
+                        from app.infrastructure import database as _db_mod
+
+                        async with _db_mod.async_session_factory() as cleanup_db:
+                            result = await cleanup_db.execute(
+                                select(OutreachMessage).where(OutreachMessage.id == action.entity_id)
+                            )
+                            msg = result.scalar_one_or_none()
+                            if msg and msg.status not in ("sent", "failed"):
+                                msg.status = "failed"
+                                await cleanup_db.commit()
+                    except Exception:
+                        logger.warning("graph_resume_cleanup_failed", action_id=action_id)
 
             background_tasks.add_task(_resume_graph)
         else:

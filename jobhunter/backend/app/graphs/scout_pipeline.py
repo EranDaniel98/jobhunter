@@ -188,7 +188,7 @@ async def search_news_node(state: ScoutState) -> dict:
             logger.warning("scout_newsapi_rate_limit_reached", daily_count=int(current))
             return {"raw_articles": [], "status": "pending"}
     except Exception as e:
-        logger.debug("scout_redis_rate_check_failed", error=str(e))
+        logger.warning("scout_redis_rate_check_failed", error=str(e))
 
     newsapi = get_newsapi()
     from_date = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
@@ -214,7 +214,7 @@ async def search_news_node(state: ScoutState) -> dict:
                 pipe.expire(f"newsapi:daily:{today}", 86400)
                 await pipe.execute()
             except Exception as e:
-                logger.debug("scout_redis_usage_tracking_failed", error=str(e))
+                logger.warning("scout_redis_usage_tracking_failed", error=str(e))
 
             for article in articles:
                 url = article.get("url", "")

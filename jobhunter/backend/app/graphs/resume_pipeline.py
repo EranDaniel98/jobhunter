@@ -183,8 +183,12 @@ async def generate_dna_node(state: ResumeProcessingState) -> dict:
 async def recalculate_fits_node(state: ResumeProcessingState) -> dict:
     """Recalculate fit scores for all companies with updated DNA."""
     candidate_id = uuid.UUID(state["candidate_id"])
-    async with _db_mod.async_session_factory() as db:
-        updated = await recalculate_fit_scores(db, candidate_id)
+    try:
+        async with _db_mod.async_session_factory() as db:
+            updated = await recalculate_fit_scores(db, candidate_id)
+    except Exception as e:
+        logger.error("graph_recalculate_fits_failed", candidate_id=str(candidate_id), error=str(e))
+        return {"status": "failed", "error": f"Fit score recalculation failed: {e}"}
     logger.info("graph_recalculate_fits_done", candidate_id=str(candidate_id), updated=updated)
     return {"fit_scores_updated": updated}
 
@@ -291,7 +295,11 @@ def build_resume_pipeline() -> StateGraph:
         _check_error,
         {"mark_failed": "mark_failed", "continue": "recalculate_fits"},
     )
-    builder.add_edge("recalculate_fits", "notify")
+    builder.add_conditional_edges(
+        "recalculate_fits",
+        _check_error,
+        {"mark_failed": "mark_failed", "continue": "notify"},
+    )
     builder.add_edge("notify", END)
     builder.add_edge("mark_failed", END)
 

@@ -155,16 +155,16 @@ export default function ApplyPage() {
     });
   }
 
-  function handleCopyLetter() {
+  async function handleCopyLetter() {
     if (!analysis?.cover_letter) return;
-    navigator.clipboard.writeText(analysis.cover_letter).then(
-      () => {
-        setCopied(true);
-        toast.success("Cover letter copied to clipboard");
-        setTimeout(() => setCopied(false), 2000);
-      },
-      () => toast.error("Failed to copy")
-    );
+    try {
+      await navigator.clipboard.writeText(analysis.cover_letter);
+      setCopied(true);
+      toast.success("Cover letter copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
   }
 
   function handleSelectPosting(posting: JobPostingResponse) {
@@ -717,6 +717,7 @@ export default function ApplyPage() {
                       toast.success("Job posting deleted");
                       setDeleteConfirmId(null);
                     },
+                    onError: () => setDeleteConfirmId(null),
                   });
                 }
               }}

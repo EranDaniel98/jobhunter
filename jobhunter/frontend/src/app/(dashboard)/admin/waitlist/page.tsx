@@ -163,27 +163,23 @@ export default function WaitlistPage() {
     });
   }
 
-  async function handleInviteSingle(id: string) {
-    try {
-      await inviteSingle.mutateAsync(id);
-      toast.success("Invite sent");
-    } catch {
-      toast.error("Failed to send invite");
-    }
+  function handleInviteSingle(id: string) {
+    inviteSingle.mutate(id, {
+      onSuccess: () => toast.success("Invite sent"),
+    });
   }
 
-  async function handleInviteBatch() {
+  function handleInviteBatch() {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    try {
-      const result = await inviteBatch.mutateAsync(ids);
-      setSelected(new Set());
-      toast.success(
-        `${result.invited} invite${result.invited !== 1 ? "s" : ""} sent${result.failed > 0 ? `, ${result.failed} failed` : ""}`
-      );
-    } catch {
-      toast.error("Batch invite failed");
-    }
+    inviteBatch.mutate(ids, {
+      onSuccess: (result) => {
+        setSelected(new Set());
+        toast.success(
+          `${result.invited} invite${result.invited !== 1 ? "s" : ""} sent${result.failed > 0 ? `, ${result.failed} failed` : ""}`
+        );
+      },
+    });
   }
 
   return (

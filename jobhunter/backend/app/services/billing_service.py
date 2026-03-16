@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import stripe
 import structlog
+from fastapi import HTTPException
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -52,23 +53,31 @@ async def create_checkout_session(
 
     # Create or reuse Stripe customer
     if not candidate.stripe_customer_id:
-        customer = stripe.Customer.create(
-            email=candidate.email,
-            name=candidate.full_name,
-            metadata={"candidate_id": str(candidate.id)},
-        )
+        try:
+            customer = stripe.Customer.create(
+                email=candidate.email,
+                name=candidate.full_name,
+                metadata={"candidate_id": str(candidate.id)},
+            )
+        except stripe.StripeError as e:
+            logger.error("stripe_customer_create_failed", error=str(e))
+            raise HTTPException(status_code=502, detail="Payment service temporarily unavailable") from e
         candidate.stripe_customer_id = customer.id
         await db.commit()
 
-    session = stripe.checkout.Session.create(
-        customer=candidate.stripe_customer_id,
-        payment_method_types=["card"],
-        line_items=[{"price": price_id, "quantity": 1}],
-        mode="subscription",
-        success_url=f"{settings.FRONTEND_URL}/plans?success=true",
-        cancel_url=f"{settings.FRONTEND_URL}/plans?canceled=true",
-        metadata={"candidate_id": str(candidate.id), "tier": tier},
-    )
+    try:
+        session = stripe.checkout.Session.create(
+            customer=candidate.stripe_customer_id,
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            mode="subscription",
+            success_url=f"{settings.FRONTEND_URL}/plans?success=true",
+            cancel_url=f"{settings.FRONTEND_URL}/plans?canceled=true",
+            metadata={"candidate_id": str(candidate.id), "tier": tier},
+        )
+    except stripe.StripeError as e:
+        logger.error("stripe_checkout_session_create_failed", error=str(e))
+        raise HTTPException(status_code=502, detail="Payment service temporarily unavailable") from e
     return session.url
 
 

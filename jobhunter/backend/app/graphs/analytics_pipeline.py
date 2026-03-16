@@ -166,20 +166,24 @@ async def save_insights_node(state: AnalyticsState) -> dict:
     insights = state["insights"] or []
     saved = 0
 
-    async with _db_mod.async_session_factory() as db:
-        for insight_data in insights:
-            insight = AnalyticsInsight(
-                id=uuid.uuid4(),
-                candidate_id=candidate_id,
-                insight_type=insight_data.get("insight_type", "recommendation"),
-                title=insight_data.get("title", ""),
-                body=insight_data.get("body", ""),
-                severity=insight_data.get("severity", "info"),
-                data=insight_data.get("data"),
-            )
-            db.add(insight)
-            saved += 1
-        await db.commit()
+    try:
+        async with _db_mod.async_session_factory() as db:
+            for insight_data in insights:
+                insight = AnalyticsInsight(
+                    id=uuid.uuid4(),
+                    candidate_id=candidate_id,
+                    insight_type=insight_data.get("insight_type", "recommendation"),
+                    title=insight_data.get("title", ""),
+                    body=insight_data.get("body", ""),
+                    severity=insight_data.get("severity", "info"),
+                    data=insight_data.get("data"),
+                )
+                db.add(insight)
+                saved += 1
+            await db.commit()
+    except Exception as e:
+        logger.error("analytics_save_insights_failed", error=str(e))
+        return {"status": "failed", "error": f"Failed to save insights: {e}"}
 
     logger.info("analytics_insights_saved", count=saved)
     return {"insights_saved": saved}
@@ -187,11 +191,14 @@ async def save_insights_node(state: AnalyticsState) -> dict:
 
 async def notify_node(state: AnalyticsState) -> dict:
     """Notify via WebSocket and optionally send email digest."""
-    await ws_manager.broadcast(
-        state["candidate_id"],
-        "analytics_completed",
-        {"insights_count": state.get("insights_saved", 0)},
-    )
+    try:
+        await ws_manager.broadcast(
+            state["candidate_id"],
+            "analytics_completed",
+            {"insights_count": state.get("insights_saved", 0)},
+        )
+    except Exception as e:
+        logger.warning("analytics_notify_broadcast_failed", error=str(e))
 
     if state.get("include_email"):
         try:
@@ -229,11 +236,14 @@ async def notify_node(state: AnalyticsState) -> dict:
 
 async def mark_failed_node(state: AnalyticsState) -> dict:
     """Log failure and notify."""
-    await ws_manager.broadcast(
-        state["candidate_id"],
-        "analytics_failed",
-        {"error": state.get("error")},
-    )
+    try:
+        await ws_manager.broadcast(
+            state["candidate_id"],
+            "analytics_failed",
+            {"error": state.get("error")},
+        )
+    except Exception as e:
+        logger.warning("analytics_mark_failed_broadcast_failed", error=str(e))
 
     logger.error(
         "analytics_mark_failed",
@@ -286,8 +296,12 @@ def build_analytics_pipeline() -> StateGraph:
         {"mark_failed": "mark_failed", "continue": "save_insights"},
     )
 
-    # save_insights -> notify
-    builder.add_edge("save_insights", "notify")
+    # save_insights -> notify | mark_failed
+    builder.add_conditional_edges(
+        "save_insights",
+        _check_error,
+        {"mark_failed": "mark_failed", "continue": "notify"},
+    )
 
     # notify -> END
     builder.add_edge("notify", END)

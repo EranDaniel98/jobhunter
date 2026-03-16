@@ -220,7 +220,7 @@ async def delete_posting(
         redis = get_redis()
         await redis.delete(f"apply:analysis:{posting_id}")
     except Exception as e:
-        logger.debug("delete_posting_redis_cleanup_skipped", error=str(e))
+        logger.warning("delete_posting_redis_cleanup_skipped", error=str(e))
 
     await db.delete(posting)
     await db.commit()
@@ -254,7 +254,13 @@ async def get_analysis(
     from app.infrastructure.redis_client import get_redis
 
     redis = get_redis()
-    cached = await redis.get(f"apply:analysis:{posting_id}")
+    try:
+        cached = await redis.get(f"apply:analysis:{posting_id}")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Analysis service temporarily unavailable",
+        ) from exc
     if not cached:
         raise HTTPException(status_code=404, detail="Analysis not found - may have expired")
 

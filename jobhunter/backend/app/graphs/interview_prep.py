@@ -292,13 +292,20 @@ async def save_and_notify_node(state: InterviewPrepState) -> dict:
     """Save generated content to DB and notify via WebSocket."""
     session_id = uuid.UUID(state["session_id"])
 
-    async with _db_mod.async_session_factory() as db:
-        result = await db.execute(select(InterviewPrepSession).where(InterviewPrepSession.id == session_id))
-        session = result.scalar_one_or_none()
-        if session:
-            session.content = state["content"]
-            session.status = "completed"
-            await db.commit()
+    try:
+        async with _db_mod.async_session_factory() as db:
+            result = await db.execute(select(InterviewPrepSession).where(InterviewPrepSession.id == session_id))
+            session = result.scalar_one_or_none()
+            if session:
+                session.content = state["content"]
+                session.status = "completed"
+                await db.commit()
+            else:
+                logger.error("interview_prep_session_not_found", session_id=str(session_id))
+                return {"status": "failed", "error": "Session not found"}
+    except Exception as e:
+        logger.error("interview_prep_save_failed", session_id=str(session_id), error=str(e))
+        return {"status": "failed", "error": f"Failed to save prep session: {e}"}
 
     await ws_manager.broadcast(
         state["candidate_id"],
@@ -368,7 +375,11 @@ def build_interview_prep_pipeline() -> StateGraph:
         _check_error,
         {"mark_failed": "mark_failed", "continue": "save_and_notify"},
     )
-    builder.add_edge("save_and_notify", END)
+    builder.add_conditional_edges(
+        "save_and_notify",
+        _check_error,
+        {"mark_failed": "mark_failed", "continue": END},
+    )
     builder.add_edge("mark_failed", END)
 
     return builder

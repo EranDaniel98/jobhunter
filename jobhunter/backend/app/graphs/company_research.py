@@ -158,7 +158,7 @@ async def web_search_node(state: CompanyResearchState) -> dict:
                         for r in results:
                             collected.append(f"{r.get('title', '')}: {r.get('body', '')}")
                     except Exception as e:
-                        logger.debug("web_search_query_failed", query=query, error=str(e))
+                        logger.warning("web_search_query_failed", query=query, error=str(e))
                         continue
             return collected
 

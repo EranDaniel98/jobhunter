@@ -363,7 +363,11 @@ def build_apply_pipeline() -> StateGraph:
         _check_error,
         {"mark_failed": "mark_failed", "continue": "match_skills"},
     )
-    builder.add_edge("match_skills", "generate_tips")
+    builder.add_conditional_edges(
+        "match_skills",
+        _check_error,
+        {"mark_failed": "mark_failed", "continue": "generate_tips"},
+    )
     builder.add_conditional_edges(
         "generate_tips",
         _check_error,
@@ -374,7 +378,11 @@ def build_apply_pipeline() -> StateGraph:
         _check_error,
         {"mark_failed": "mark_failed", "continue": "save_and_notify"},
     )
-    builder.add_edge("save_and_notify", END)
+    builder.add_conditional_edges(
+        "save_and_notify",
+        _check_error,
+        {"mark_failed": "mark_failed", "continue": END},
+    )
     builder.add_edge("mark_failed", END)
 
     return builder

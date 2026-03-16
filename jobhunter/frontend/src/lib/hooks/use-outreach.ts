@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as outreachApi from "@/lib/api/outreach";
+import { toastError } from "@/lib/api/error-utils";
 
 export function useMessages(params?: { status?: string; channel?: string }) {
   return useQuery({
@@ -26,6 +27,7 @@ export function useDraftMessage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
+    onError: (err) => toastError(err, "Failed to draft message"),
   });
 }
 
@@ -36,6 +38,7 @@ export function useDraftFollowup() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
+    onError: (err) => toastError(err, "Failed to draft followup"),
   });
 }
 
@@ -47,6 +50,7 @@ export function useDraftLinkedIn() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
+    onError: (err) => toastError(err, "Failed to draft LinkedIn message"),
   });
 }
 
@@ -93,6 +97,7 @@ export function useDraftVariants() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
+    onError: (err) => toastError(err, "Failed to draft variants"),
   });
 }
 

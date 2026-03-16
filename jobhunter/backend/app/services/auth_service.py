@@ -140,11 +140,21 @@ async def refresh_token(token: str) -> TokenPair:
     # Check blacklist
     redis = get_redis()
     jti = payload.get("jti")
-    if jti and await redis.get(f"{TOKEN_BLACKLIST_PREFIX}{jti}"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-        )
+    if jti:
+        try:
+            if await redis.get(f"{TOKEN_BLACKLIST_PREFIX}{jti}"):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has been revoked",
+                )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("refresh_token_blacklist_check_failed", jti=jti)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable",
+            ) from exc
 
     candidate_id = payload["sub"]
     access_token, _ = create_access_token(candidate_id)
@@ -152,8 +162,11 @@ async def refresh_token(token: str) -> TokenPair:
 
     # Blacklist old refresh token
     if jti:
-        ttl = settings.JWT_REFRESH_EXPIRE_DAYS * 86400
-        await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{jti}", ttl, "revoked")
+        try:
+            ttl = settings.JWT_REFRESH_EXPIRE_DAYS * 86400
+            await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{jti}", ttl, "revoked")
+        except Exception as e:
+            logger.warning("refresh_token_old_blacklist_failed", jti=jti, error=str(e))
 
     return TokenPair(access_token=access_token, refresh_token=new_refresh)
 
@@ -225,9 +238,12 @@ async def logout(token: str, refresh_token: str | None = None) -> None:
     jti = payload.get("jti")
     if jti:
         redis = get_redis()
-        ttl = settings.JWT_ACCESS_EXPIRE_MINUTES * 60
-        await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{jti}", ttl, "revoked")
-        logger.info("token_blacklisted", jti=jti)
+        try:
+            ttl = settings.JWT_ACCESS_EXPIRE_MINUTES * 60
+            await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{jti}", ttl, "revoked")
+            logger.info("token_blacklisted", jti=jti)
+        except Exception as e:
+            logger.warning("logout_access_token_blacklist_failed", jti=jti, error=str(e))
 
     if refresh_token:
         try:
@@ -239,4 +255,4 @@ async def logout(token: str, refresh_token: str | None = None) -> None:
                 await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{ref_jti}", ttl, "revoked")
                 logger.info("refresh_token_blacklisted", jti=ref_jti)
         except Exception as e:
-            logger.debug("refresh_token_blacklist_skipped", error=str(e))
+            logger.warning("refresh_token_blacklist_skipped", error=str(e))
