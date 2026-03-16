@@ -245,6 +245,7 @@ export default function ApprovalsPage() {
       <PageHeader
         title="Approvals"
         description="Review and approve outreach messages before they are sent"
+        dataTour="page-header"
       />
 
       <Tabs value={statusFilter} onValueChange={setStatusFilter}>
