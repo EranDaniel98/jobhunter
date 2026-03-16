@@ -216,7 +216,7 @@ async def test_resolve_txt_nxdomain_returns_none():
 async def test_resolve_txt_timeout_raises():
     """DNS timeout should raise TimeoutError."""
     mock_resolver = AsyncMock()
-    mock_resolver.resolve = AsyncMock(side_effect=dns.resolver.LifetimeTimeout(timeout=5.0))
+    mock_resolver.resolve = AsyncMock(side_effect=dns.resolver.LifetimeTimeout(timeout=5.0, errors={}))
 
     with (
         patch("app.services.dns_health_service.dns.asyncresolver.Resolver", return_value=mock_resolver),
