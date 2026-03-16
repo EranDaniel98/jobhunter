@@ -73,10 +73,12 @@ async def test_check_budget_passes_when_no_key():
 
 
 @pytest.mark.asyncio
-async def test_check_budget_graceful_on_redis_failure():
-    """If Redis is down, allow the request (graceful degradation)."""
+async def test_check_budget_raises_503_on_redis_failure():
+    """If Redis is down, raise 503 to prevent untracked usage."""
     with patch("app.infrastructure.redis_client.get_redis", side_effect=Exception("Redis down")):
-        await check_budget()  # Should not raise
+        with pytest.raises(HTTPException) as exc_info:
+            await check_budget()
+        assert exc_info.value.status_code == 503
 
 
 @pytest.mark.asyncio
@@ -132,7 +134,8 @@ async def test_record_usage_with_candidate_id_calls_per_user():
         patch("app.services.cost_service._record_per_user", new_callable=AsyncMock) as mock_record,
     ):
         await record_usage(
-            1000, 500,
+            1000,
+            500,
             candidate_id="abc-123",
             endpoint="/api/v1/interview/prep",
             model="gpt-4o",
@@ -165,6 +168,7 @@ async def test_record_usage_per_user_failure_doesnt_crash():
 def test_concurrency_module_exists():
     """Verify concurrency semaphore module can be imported."""
     from app.services.concurrency import acquire_ai_slot
+
     assert acquire_ai_slot is not None
 
 
@@ -180,7 +184,6 @@ async def test_concurrency_semaphore_allows_within_limit():
 @pytest.mark.asyncio
 async def test_concurrency_semaphore_rejects_over_limit():
     """4th concurrent request should get 429."""
-    import asyncio
 
     from app.services.concurrency import _semaphores, acquire_ai_slot
 
@@ -209,6 +212,7 @@ async def test_concurrency_semaphore_rejects_over_limit():
 def test_billing_model_exists():
     """Verify ApiUsageRecord model can be imported."""
     from app.models.billing import ApiUsageRecord
+
     assert ApiUsageRecord.__tablename__ == "api_usage"
 
 
@@ -219,6 +223,7 @@ def test_rls_helpers():
         current_tenant_id,
         install_rls_listener,
     )
+
     assert current_tenant_id.get() is None
     assert install_rls_listener is not None
     assert _has_candidate_id_column is not None
@@ -255,9 +260,7 @@ def test_rls_listener_installs_when_enabled():
         mock_settings.ENABLE_RLS = True
         install_rls_listener(mock_engine)
 
-    mock_event.listens_for.assert_called_once_with(
-        mock_engine.sync_engine, "do_orm_execute"
-    )
+    mock_event.listens_for.assert_called_once_with(mock_engine.sync_engine, "do_orm_execute")
 
 
 def test_has_candidate_id_column_true():

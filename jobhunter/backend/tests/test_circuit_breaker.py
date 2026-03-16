@@ -89,13 +89,15 @@ class TestCheckBudget:
             await check_budget()
 
     @pytest.mark.asyncio
-    async def test_redis_connection_error_allows_request(self):
-        """ConnectionError from Redis should be gracefully handled."""
+    async def test_redis_connection_error_raises_503(self):
+        """ConnectionError from Redis should raise 503 to prevent untracked usage."""
         with patch(
             "app.infrastructure.redis_client.get_redis",
             side_effect=ConnectionError("Connection refused"),
         ):
-            await check_budget()  # Graceful degradation
+            with pytest.raises(HTTPException) as exc_info:
+                await check_budget()
+            assert exc_info.value.status_code == 503
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +155,8 @@ class TestRecordUsage:
             patch("app.services.cost_service._record_per_user", new_callable=AsyncMock) as mock_record,
         ):
             await record_usage(
-                1000, 500,
+                1000,
+                500,
                 candidate_id="user-123",
                 endpoint="/test",
                 model="gpt-4o-mini",
