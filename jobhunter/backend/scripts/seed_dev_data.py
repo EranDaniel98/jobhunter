@@ -1,7 +1,7 @@
 """Seed development data for testing."""
 import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.config import settings
 from app.infrastructure.database import async_session_factory, engine
@@ -22,7 +22,7 @@ async def seed():
     async with async_session_factory() as db:
         # 1. Create test candidate
         candidate_id = uuid.uuid4()
-        now = datetime.now(datetime.UTC)
+        now = datetime.now(UTC)
         candidate = Candidate(
             id=candidate_id,
             email="test@example.com",
@@ -274,7 +274,7 @@ async def seed():
             id=uuid.uuid4(),
             code="dev-invite-code",
             invited_by_id=candidate_id,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=365 * 10),
+            expires_at=datetime.now(UTC) + timedelta(days=365 * 10),
             is_used=False,
         ))
 
