@@ -244,6 +244,7 @@ export default function ResumePage() {
       <PageHeader
         title="Resume & DNA"
         description="Upload your resume to generate your candidate DNA profile"
+        dataTour="page-header"
       />
 
       {hasDna ? (

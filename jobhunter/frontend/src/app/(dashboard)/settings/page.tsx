@@ -203,7 +203,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" description="Manage your profile and job search preferences" />
+      <PageHeader title="Settings" description="Manage your profile and job search preferences" dataTour="page-header" />
 
       <div className="flex flex-col md:flex-row gap-6 min-h-[600px]">
         {/* Sidebar tabs */}

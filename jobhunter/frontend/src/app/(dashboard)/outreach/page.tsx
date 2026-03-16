@@ -319,7 +319,7 @@ export default function OutreachPage() {
 
   return (
     <div className="flex flex-col" style={{ height: "calc(100vh - 5rem)" }}>
-      <PageHeader title="Outreach" description="Manage your outreach messages" />
+      <PageHeader title="Outreach" description="Manage your outreach messages" dataTour="page-header" />
 
       {/* Filters row */}
       <div className="flex flex-wrap items-center gap-3 mb-4">

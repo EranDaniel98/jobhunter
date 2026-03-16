@@ -1,92 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface TourTooltipProps {
-  selector: string;
-  position: "top" | "bottom" | "left" | "right";
   title: string;
   description: string;
   currentStep: number;
   totalSteps: number;
   onNext: () => void;
+  onBack: () => void;
   onSkip: () => void;
   isLast: boolean;
+  isFirst: boolean;
 }
 
 export function TourTooltip({
-  selector,
-  position,
   title,
   description,
   currentStep,
   totalSteps,
   onNext,
+  onBack,
   onSkip,
   isLast,
+  isFirst,
 }: TourTooltipProps) {
-  const [style, setStyle] = useState<React.CSSProperties>({});
-
-  useEffect(() => {
-    const el = document.querySelector(`[data-tour="${selector}"]`);
-    if (!el) return;
-
-    const update = () => {
-      const r = el.getBoundingClientRect();
-      const gap = 16;
-      const tooltipWidth = 340;
-
-      let top = 0;
-      let left = 0;
-
-      switch (position) {
-        case "bottom":
-          top = r.bottom + gap;
-          left = r.left + r.width / 2 - tooltipWidth / 2;
-          break;
-        case "top":
-          top = r.top - gap;
-          left = r.left + r.width / 2 - tooltipWidth / 2;
-          break;
-        case "right":
-          top = r.top + r.height / 2;
-          left = r.right + gap;
-          break;
-        case "left":
-          top = r.top + r.height / 2;
-          left = r.left - gap - tooltipWidth;
-          break;
-      }
-
-      // Clamp to viewport
-      left = Math.max(16, Math.min(left, window.innerWidth - tooltipWidth - 16));
-      top = Math.max(16, top);
-
-      setStyle({
-        position: "fixed",
-        top,
-        left,
-        width: tooltipWidth,
-        zIndex: 62,
-        transform: position === "top" ? "translateY(-100%)" : position === "right" || position === "left" ? "translateY(-50%)" : undefined,
-      });
-    };
-
-    // Wait for scroll to settle
-    const timer = setTimeout(update, 450);
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("resize", update);
-      clearTimeout(timer);
-    };
-  }, [selector, position]);
+  const progress = ((currentStep + 1) / totalSteps) * 100;
 
   return (
-    <div style={style} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <Card className="shadow-xl border-primary/20">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[62] w-full max-w-md px-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <Card className="shadow-xl border-primary/20 overflow-hidden">
+        {/* Progress bar */}
+        <div className="h-1 bg-muted">
+          <div
+            className="h-full bg-primary transition-all duration-500 ease-in-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
         <CardContent className="space-y-3 py-4">
           <div className="flex items-start justify-between">
             <h3 className="font-semibold text-base">{title}</h3>
@@ -103,8 +55,15 @@ export function TourTooltip({
               <Button variant="ghost" size="sm" onClick={onSkip}>
                 Skip tour
               </Button>
+              {!isFirst && (
+                <Button variant="outline" size="sm" onClick={onBack}>
+                  <ChevronLeft className="mr-1 h-3.5 w-3.5" />
+                  Back
+                </Button>
+              )}
               <Button size="sm" onClick={onNext}>
                 {isLast ? "Finish" : "Next"}
+                {!isLast && <ChevronRight className="ml-1 h-3.5 w-3.5" />}
               </Button>
             </div>
           </div>

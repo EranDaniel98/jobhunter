@@ -186,6 +186,7 @@ export default function InterviewPrepPage() {
       <PageHeader
         title="Interview Prep"
         description="AI-powered preparation for your upcoming interviews"
+        dataTour="page-header"
       />
 
       {/* Company Selector */}
