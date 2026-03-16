@@ -94,7 +94,8 @@ async def approve(
             try:
                 await send_outreach(db, action.entity_id, plan_tier=candidate.plan_tier)
             except ValueError as e:
-                logger.warning("approved_send_failed", action_id=action_id, error=str(e))
+                logger.error("approved_send_failed", action_id=action_id, error=str(e))
+                raise HTTPException(status_code=422, detail=f"Approved but send failed: {e}") from e
 
     # Return enriched response
     response = await approval_service.get_pending_action(db, action.id, action.candidate_id)

@@ -167,17 +167,25 @@ export default function SettingsPage() {
   async function handleGenerateInvite() {
     try {
       const result = await createInvite.mutateAsync();
-      await navigator.clipboard.writeText(result.invite_url);
-      toast.success("Invite link copied to clipboard");
+      try {
+        await navigator.clipboard.writeText(result.invite_url);
+        toast.success("Invite link copied to clipboard");
+      } catch {
+        toast.success("Invite created (copy failed — use the link below)");
+      }
     } catch (err) {
       toastError(err, "Failed to generate invite");
     }
   }
 
-  function copyInviteUrl(code: string) {
+  async function copyInviteUrl(code: string) {
     const url = `${window.location.origin}/register?invite=${code}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied");
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Failed to copy link");
+    }
   }
 
   function getInviteStatus(invite: { is_used: boolean; expires_at: string }) {

@@ -44,8 +44,9 @@ class ResendClient:
         # Resend SDK is synchronous - run in executor
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, partial(resend.Emails.send, params))
-        logger.info("email_sent_via_resend", to=to, message_id=result.get("id"))
-        return result
+        result_dict = dict(result) if not isinstance(result, dict) else result
+        logger.info("email_sent_via_resend", to=to, message_id=result_dict.get("id"))
+        return result_dict
 
     def verify_webhook(self, payload: bytes, headers: dict) -> dict:
         wh = Webhook(self._webhook_secret)

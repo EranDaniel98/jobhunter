@@ -66,14 +66,14 @@ async def list_insights(
         .order_by(AnalyticsInsight.created_at.desc())
     )
     if unread_only:
-        query = query.where(not AnalyticsInsight.is_read)
+        query = query.where(AnalyticsInsight.is_read == False)  # noqa: E712
 
     result = await db.execute(query.offset(skip).limit(limit))
     insights = result.scalars().all()
 
     count_query = select(func.count(AnalyticsInsight.id)).where(AnalyticsInsight.candidate_id == candidate.id)
     if unread_only:
-        count_query = count_query.where(not AnalyticsInsight.is_read)
+        count_query = count_query.where(AnalyticsInsight.is_read == False)  # noqa: E712
     total = (await db.execute(count_query)).scalar() or 0
 
     return AnalyticsInsightListResponse(

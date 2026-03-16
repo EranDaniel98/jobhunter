@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
+import { toastError } from "@/lib/api/error-utils";
 import { useRouter } from "next/navigation";
 import {
   useCompany,
@@ -71,7 +72,10 @@ export default function CompanyDetailPage({
     if (!notesDirty) return;
     upsertNotesMutation.mutate(
       { companyId: id, content: noteContent },
-      { onSuccess: () => { setNotesDirty(false); toast.success("Notes saved"); } }
+      {
+        onSuccess: () => { setNotesDirty(false); toast.success("Notes saved"); },
+        onError: (err: unknown) => toastError(err, "Failed to save notes"),
+      }
     );
   }
 

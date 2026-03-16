@@ -471,6 +471,12 @@ async def send_email_node(state: OutreachGraphState) -> dict:
             message.status = MessageStatus.FAILED
             await db.commit()
             logger.error("outreach_graph_send_failed", error=str(e), message_id=str(outreach_message_id))
+            # Decrement quota that was incremented in validate_send_node
+            try:
+                from app.services.quota_service import decrement_usage
+                await decrement_usage(str(state["candidate_id"]), "email")
+            except Exception as dec_err:
+                logger.warning("outreach_quota_decrement_failed", error=str(dec_err))
             return {"status": "failed", "error": f"Failed to send email: {e}"}
 
         # Update message

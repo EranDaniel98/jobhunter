@@ -67,6 +67,17 @@ async def check_and_increment(
     return count
 
 
+async def decrement_usage(candidate_id: str, quota_type: str) -> None:
+    """Decrement quota counter (e.g. when a send fails after increment)."""
+    try:
+        redis = get_redis()
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        key = QUOTA_KEY.format(candidate_id=candidate_id, quota_type=quota_type, date=today)
+        await redis.decr(key)
+    except Exception as e:
+        logger.warning("quota_decrement_failed", candidate_id=candidate_id, quota_type=quota_type, error=str(e))
+
+
 async def get_usage(candidate_id: str, plan_tier: str = "free", is_admin: bool = False) -> dict:
     """Return current usage across user-facing quota types (daily, weekly, monthly)."""
     # Admin sees hunter-tier limits so usage cards show generous caps

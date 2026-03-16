@@ -169,7 +169,7 @@ function ResumeHistoryCard() {
                       toast.success("Resume deleted");
                       setDeleteId(null);
                     },
-                    onError: () => toast.error("Failed to delete resume"),
+                    onError: () => { toast.error("Failed to delete resume"); setDeleteId(null); },
                   });
                 }
               }}

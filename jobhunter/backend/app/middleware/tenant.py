@@ -72,8 +72,10 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     current_tenant_id.set(candidate_id)
                     # Bind to structlog context for all downstream logs
                     structlog.contextvars.bind_contextvars(tenant_id=candidate_id)
-            except Exception:
-                pass  # Auth dependency will handle invalid tokens
+            except (jwt.PyJWTError, KeyError, ValueError):
+                pass  # Expected — auth dependency handles invalid tokens
+            except Exception as e:
+                logger.debug("tenant_extract_unexpected_error", error=str(e))
 
         response = await call_next(request)
 

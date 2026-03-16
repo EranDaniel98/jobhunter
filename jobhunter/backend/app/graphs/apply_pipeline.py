@@ -198,8 +198,11 @@ async def parse_job_node(state: ApplyState) -> dict:
 
 async def match_skills_node(state: ApplyState) -> dict:
     """Compare candidate skills against job requirements."""
-    parsed = state["parsed_requirements"]
-    candidate_skills = set(state["candidate_skills"] or [])
+    parsed = state.get("parsed_requirements")
+    candidate_skills_raw = state.get("candidate_skills")
+    if not parsed or candidate_skills_raw is None:
+        return {"status": "failed", "error": "Missing requirements or candidate skills for matching"}
+    candidate_skills = set(candidate_skills_raw or [])
 
     all_required = set(s.lower() for s in parsed.get("required_skills", []))
     all_preferred = set(s.lower() for s in parsed.get("preferred_skills", []))
@@ -288,11 +291,15 @@ async def save_and_notify_node(state: ApplyState) -> dict:
         "matching_skills": state.get("matching_skills", []),
         "status": "completed",
     }
-    await redis.set(
-        f"apply:analysis:{job_posting_id_str}",
-        json.dumps(analysis),
-        ex=settings.REDIS_APPLY_ANALYSIS_TTL,
-    )
+    try:
+        await redis.set(
+            f"apply:analysis:{job_posting_id_str}",
+            json.dumps(analysis),
+            ex=settings.REDIS_APPLY_ANALYSIS_TTL,
+        )
+    except Exception as e:
+        logger.error("apply_analysis_cache_failed", job_posting_id=job_posting_id_str, error=str(e))
+        return {"status": "failed", "error": f"Failed to cache analysis: {e}"}
 
     await ws_manager.broadcast(
         state["candidate_id"],

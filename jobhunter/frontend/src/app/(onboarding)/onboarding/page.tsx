@@ -74,7 +74,9 @@ export default function OnboardingPage() {
   // If user already completed all wizard steps, auto-complete and redirect to dashboard tour
   useEffect(() => {
     if (isReady && initialStep === "done") {
-      completeOnboarding().then(() => router.push("/dashboard"));
+      completeOnboarding()
+        .then(() => router.push("/dashboard"))
+        .catch(() => toast.error("Could not complete setup. Please refresh and try again."));
     }
   }, [isReady, initialStep, completeOnboarding, router]);
 

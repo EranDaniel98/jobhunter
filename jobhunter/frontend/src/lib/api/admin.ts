@@ -113,7 +113,7 @@ export async function exportUsersCsv(): Promise<void> {
   a.href = url;
   a.download = "users_export.csv";
   a.click();
-  window.URL.revokeObjectURL(url);
+  setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 }
 
 export async function sendBroadcast(

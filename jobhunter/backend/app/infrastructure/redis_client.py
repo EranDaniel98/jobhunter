@@ -14,6 +14,8 @@ async def init_redis() -> aioredis.Redis:
         settings.REDIS_URL,
         decode_responses=True,
     )
+    await redis_client.ping()
+    logger.info("redis_connected")
     return redis_client
 
 

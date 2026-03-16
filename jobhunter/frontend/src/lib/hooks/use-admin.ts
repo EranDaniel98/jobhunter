@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as adminApi from "@/lib/api/admin";
+import { toastError } from "@/lib/api/error-utils";
 import type { WaitlistStatus } from "@/lib/types";
 
 export function useSystemOverview() {
@@ -139,6 +140,7 @@ export function useInviteWaitlistEntry() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "waitlist"] });
     },
+    onError: (err) => toastError(err, "Failed to invite user"),
   });
 }
 
@@ -149,6 +151,7 @@ export function useInviteWaitlistBatch() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "waitlist"] });
     },
+    onError: (err) => toastError(err, "Failed to invite users"),
   });
 }
 

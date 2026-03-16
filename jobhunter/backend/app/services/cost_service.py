@@ -50,8 +50,11 @@ async def check_budget() -> None:
     except HTTPException:
         raise
     except Exception as e:
-        # Graceful degradation: if Redis is down, allow the request
-        logger.warning("cost_budget_check_failed", error=str(e))
+        logger.error("cost_budget_check_failed_redis_unavailable", error=str(e))
+        raise HTTPException(
+            status_code=503,
+            detail="Cost tracking service temporarily unavailable",
+        ) from e
 
 
 async def record_usage(
@@ -136,4 +139,4 @@ async def _record_per_user(
             db.add(record)
             await db.commit()
         except Exception as e:
-            logger.debug("api_usage_insert_skipped", error=str(e))
+            logger.warning("api_usage_insert_failed", error=str(e))

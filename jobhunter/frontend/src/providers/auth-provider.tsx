@@ -49,8 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       const tokens = await authApi.login(email, password);
-      localStorage.setItem("access_token", tokens.access_token);
-      localStorage.setItem("refresh_token", tokens.refresh_token);
+      try {
+        localStorage.setItem("access_token", tokens.access_token);
+        localStorage.setItem("refresh_token", tokens.refresh_token);
+      } catch {
+        console.warn("localStorage unavailable — session will not persist across tabs");
+      }
       const me = await authApi.getMe();
       setUser(me);
       router.push(me.onboarding_completed ? "/dashboard" : "/onboarding");
@@ -88,8 +92,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const me = await authApi.getMe();
       setUser(me);
-    } catch {
-      // Ignore - user may not be authenticated
+    } catch (err) {
+      if (localStorage.getItem("access_token")) {
+        console.warn("Failed to refresh user profile", err);
+      }
     }
   }, []);
 

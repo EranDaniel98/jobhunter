@@ -71,7 +71,9 @@ export function TourOverlay() {
     const nextIdx = clampedStep + 1;
     if (nextIdx >= steps.length) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      completeTour().catch(() => {});
+      completeTour().catch(() => {
+      console.warn("Failed to persist tour completion — will retry on next visit");
+    });
       setDismissed(true);
       router.push("/dashboard");
       return;
@@ -86,7 +88,9 @@ export function TourOverlay() {
 
   const handleSkip = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    completeTour().catch(() => {});
+    completeTour().catch(() => {
+      console.warn("Failed to persist tour completion — will retry on next visit");
+    });
     setDismissed(true);
     router.push("/dashboard");
   }, [completeTour, router]);

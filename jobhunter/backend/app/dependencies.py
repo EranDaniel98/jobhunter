@@ -14,7 +14,7 @@ from app.infrastructure.protocols import (
     NewsAPIClientProtocol,
     OpenAIClientProtocol,
 )
-from app.infrastructure.redis_client import redis_safe_get
+from app.infrastructure.redis_client import get_redis
 from app.models.candidate import Candidate
 from app.utils.security import decode_token
 
@@ -97,10 +97,17 @@ async def get_current_candidate(
             detail="Invalid token type",
         )
 
-    # Check blacklist (graceful degradation: if Redis is down, skip check and log warning)
+    # Check blacklist (fail closed: if Redis is down, reject request)
     jti = payload.get("jti")
     if jti:
-        blacklisted = await redis_safe_get(f"{TOKEN_BLACKLIST_PREFIX}{jti}")
+        try:
+            blacklisted = await get_redis().get(f"{TOKEN_BLACKLIST_PREFIX}{jti}")
+        except Exception as exc:
+            logger.warning("token_blacklist_check_failed_redis_unavailable", jti=jti)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable",
+            ) from exc
         if blacklisted:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

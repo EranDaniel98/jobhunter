@@ -306,6 +306,7 @@ async def score_and_filter_node(state: ScoutState) -> dict:
         existing_domains = {row[0] for row in existing_result.all()}
 
     scored = []
+    failed_count = 0
     for company in parsed:
         domain = company.get("estimated_domain", "").strip().lower()
         if not domain or domain in existing_domains:
@@ -317,6 +318,7 @@ async def score_and_filter_node(state: ScoutState) -> dict:
             embedding = await embed_text(company_text)
             fit_score = cosine_similarity(candidate_embedding, embedding)
         except Exception as e:
+            failed_count += 1
             logger.warning("scout_score_failed", company=company["company_name"], error=str(e))
             continue
 
@@ -327,7 +329,9 @@ async def score_and_filter_node(state: ScoutState) -> dict:
             scored.append(company)
             existing_domains.add(domain)  # Prevent duplicates within batch
 
-    logger.info("scout_scored_and_filtered", input=len(parsed), output=len(scored))
+    if failed_count > 0:
+        logger.error("scout_scoring_partial_failure", failed=failed_count, total=len(parsed))
+    logger.info("scout_scored_and_filtered", input=len(parsed), output=len(scored), failed=failed_count)
     return {"scored_companies": scored}
 
 
@@ -343,50 +347,49 @@ async def create_companies_node(state: ScoutState) -> dict:
     async with _db_mod.async_session_factory() as db:
         for c in scored:
             try:
-                company = Company(
-                    id=uuid.uuid4(),
-                    candidate_id=candidate_id,
-                    name=c["company_name"],
-                    domain=c["domain"],
-                    industry=c.get("industry"),
-                    description=c.get("description"),
-                    funding_stage=c.get("funding_round"),
-                    fit_score=c.get("fit_score"),
-                    embedding=c.get("embedding"),
-                    status="suggested",
-                    research_status="pending",
-                    source="scout_funding",
-                )
-                db.add(company)
-                await db.flush()
+                async with db.begin_nested():
+                    company = Company(
+                        id=uuid.uuid4(),
+                        candidate_id=candidate_id,
+                        name=c["company_name"],
+                        domain=c["domain"],
+                        industry=c.get("industry"),
+                        description=c.get("description"),
+                        funding_stage=c.get("funding_round"),
+                        fit_score=c.get("fit_score"),
+                        embedding=c.get("embedding"),
+                        status="suggested",
+                        research_status="pending",
+                        source="scout_funding",
+                    )
+                    db.add(company)
+                    await db.flush()
 
-                signal = CompanySignal(
-                    id=uuid.uuid4(),
-                    company_id=company.id,
-                    candidate_id=candidate_id,
-                    signal_type="funding_round",
-                    title=f"{c['company_name']} raised {c.get('funding_round', 'funding')}",
-                    description=c.get("description"),
-                    source_url=c.get("source_url"),
-                    signal_strength=c.get("fit_score"),
-                    detected_at=datetime.now(UTC),
-                    metadata_={
-                        "funding_round": c.get("funding_round"),
-                        "amount": c.get("amount"),
-                    },
-                )
-                db.add(signal)
+                    signal = CompanySignal(
+                        id=uuid.uuid4(),
+                        company_id=company.id,
+                        candidate_id=candidate_id,
+                        signal_type="funding_round",
+                        title=f"{c['company_name']} raised {c.get('funding_round', 'funding')}",
+                        description=c.get("description"),
+                        source_url=c.get("source_url"),
+                        signal_strength=c.get("fit_score"),
+                        detected_at=datetime.now(UTC),
+                        metadata_={
+                            "funding_round": c.get("funding_round"),
+                            "amount": c.get("amount"),
+                        },
+                    )
+                    db.add(signal)
                 created += 1
             except IntegrityError:
-                await db.rollback()
                 logger.info("scout_company_duplicate", domain=c["domain"])
                 continue
             except Exception as e:
                 logger.error("scout_create_company_failed", company=c["company_name"], error=str(e))
                 continue
 
-        if created > 0:
-            await db.commit()
+        await db.commit()
 
     logger.info("scout_companies_created", count=created)
     return {"companies_created": created}

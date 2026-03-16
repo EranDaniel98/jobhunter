@@ -511,8 +511,8 @@ export default function CompaniesPage() {
                               aria-label={`Approve ${company.name}`}
                               onClick={() =>
                                 approveMutation.mutate(company.id, {
-                                  onSuccess: () =>
-                                    toast.success("Company approved"),
+                                  onSuccess: () => toast.success("Company approved"),
+                                  onError: (err: unknown) => toastError(err, "Failed to approve company"),
                                 })
                               }
                               disabled={approveMutation.isPending}
@@ -528,8 +528,8 @@ export default function CompaniesPage() {
                                 rejectMutation.mutate(
                                   { id: company.id, reason: "Not interested" },
                                   {
-                                    onSuccess: () =>
-                                      toast.success("Company rejected"),
+                                    onSuccess: () => toast.success("Company rejected"),
+                                    onError: (err: unknown) => toastError(err, "Failed to reject company"),
                                   }
                                 )
                               }

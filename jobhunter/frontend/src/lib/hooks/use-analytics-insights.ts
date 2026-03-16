@@ -40,5 +40,6 @@ export function useMarkInsightRead() {
       qc.invalidateQueries({ queryKey: ["analytics-insights"] });
       qc.invalidateQueries({ queryKey: ["analytics-dashboard"] });
     },
+    onError: (err) => toastError(err, "Failed to mark insight as read"),
   });
 }

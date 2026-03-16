@@ -272,19 +272,32 @@ export default function OutreachPage() {
       return;
     }
     let completed = 0;
+    let failed = 0;
+    const total = drafts.length;
     drafts.forEach((d) => {
       sendMutation.mutate(
         { id: d.id, attachResume: true },
         {
           onSuccess: () => {
             completed++;
-            if (completed === drafts.length) {
-              toast.success(`Sent ${completed} message(s)`);
+            if (completed + failed === total) {
+              if (failed > 0) {
+                toast.warning(`Sent ${completed} of ${total} — ${failed} failed`);
+              } else {
+                toast.success(`Sent ${completed} message(s)`);
+              }
               setSelectedIds(new Set());
               setBulkMode(false);
             }
           },
-          onError: (err: unknown) => toastError(err, `Failed to send ${d.subject}`),
+          onError: () => {
+            failed++;
+            if (completed + failed === total) {
+              toast.error(`${failed} of ${total} sends failed`);
+              setSelectedIds(new Set());
+              setBulkMode(false);
+            }
+          },
         },
       );
     });
@@ -294,18 +307,31 @@ export default function OutreachPage() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     let completed = 0;
+    let failed = 0;
+    const total = ids.length;
     ids.forEach((id) => {
       deleteMutation.mutate(id, {
         onSuccess: () => {
           completed++;
-          if (completed === ids.length) {
-            toast.success(`Deleted ${completed} message(s)`);
+          if (completed + failed === total) {
+            if (failed > 0) {
+              toast.warning(`Deleted ${completed} of ${total} — ${failed} failed`);
+            } else {
+              toast.success(`Deleted ${completed} message(s)`);
+            }
             setSelectedIds(new Set());
             setBulkMode(false);
             setSelectedMessage(null);
           }
         },
-        onError: (err: unknown) => toastError(err, "Failed to delete"),
+        onError: () => {
+          failed++;
+          if (completed + failed === total) {
+            toast.error(`${failed} of ${total} deletes failed`);
+            setSelectedIds(new Set());
+            setBulkMode(false);
+          }
+        },
       });
     });
   }
@@ -809,6 +835,7 @@ export default function OutreachPage() {
                               setSelectedMessage(updated);
                               toast.success("Marked as replied");
                             },
+                            onError: (err: unknown) => toastError(err, "Failed to mark as replied"),
                           })
                         }
                       >

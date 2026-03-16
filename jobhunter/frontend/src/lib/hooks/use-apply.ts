@@ -56,6 +56,7 @@ export function useUpdatePostingStage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["job-postings"] });
     },
+    onError: (err) => toastError(err, "Failed to update stage"),
   });
 }
 
