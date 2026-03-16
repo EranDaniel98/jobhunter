@@ -44,16 +44,13 @@ export function TourOverlay() {
     };
   }, []);
 
-  // Filter out sidebar (nav-*) steps on mobile
+  // Filter out sidebar (nav-*) steps on mobile and clamp currentStep
   const steps = useMemo(
     () => isMobile ? TOUR_STEPS.filter((s) => !s.selector.startsWith("nav-")) : TOUR_STEPS,
     [isMobile]
   );
 
-  // Clamp currentStep when steps array changes (e.g. viewport resize)
-  useEffect(() => {
-    setCurrentStep((prev) => Math.min(prev, steps.length - 1));
-  }, [steps]);
+  const clampedStep = Math.min(currentStep, steps.length - 1);
 
   const navigateToStep = useCallback((idx: number) => {
     if (navigatingRef.current) return;
@@ -71,7 +68,7 @@ export function TourOverlay() {
   }, [steps, router]);
 
   const handleNext = useCallback(() => {
-    const nextIdx = currentStep + 1;
+    const nextIdx = clampedStep + 1;
     if (nextIdx >= steps.length) {
       if (timerRef.current) clearTimeout(timerRef.current);
       completeTour().catch(() => {});
@@ -80,12 +77,12 @@ export function TourOverlay() {
       return;
     }
     navigateToStep(nextIdx);
-  }, [currentStep, steps.length, completeTour, router, navigateToStep]);
+  }, [clampedStep, steps.length, completeTour, router, navigateToStep]);
 
   const handleBack = useCallback(() => {
-    if (currentStep <= 0) return;
-    navigateToStep(currentStep - 1);
-  }, [currentStep, navigateToStep]);
+    if (clampedStep <= 0) return;
+    navigateToStep(clampedStep - 1);
+  }, [clampedStep, navigateToStep]);
 
   const handleSkip = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -114,7 +111,7 @@ export function TourOverlay() {
 
   if (isTourCompleted || dismissed || steps.length === 0) return null;
 
-  const step = steps[currentStep];
+  const step = steps[clampedStep];
 
   return (
     <>
@@ -124,13 +121,13 @@ export function TourOverlay() {
       <TourTooltip
         title={step.title}
         description={step.description}
-        currentStep={currentStep}
+        currentStep={clampedStep}
         totalSteps={steps.length}
         onNext={handleNext}
         onBack={handleBack}
         onSkip={handleSkip}
-        isLast={currentStep === steps.length - 1}
-        isFirst={currentStep === 0}
+        isLast={clampedStep === steps.length - 1}
+        isFirst={clampedStep === 0}
       />
     </>
   );

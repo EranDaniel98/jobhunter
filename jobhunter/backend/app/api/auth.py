@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -151,7 +151,7 @@ async def complete_onboarding(
 ):
     """Mark onboarding wizard as completed for the current candidate."""
     if candidate.onboarding_completed_at is None:
-        candidate.onboarding_completed_at = datetime.now(timezone.utc)
+        candidate.onboarding_completed_at = datetime.now(datetime.UTC)
         await db.commit()
         await db.refresh(candidate)
         logger.info("onboarding_completed", candidate_id=str(candidate.id))
@@ -184,7 +184,7 @@ async def complete_tour(
 ):
     """Mark dashboard tour as completed for the current candidate."""
     if candidate.tour_completed_at is None:
-        candidate.tour_completed_at = datetime.now(timezone.utc)
+        candidate.tour_completed_at = datetime.now(datetime.UTC)
         await db.commit()
         await db.refresh(candidate)
         logger.info("tour_completed", candidate_id=str(candidate.id))
