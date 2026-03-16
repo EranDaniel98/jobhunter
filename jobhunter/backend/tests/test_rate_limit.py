@@ -15,7 +15,7 @@ def _make_request(headers: dict | None = None) -> MagicMock:
 def test_rate_limit_key_uses_candidate_id_from_jwt():
     """Authenticated requests should use candidate_id as rate limit key."""
     req = _make_request({"authorization": "Bearer valid-token"})
-    with patch("app.rate_limit.decode_token", return_value={"sub": "user-123"}):
+    with patch("app.utils.security.decode_token", return_value={"sub": "user-123"}):
         key = _get_rate_limit_key(req)
     assert key == "user:user-123"
 
@@ -24,7 +24,7 @@ def test_rate_limit_key_falls_back_on_jwt_decode_failure():
     """Invalid JWT should fall back to IP-based key."""
     req = _make_request({"authorization": "Bearer bad-token"})
     with (
-        patch("app.rate_limit.decode_token", side_effect=Exception("Invalid")),
+        patch("app.utils.security.decode_token", side_effect=Exception("Invalid")),
         patch("app.rate_limit.get_remote_address", return_value="10.0.0.1"),
     ):
         key = _get_rate_limit_key(req)

@@ -27,6 +27,23 @@ def test_is_rate_limit_500():
     assert _is_rate_limit(_make_http_error(500)) is False
 
 
+def test_is_rate_limit_openai_rate_limit_error():
+    """OpenAI RateLimitError should be detected as rate limit."""
+    try:
+        from openai import RateLimitError
+
+        # If openai is installed, create a real RateLimitError
+        err = RateLimitError(
+            message="Rate limit exceeded",
+            response=httpx.Response(429, request=httpx.Request("POST", "http://x")),
+            body=None,
+        )
+        assert _is_rate_limit(err) is True
+    except ImportError:
+        # openai not installed — the except ImportError: pass branch returns False
+        assert _is_rate_limit(ValueError("not openai")) is False
+
+
 def test_is_rate_limit_random_exception():
     assert _is_rate_limit(ValueError("nope")) is False
 
