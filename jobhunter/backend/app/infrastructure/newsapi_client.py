@@ -43,8 +43,9 @@ class NewsAPIClient:
             return articles
         except httpx.HTTPStatusError as e:
             if e.response.status_code in (401, 403):
-                logger.error("newsapi_auth_error", status=e.response.status_code,
-                             detail="API key may be invalid or expired")
+                logger.error(
+                    "newsapi_auth_error", status=e.response.status_code, detail="API key may be invalid or expired"
+                )
                 raise
             logger.warning("newsapi_http_error", status=e.response.status_code, query=query)
             return []
