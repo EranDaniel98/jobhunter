@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -77,5 +78,9 @@ class CandidateResponse(BaseModel):
     email_verified: bool = True
     preferences: dict | None = None
     plan_tier: str = "free"
+    onboarding_completed_at: datetime | None = None
+    onboarding_completed: bool = False
+    tour_completed_at: datetime | None = None
+    tour_completed: bool = False
 
     model_config = {"from_attributes": True}

@@ -8,11 +8,12 @@ import { Header } from "@/components/layout/header";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Footer } from "@/components/layout/footer";
 import { CommandMenu } from "@/components/layout/command-menu";
+import { TourOverlay } from "@/components/dashboard/tour-overlay";
 
 import { useWebSocket } from "@/lib/hooks/use-websocket";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isOnboarded } = useAuth();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -22,7 +23,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isLoading && !isAuthenticated) {
       router.replace("/login");
     }
-  }, [isAuthenticated, isLoading, router]);
+    if (!isLoading && isAuthenticated && !isOnboarded) {
+      router.replace("/onboarding");
+    }
+  }, [isAuthenticated, isLoading, isOnboarded, router]);
 
   if (isLoading) {
     return (
@@ -32,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!isAuthenticated) return null;
+  if (!isAuthenticated || !isOnboarded) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,6 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main id="main-content" className="p-4 md:p-6 lg:p-8">{children}</main>
         <Footer />
       </div>
+      <TourOverlay />
     </div>
   );
 }

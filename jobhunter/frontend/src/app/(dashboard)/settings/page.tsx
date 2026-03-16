@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { changePasswordSchema, type ChangePasswordFormData } from "@/lib/schemas/auth";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { useInvites, useCreateInvite } from "@/lib/hooks/use-invites";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -21,7 +22,7 @@ import type { PlanTier } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   User, Shield, Target, CreditCard, UserPlus,
-  Copy, Loader2, Plus, X, Eye, EyeOff,
+  Copy, Loader2, Plus, X, Eye, EyeOff, RotateCcw,
 } from "lucide-react";
 
 const TABS = [
@@ -43,7 +44,8 @@ const PLAN_DISPLAY: Record<PlanTier, { name: string; className: string }> = {
 type InviteFilter = "all" | "active" | "used" | "expired";
 
 export default function SettingsPage() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, resetTour } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [loading, setLoading] = useState(false);
 
@@ -201,7 +203,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" description="Manage your profile and job search preferences" />
+      <PageHeader title="Settings" description="Manage your profile and job search preferences" dataTour="page-header" />
 
       <div className="flex flex-col md:flex-row gap-6 min-h-[600px]">
         {/* Sidebar tabs */}
@@ -601,6 +603,34 @@ export default function SettingsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Guided Tour */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Guided Tour</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm">Replay the dashboard guided tour</p>
+              <p className="text-xs text-muted-foreground">
+                Walk through each feature again with spotlight explanations.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                resetTour();
+                router.push("/dashboard");
+              }}
+            >
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+              Replay tour
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Sticky save bar (profile/preferences changes) */}
       {isDirty && (

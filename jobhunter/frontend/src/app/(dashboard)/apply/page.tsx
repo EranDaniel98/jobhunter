@@ -186,7 +186,7 @@ export default function ApplyPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Apply" description="Analyze job postings and get tailored application materials">
+      <PageHeader title="Apply" description="Analyze job postings and get tailored application materials" dataTour="page-header">
         <Button onClick={() => { setShowForm(true); setSelectedPostingId(null); }}>
           <Plus className="mr-2 h-4 w-4" />
           Analyze Job

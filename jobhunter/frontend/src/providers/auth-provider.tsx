@@ -14,6 +14,11 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateProfile: (updates: CandidateUpdate) => Promise<void>;
   refreshUser: () => Promise<void>;
+  isOnboarded: boolean;
+  isTourCompleted: boolean;
+  completeOnboarding: () => Promise<void>;
+  completeTour: () => Promise<void>;
+  resetTour: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -48,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("refresh_token", tokens.refresh_token);
       const me = await authApi.getMe();
       setUser(me);
-      router.push("/dashboard");
+      router.push(me.onboarding_completed ? "/dashboard" : "/onboarding");
     },
     [router]
   );
@@ -88,17 +93,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const completeOnboarding = useCallback(async () => {
+    const updated = await authApi.completeOnboarding();
+    setUser(updated);
+  }, []);
+
+  const completeTour = useCallback(async () => {
+    const updated = await authApi.completeTour();
+    setUser(updated);
+  }, []);
+
+  const resetTour = useCallback(() => {
+    if (user) {
+      setUser({ ...user, tour_completed: false, tour_completed_at: null });
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isLoading,
         isAuthenticated: !!user,
+        isOnboarded: !!(user?.onboarding_completed),
+        isTourCompleted: !!(user?.tour_completed),
         login,
         register,
         logout,
         updateProfile,
         refreshUser,
+        completeOnboarding,
+        completeTour,
+        resetTour,
       }}
     >
       {children}

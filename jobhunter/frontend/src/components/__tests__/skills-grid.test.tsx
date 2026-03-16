@@ -70,13 +70,15 @@ describe('SkillsGrid', () => {
 
   it('shows years of experience when available', () => {
     render(<SkillsGrid skills={mockSkills} />)
-    expect(screen.getByText('5y exp')).toBeInTheDocument()
-    expect(screen.getByText('3y exp')).toBeInTheDocument()
+    expect(screen.getByText('5y')).toBeInTheDocument()
+    expect(screen.getByText('3y')).toBeInTheDocument()
   })
 
-  it('shows evidence text when available', () => {
+  it('shows evidence icon when evidence is available', () => {
     render(<SkillsGrid skills={mockSkills} />)
-    expect(screen.getByText('Used TypeScript in production for 5 years')).toBeInTheDocument()
+    // Skills with evidence get an "Evidence-backed" icon, without get "Inferred"
+    expect(screen.getByTitle('Evidence-backed')).toBeInTheDocument()
+    expect(screen.getAllByTitle('Inferred')).toHaveLength(2)
   })
 
   it('handles a single skill', () => {

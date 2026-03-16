@@ -20,6 +20,10 @@ export interface CandidateResponse {
   email_verified: boolean;
   preferences: Record<string, unknown> | null;
   plan_tier: PlanTier;
+  onboarding_completed_at: string | null;
+  onboarding_completed: boolean;
+  tour_completed_at: string | null;
+  tour_completed: boolean;
 }
 
 export interface CandidateUpdate {

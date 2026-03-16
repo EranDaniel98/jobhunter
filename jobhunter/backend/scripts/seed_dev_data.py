@@ -1,7 +1,7 @@
 """Seed development data for testing."""
 import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.config import settings
 from app.infrastructure.database import async_session_factory, engine
@@ -22,6 +22,7 @@ async def seed():
     async with async_session_factory() as db:
         # 1. Create test candidate
         candidate_id = uuid.uuid4()
+        now = datetime.now(UTC)
         candidate = Candidate(
             id=candidate_id,
             email="test@example.com",
@@ -35,6 +36,8 @@ async def seed():
             salary_min=150000,
             salary_max=280000,
             is_admin=True,
+            onboarding_completed_at=now,
+            tour_completed_at=now,
         )
         db.add(candidate)
         await db.flush()  # Ensure candidate row exists before FK-dependent inserts
@@ -207,7 +210,6 @@ async def seed():
         await db.flush()  # Ensure contacts exist before outreach messages
 
         # 7. Outreach messages in various statuses
-        now = datetime.now(timezone.utc)
         message_statuses = [
             ("draft", None, None, None),
             ("sent", now - timedelta(days=3), None, None),
@@ -272,7 +274,7 @@ async def seed():
             id=uuid.uuid4(),
             code="dev-invite-code",
             invited_by_id=candidate_id,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=365 * 10),
+            expires_at=datetime.now(UTC) + timedelta(days=365 * 10),
             is_used=False,
         ))
 

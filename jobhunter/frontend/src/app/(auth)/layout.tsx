@@ -6,14 +6,14 @@ import { useAuth } from "@/providers/auth-provider";
 import { Briefcase } from "lucide-react";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isOnboarded } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/dashboard");
+      router.replace(isOnboarded ? "/dashboard" : "/onboarding");
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, isOnboarded, router]);
 
   if (isLoading) return null;
   if (isAuthenticated) return null;

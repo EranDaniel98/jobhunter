@@ -297,7 +297,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Analytics" description="Track your job search pipeline and outreach performance">
+      <PageHeader title="Analytics" description="Track your job search pipeline and outreach performance" dataTour="page-header">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={!dashboard}>
             <Download className="mr-2 h-4 w-4" />

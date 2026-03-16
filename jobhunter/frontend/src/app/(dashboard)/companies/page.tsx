@@ -195,6 +195,7 @@ export default function CompaniesPage() {
       <PageHeader
         title="Companies"
         description="Track and manage your target company pipeline"
+        dataTour="page-header"
       />
 
       {/* Stats row */}

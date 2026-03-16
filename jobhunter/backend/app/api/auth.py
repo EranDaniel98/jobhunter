@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -46,6 +47,10 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
         email_verified=candidate.email_verified,
         preferences=candidate.preferences,
         plan_tier=candidate.plan_tier,
+        onboarding_completed_at=candidate.onboarding_completed_at,
+        onboarding_completed=candidate.onboarding_completed_at is not None,
+        tour_completed_at=candidate.tour_completed_at,
+        tour_completed=candidate.tour_completed_at is not None,
     )
 
 
@@ -98,6 +103,10 @@ async def get_me(candidate: Candidate = Depends(get_current_candidate)):
         email_verified=candidate.email_verified,
         preferences=candidate.preferences,
         plan_tier=candidate.plan_tier,
+        onboarding_completed_at=candidate.onboarding_completed_at,
+        onboarding_completed=candidate.onboarding_completed_at is not None,
+        tour_completed_at=candidate.tour_completed_at,
+        tour_completed=candidate.tour_completed_at is not None,
     )
 
 
@@ -128,6 +137,76 @@ async def update_me(
         email_verified=candidate.email_verified,
         preferences=candidate.preferences,
         plan_tier=candidate.plan_tier,
+        onboarding_completed_at=candidate.onboarding_completed_at,
+        onboarding_completed=candidate.onboarding_completed_at is not None,
+        tour_completed_at=candidate.tour_completed_at,
+        tour_completed=candidate.tour_completed_at is not None,
+    )
+
+
+@router.post("/complete-onboarding", response_model=CandidateResponse)
+async def complete_onboarding(
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark onboarding wizard as completed for the current candidate."""
+    if candidate.onboarding_completed_at is None:
+        candidate.onboarding_completed_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(candidate)
+        logger.info("onboarding_completed", candidate_id=str(candidate.id))
+    return CandidateResponse(
+        id=str(candidate.id),
+        email=candidate.email,
+        full_name=candidate.full_name,
+        headline=candidate.headline,
+        location=candidate.location,
+        target_roles=candidate.target_roles,
+        target_industries=candidate.target_industries,
+        target_locations=candidate.target_locations,
+        salary_min=candidate.salary_min,
+        salary_max=candidate.salary_max,
+        is_admin=candidate.is_admin,
+        email_verified=candidate.email_verified,
+        preferences=candidate.preferences,
+        plan_tier=candidate.plan_tier,
+        onboarding_completed_at=candidate.onboarding_completed_at,
+        onboarding_completed=candidate.onboarding_completed_at is not None,
+        tour_completed_at=candidate.tour_completed_at,
+        tour_completed=candidate.tour_completed_at is not None,
+    )
+
+
+@router.post("/complete-tour", response_model=CandidateResponse)
+async def complete_tour(
+    candidate: Candidate = Depends(get_current_candidate),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark dashboard tour as completed for the current candidate."""
+    if candidate.tour_completed_at is None:
+        candidate.tour_completed_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(candidate)
+        logger.info("tour_completed", candidate_id=str(candidate.id))
+    return CandidateResponse(
+        id=str(candidate.id),
+        email=candidate.email,
+        full_name=candidate.full_name,
+        headline=candidate.headline,
+        location=candidate.location,
+        target_roles=candidate.target_roles,
+        target_industries=candidate.target_industries,
+        target_locations=candidate.target_locations,
+        salary_min=candidate.salary_min,
+        salary_max=candidate.salary_max,
+        is_admin=candidate.is_admin,
+        email_verified=candidate.email_verified,
+        preferences=candidate.preferences,
+        plan_tier=candidate.plan_tier,
+        onboarding_completed_at=candidate.onboarding_completed_at,
+        onboarding_completed=candidate.onboarding_completed_at is not None,
+        tour_completed_at=candidate.tour_completed_at,
+        tour_completed=candidate.tour_completed_at is not None,
     )
 
 
