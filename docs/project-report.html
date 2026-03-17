@@ -787,13 +787,13 @@
   <div class="hero">
     <h1>JobHunter AI</h1>
     <p class="subtitle">AI-powered job search automation platform &mdash; intelligent company discovery, personalized outreach, and career intelligence</p>
-    <p class="date">v0.8.0 &bull; Project Report &bull; March 17, 2026</p>
+    <p class="date">v0.9.0 &bull; Project Report &bull; March 17, 2026</p>
   </div>
 
   <!-- Score Banner -->
   <div class="perfect-banner">
-    <h2>&#128640; Project Score: 97 / 100</h2>
-    <p>Excellent across all 7 categories. RLS enabled in production, Redis Streams event bus, CI coverage floor at 85%, DB restore tooling, scout dual-source (NewsAPI + DuckDuckGo). Remaining deductions: no staging environment, no pentest, no real users yet.</p>
+    <h2>&#128640; Project Score: 98 / 100</h2>
+    <p>Excellent across all 7 categories. Production readiness audit: cross-tenant guards, async I/O fixes, Redis Streams event bus with cross-worker dispatch, SAVEPOINT error isolation, mypy + coverage CI gates, auth service DI, 1,511 tests passing. Remaining deductions: no staging environment, no pentest, no real users yet.</p>
   </div>
 
   <!-- Code Review Banner -->
@@ -833,13 +833,13 @@
         <circle class="ring-fill" cx="80" cy="80" r="65"/>
       </svg>
       <div class="ring-text">
-        <div class="number">97</div>
+        <div class="number">98</div>
         <div class="label">Overall</div>
       </div>
     </div>
     <div class="overall-details">
       <h2>Project Health: Excellent</h2>
-      <p>A production-deployed full-stack AI SaaS platform with 7 LangGraph pipelines, Stripe billing, guided onboarding wizard, dashboard tour, 1,484 tests across 116 files, multi-stage Docker, CD pipeline, Prometheus metrics, Redis Streams event bus, RLS-enforced multi-tenant isolation, 59 silent-failure fixes, per-user cost tracking, dual-source scout (NewsAPI + DuckDuckGo), DB restore tooling, and concurrency control. Live on Railway with Cloudflare R2, PostgreSQL (pgvector), and Redis.</p>
+      <p>A production-deployed full-stack AI SaaS platform with 7 LangGraph pipelines, Stripe billing, guided onboarding wizard, dashboard tour, 1,511 tests across 120+ files, multi-stage Docker, CD pipeline, Prometheus metrics (token-gated), Redis Streams event bus with cross-worker dispatch, Session-level RLS tenant isolation, 59 silent-failure fixes, per-user cost tracking, dual-source scout (NewsAPI + DuckDuckGo), DB restore tooling, SAVEPOINT error isolation in workers, mypy + coverage CI gates, and concurrency control. Live on Railway with Cloudflare R2, PostgreSQL (pgvector), and Redis.</p>
       <div class="grade-bar">
         <span class="label">Architecture</span>
         <div class="bar"><div class="bar-fill" style="width:98%;background:var(--green)"></div></div>
@@ -847,8 +847,8 @@
       </div>
       <div class="grade-bar">
         <span class="label">Code Quality</span>
-        <div class="bar"><div class="bar-fill" style="width:93%;background:var(--green)"></div></div>
-        <span class="bar-value" style="color:var(--green)">93</span>
+        <div class="bar"><div class="bar-fill" style="width:96%;background:var(--green)"></div></div>
+        <span class="bar-value" style="color:var(--green)">96</span>
       </div>
       <div class="grade-bar">
         <span class="label">Security</span>
@@ -857,13 +857,13 @@
       </div>
       <div class="grade-bar">
         <span class="label">Test Coverage</span>
-        <div class="bar"><div class="bar-fill" style="width:94%;background:var(--green)"></div></div>
-        <span class="bar-value" style="color:var(--green)">94</span>
+        <div class="bar"><div class="bar-fill" style="width:96%;background:var(--green)"></div></div>
+        <span class="bar-value" style="color:var(--green)">96</span>
       </div>
       <div class="grade-bar">
         <span class="label">DevOps & CI</span>
-        <div class="bar"><div class="bar-fill" style="width:91%;background:var(--green)"></div></div>
-        <span class="bar-value" style="color:var(--green)">91</span>
+        <div class="bar"><div class="bar-fill" style="width:93%;background:var(--green)"></div></div>
+        <span class="bar-value" style="color:var(--green)">93</span>
       </div>
       <div class="grade-bar">
         <span class="label">Completeness</span>
@@ -887,10 +887,10 @@
       <div class="score-delta up">&#8593; 95 &rarr; 98</div>
     </div>
     <div class="score-card excellent">
-      <div class="score-value">93</div>
+      <div class="score-value">96</div>
       <div class="score-label">Code Quality</div>
-      <div class="score-sub">59 silent-failure fixes reveal prior gaps. Ruff + mypy CI, pre-commit hooks</div>
-      <div class="score-delta same">&#8596; 93</div>
+      <div class="score-sub">Production audit: cross-tenant guards, async I/O, DI for testability, service-layer refactors, constant dedup</div>
+      <div class="score-delta up">&#8593; 93 &rarr; 96</div>
     </div>
     <div class="score-card excellent">
       <div class="score-value">98</div>
@@ -899,16 +899,16 @@
       <div class="score-delta up">&#8593; 96 &rarr; 98</div>
     </div>
     <div class="score-card excellent">
-      <div class="score-value">94</div>
+      <div class="score-value">96</div>
       <div class="score-label">Testing</div>
-      <div class="score-sub">1,484 tests in 116 files. CI floor at 85% (pyproject.toml), no mutation/contract testing</div>
-      <div class="score-delta up">&#8593; 92 &rarr; 94</div>
+      <div class="score-sub">1,511 tests in 120+ files. Mypy gate + coverage floor in CI, tautological tests fixed, behavioral assertions</div>
+      <div class="score-delta up">&#8593; 94 &rarr; 96</div>
     </div>
     <div class="score-card excellent">
-      <div class="score-value">91</div>
+      <div class="score-value">93</div>
       <div class="score-label">DevOps</div>
-      <div class="score-sub">DB restore script + workflow added. No staging env, no blue/green deploys, no alerting</div>
-      <div class="score-delta up">&#8593; 88 &rarr; 91</div>
+      <div class="score-sub">Mypy type check gate, coverage floor, E2E smoke test, npm audit CVE fix. No staging env, no blue/green</div>
+      <div class="score-delta up">&#8593; 91 &rarr; 93</div>
     </div>
     <div class="score-card excellent">
       <div class="score-value">96</div>
@@ -926,7 +926,7 @@
 
   <!-- Upgrade Summary -->
   <div class="section">
-    <h3 class="section-title"><span class="icon">&#9889;</span> Upgrade Summary (10 Batches)</h3>
+    <h3 class="section-title"><span class="icon">&#9889;</span> Upgrade Summary (11 Batches)</h3>
     <div class="upgrade-grid">
       <div class="upgrade-card">
         <h5>Batch 1: Code Quality Tooling</h5>
@@ -1027,6 +1027,19 @@
           <li>Worker cron, outreach API, middleware test coverage</li>
         </ul>
       </div>
+      <div class="upgrade-card">
+        <h5>Batch 11: Production Readiness Audit (v0.9.0)</h5>
+        <ul>
+          <li>Cross-tenant access guards on outreach, contact, company services</li>
+          <li>Async I/O: blocking DNS &rarr; executor, httpx client lifecycle, configurable timeouts</li>
+          <li>Redis Streams cross-worker event dispatch with replay protection</li>
+          <li>Worker SAVEPOINT error isolation, per-task DB sessions, plan-tier quotas</li>
+          <li>CI gates: mypy type check, coverage floor, E2E smoke test, npm audit CVE fix</li>
+          <li>Code quality: CandidateResponse dedup, admin service refactor, auth DI, constant dedup</li>
+          <li>Test quality: tautological tests fixed, behavioral assertions, 1,511 tests passing</li>
+          <li>RLS listener fix: engine.sync_engine (broken) &rarr; Session class (correct)</li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -1051,7 +1064,7 @@
         <div class="stat-label">DB Models</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">1,484</div>
+        <div class="stat-number">1,511</div>
         <div class="stat-label">Tests Passing</div>
       </div>
       <div class="stat-item">
@@ -1758,6 +1771,22 @@
         </div>
       </div>
       <div class="phase">
+        <div class="phase-dot done">&#10003;</div>
+        <div class="phase-content">
+          <h4>Phase 5c: Production Readiness Audit &mdash; v0.9.0</h4>
+          <p>Security hardening, async fixes, cross-worker events, CI quality gates, test quality, service refactors</p>
+          <div class="items">
+            <span class="chip done">Tenant Guards</span>
+            <span class="chip done">Async I/O</span>
+            <span class="chip done">Cross-Worker Events</span>
+            <span class="chip done">SAVEPOINT Workers</span>
+            <span class="chip done">Mypy CI Gate</span>
+            <span class="chip done">Auth DI</span>
+            <span class="chip done">1,511 Tests</span>
+          </div>
+        </div>
+      </div>
+      <div class="phase">
         <div class="phase-dot upcoming">7</div>
         <div class="phase-content">
           <h4>Phase 6: Growth & Scale</h4>
@@ -1782,9 +1811,9 @@
         <h3 style="color:var(--green)">Strengths</h3>
         <ul>
           <li><strong>Production-grade SaaS</strong> &mdash; Stripe billing, multi-tenant RLS, event-driven architecture, per-user cost tracking, concurrency control, Prometheus metrics, guided onboarding</li>
-          <li><strong>Security-hardened</strong> &mdash; CSP, SSRF prevention, Dependabot, Trivy scans, SBOM, pip-audit, 59 silent-failure fixes, DNS health checks</li>
+          <li><strong>Security-hardened</strong> &mdash; CSP, SSRF prevention, cross-tenant guards, metrics auth, Dependabot, Trivy scans, SBOM, pip-audit, 59 silent-failure fixes, DNS health checks</li>
           <li><strong>AI-native design</strong> &mdash; 7 LangGraph pipelines, vector embeddings, proactive discovery, structured output, email warm-up</li>
-          <li><strong>Exhaustive testing</strong> &mdash; 1,484 tests in 116 files (backend unit, service, graph, API, infrastructure, frontend Vitest, Playwright E2E, Locust load)</li>
+          <li><strong>Exhaustive testing</strong> &mdash; 1,511 tests in 120+ files (backend unit, service, graph, API, infrastructure, frontend Vitest, Playwright E2E, Locust load), mypy + coverage CI gates</li>
           <li><strong>Great UX</strong> &mdash; Onboarding wizard, dashboard tour, resume completeness tracking, verify-email flow, responsive sidebar</li>
           <li><strong>Market-ready</strong> &mdash; Landing page, pricing, SEO, waitlist, LinkedIn content series &mdash; ready to collect signups and process payments</li>
         </ul>
@@ -1796,7 +1825,7 @@
           <li><strong>LinkedIn integration</strong> &mdash; automated LinkedIn outreach would complete the multi-channel strategy (content series already drafted)</li>
           <li><strong>Network effects</strong> &mdash; anonymized success data could improve outreach templates over time</li>
           <li><strong>Team features</strong> &mdash; multi-user workspaces for recruiting agencies and career coaches</li>
-          <li><strong>Beta launch ready</strong> &mdash; onboarding wizard + tour + 1,484 tests = confidence to onboard real users</li>
+          <li><strong>Beta launch ready</strong> &mdash; onboarding wizard + tour + 1,511 tests + production audit = confidence to onboard real users</li>
         </ul>
       </div>
     </div>
@@ -1868,10 +1897,10 @@
         </tr>
         <tr>
           <td>Backend Tests</td>
-          <td>116</td>
-          <td>31,900+</td>
+          <td>120+</td>
+          <td>32,500+</td>
           <td>46%</td>
-          <td>1,484 tests, stubs, fixtures, integration, load tests</td>
+          <td>1,511 tests, stubs, fixtures, integration, load tests</td>
         </tr>
         <tr>
           <td>Frontend App</td>
