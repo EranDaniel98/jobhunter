@@ -304,7 +304,7 @@ async def parse_articles_node(state: ScoutState) -> dict:
         return {"parsed_companies": [], "companies_created": 0, "status": "completed"}
 
     # Attach source URLs from articles (best effort match by company name)
-    article_urls: dict[str, str] = {}
+    article_urls: dict[str, list[str]] = {}
     for a in articles:
         title = (a.get("title") or "").lower()
         desc = (a.get("description") or "").lower()
