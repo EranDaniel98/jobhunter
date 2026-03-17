@@ -122,8 +122,10 @@ async def test_checkout_free_tier_returns_400(client: AsyncClient, auth_headers:
 @pytest.mark.asyncio
 async def test_checkout_with_stripe_creates_session(client: AsyncClient, auth_headers: dict):
     """With Stripe mocked, checkout session creates and returns URL."""
-    original = settings.STRIPE_SECRET_KEY
+    original_key = settings.STRIPE_SECRET_KEY
+    original_price = settings.STRIPE_PRICE_EXPLORER
     settings.STRIPE_SECRET_KEY = "sk_test_fake"
+    settings.STRIPE_PRICE_EXPLORER = "price_test_explorer"
     try:
         with patch("app.services.billing_service.stripe") as mock_stripe:
             mock_stripe.Customer.create.return_value = SimpleNamespace(id="cus_mock")
@@ -141,7 +143,8 @@ async def test_checkout_with_stripe_creates_session(client: AsyncClient, auth_he
             assert data["status"] == "ok"
             assert data["url"] == "https://checkout.stripe.com/test_session"
     finally:
-        settings.STRIPE_SECRET_KEY = original
+        settings.STRIPE_SECRET_KEY = original_key
+        settings.STRIPE_PRICE_EXPLORER = original_price
 
 
 @pytest.mark.asyncio
