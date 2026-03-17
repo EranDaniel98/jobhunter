@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # Gate release on CI passing
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [ci]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for changelog generation
+
+      - name: Get previous tag
+        id: prev_tag
+        run: |
+          PREV=$(git tag --sort=-v:refname | grep '^v' | sed -n '2p')
+          echo "tag=${PREV}" >> "$GITHUB_OUTPUT"
+          echo "Previous tag: ${PREV}"
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV="${{ steps.prev_tag.outputs.tag }}"
+
+          if [ -z "$PREV" ]; then
+            RANGE="$TAG"
+          else
+            RANGE="${PREV}..${TAG}"
+          fi
+
+          echo "Generating notes for range: $RANGE"
+
+          # Group commits by type
+          FEATURES=$(git log "$RANGE" --pretty=format:"- %s" --grep="^feat" || true)
+          FIXES=$(git log "$RANGE" --pretty=format:"- %s" --grep="^fix" || true)
+          TESTS=$(git log "$RANGE" --pretty=format:"- %s" --grep="^test" || true)
+          CHORES=$(git log "$RANGE" --pretty=format:"- %s" --grep="^chore\|^style\|^refactor\|^docs" || true)
+
+          # Build body
+          BODY=""
+
+          if [ -n "$FEATURES" ]; then
+            BODY="${BODY}## Features\n${FEATURES}\n\n"
+          fi
+
+          if [ -n "$FIXES" ]; then
+            BODY="${BODY}## Fixes\n${FIXES}\n\n"
+          fi
+
+          if [ -n "$TESTS" ]; then
+            BODY="${BODY}## Tests\n${TESTS}\n\n"
+          fi
+
+          if [ -n "$CHORES" ]; then
+            BODY="${BODY}## Maintenance\n${CHORES}\n\n"
+          fi
+
+          # Stats
+          COMMIT_COUNT=$(git rev-list --count "$RANGE" 2>/dev/null || echo "0")
+          FILE_COUNT=$(git diff --name-only "$RANGE" 2>/dev/null | wc -l || echo "0")
+          BODY="${BODY}## Stats\n- **${COMMIT_COUNT}** commits\n- **${FILE_COUNT}** files changed\n\n"
+          BODY="${BODY}**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV}...${TAG}"
+
+          # Write to file for gh release
+          echo -e "$BODY" > release-notes.md
+          cat release-notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md
