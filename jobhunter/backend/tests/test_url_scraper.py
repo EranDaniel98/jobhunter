@@ -1,5 +1,5 @@
-import pytest
 import httpx
+import pytest
 
 from app.infrastructure.url_scraper import scrape_job_url
 

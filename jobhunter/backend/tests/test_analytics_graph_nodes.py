@@ -1,6 +1,5 @@
 """Tests for the LangGraph analytics pipeline node functions."""
 
-import json
 import uuid
 
 import pytest
@@ -9,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.candidate import Candidate, CandidateDNA, Skill
 from app.utils.security import hash_password
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

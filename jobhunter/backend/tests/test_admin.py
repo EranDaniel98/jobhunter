@@ -1,7 +1,7 @@
 """Comprehensive tests for admin dashboard API endpoints."""
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -66,7 +66,7 @@ async def _create_invite(
         code=secrets.token_urlsafe(16),
         invited_by_id=inviter_id,
         used_by_id=used_by_id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
         is_used=used_by_id is not None,
     )
     db.add(invite)
@@ -172,7 +172,7 @@ class TestSystemOverview:
         # One sent message, one draft - only sent should count
         db_session.add(OutreachMessage(
             id=uuid.uuid4(), contact_id=contact.id, candidate_id=admin_user.id,
-            body="sent msg", status="sent", sent_at=datetime.now(timezone.utc),
+            body="sent msg", status="sent", sent_at=datetime.now(UTC),
         ))
         db_session.add(OutreachMessage(
             id=uuid.uuid4(), contact_id=contact.id, candidate_id=admin_user.id,
@@ -302,7 +302,7 @@ class TestUserList:
 
         db_session.add(OutreachMessage(
             id=uuid.uuid4(), contact_id=contact.id, candidate_id=admin_user.id,
-            body="sent", status="sent", sent_at=datetime.now(timezone.utc),
+            body="sent", status="sent", sent_at=datetime.now(UTC),
         ))
         await db_session.flush()
 
@@ -621,7 +621,7 @@ class TestTopUsers:
         await db_session.flush()
         db_session.add(OutreachMessage(
             id=uuid.uuid4(), contact_id=contact.id, candidate_id=admin_user.id,
-            body="top msg", status="sent", sent_at=datetime.now(timezone.utc),
+            body="top msg", status="sent", sent_at=datetime.now(UTC),
         ))
         await db_session.flush()
 

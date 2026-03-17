@@ -6,9 +6,8 @@
 - Broadcast email
 - Login guard for suspended users
 """
-import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -20,10 +19,6 @@ from app.config import settings
 from app.models.analytics import AnalyticsEvent
 from app.models.audit import AdminAuditLog
 from app.models.candidate import Candidate
-from app.models.company import Company
-from app.models.contact import Contact
-from app.models.invite import InviteCode
-from app.models.outreach import OutreachMessage
 from app.utils.security import hash_password
 
 API = settings.API_V1_PREFIX
@@ -83,7 +78,7 @@ async def _create_analytics_event(
         candidate_id=candidate_id,
         event_type=event_type,
         entity_type=entity_type,
-        occurred_at=datetime.now(timezone.utc),
+        occurred_at=datetime.now(UTC),
     )
     db.add(event)
     await db.flush()

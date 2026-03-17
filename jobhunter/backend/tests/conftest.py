@@ -1,24 +1,21 @@
-import asyncio
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime, timedelta
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.config import settings
 import app.dependencies as _deps
-from app.dependencies import get_db, get_openai, get_hunter, get_email_client
+from app.config import settings
+from app.dependencies import get_db, get_email_client
 from app.infrastructure.database import get_session
-from app.infrastructure.redis_client import init_redis, close_redis, get_redis
+from app.infrastructure.redis_client import close_redis, init_redis
+from app.main import app
 from app.models.base import Base
 from app.models.candidate import CandidateDNA
 from app.models.invite import InviteCode
-from app.main import app
-
 
 # ---------------------------------------------------------------------------
 # Lightweight test stubs for external API clients
@@ -401,11 +398,11 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
 async def _create_invite_code(db_session: AsyncSession) -> str:
     """Create an invite code directly in the DB for testing."""
     # We need a candidate to be the inviter. Create a system-level one.
-    from app.models.candidate import Candidate
-    from app.utils.security import hash_password
-
     # Check if seed inviter already exists
     from sqlalchemy import select
+
+    from app.models.candidate import Candidate
+    from app.utils.security import hash_password
     result = await db_session.execute(
         select(Candidate).where(Candidate.email == "seed-inviter@test.local")
     )
@@ -425,7 +422,7 @@ async def _create_invite_code(db_session: AsyncSession) -> str:
         id=uuid.uuid4(),
         code=code,
         invited_by_id=inviter.id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
     )
     db_session.add(invite)
     await db_session.flush()
@@ -461,8 +458,6 @@ async def seed_candidate_dna(
     auth_headers: dict,
 ) -> None:
     """Seed CandidateDNA for the authenticated test user (needed by discover)."""
-    from sqlalchemy import select
-    from app.models.candidate import Candidate
 
     # Get the candidate_id from /auth/me
     resp = await client.get(f"{settings.API_V1_PREFIX}/auth/me", headers=auth_headers)

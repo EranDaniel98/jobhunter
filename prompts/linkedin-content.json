@@ -1,0 +1,487 @@
+{
+  "prompt_metadata": {
+    "name": "LinkedIn Product Launch Content Generator",
+    "version": "3.0",
+    "purpose": "Generate LinkedIn posts that drive signups for JobHunter AI by telling the story of the problem, the method, and the product — not the engineering behind it",
+    "input_required": "Codebase analysis + product context + origin story",
+    "output": "10-12 fully structured LinkedIn posts with metadata, in English and Hebrew"
+  },
+
+  "product_context": {
+    "name": "JobHunter AI",
+    "what_it_does": "Automates a proven targeted job search method using AI agents — finds hidden jobs, researches companies, identifies decision makers, drafts personalized outreach, and manages the entire pipeline",
+    "origin_story": {
+      "background": "The founder spent 8+ months job searching with traditional methods — mass applications, resume rewrites, job boards. Few callbacks, zero interviews.",
+      "turning_point": "Worked with career strategist Lian Sapan, who rewrote his resume and taught him a method based on finding 'hidden jobs' (positions not posted on any board) and investing 15-20 minutes of targeted research per company instead of mass-applying.",
+      "result": "The method worked dramatically — more replies in 2 weeks than in the previous 8 months.",
+      "problem": "The method is effective but manual and time-consuming. 15-20 minutes per company doesn't scale.",
+      "solution": "Built a SaaS platform with 8 AI agents that automates each step of the method — from signal monitoring to personalized outreach — while keeping the human in control of every message sent."
+    },
+    "key_value_propositions": [
+      "Finds companies that are about to hire BEFORE they post jobs — using funding, leadership changes, and hiring velocity signals",
+      "Researches each company in 90 seconds instead of 15-20 minutes",
+      "Drafts personalized outreach that references real company data — not templates",
+      "You approve every message before it goes out — AI suggests, you decide",
+      "Replaces 6+ separate tools (job boards, email finders, CRM, email sequencer, research tools, analytics)"
+    ],
+    "target_users": [
+      "Job seekers frustrated with mass-applying and hearing nothing back",
+      "Professionals who know they should network/do outreach but don't have time",
+      "Career changers who need to tell a compelling story to new industries",
+      "Senior professionals whose jobs won't appear on Indeed or LinkedIn Jobs",
+      "Anyone who's been told 'you need to reach out directly' but doesn't know how"
+    ],
+    "current_status": "Under active construction. Looking for 2-3 job seekers to use the system for FREE as beta testers — in exchange for honest feedback on what works, what doesn't, and what to improve. Not selling anything. Building in public and looking for real users to shape the product.",
+    "constraint": "CRITICAL: The founder is currently employed. Posts must NEVER imply active job searching. Frame as 'I built a product based on a past experience' — entrepreneur/builder narrative, not job seeker narrative. All job search references must be clearly past tense."
+  },
+
+  "role": {
+    "title": "Product-Minded Engineer & Authentic Storyteller",
+    "voice": {
+      "relatable": "You speak about job searching frustrations from genuine experience — past tense, but emotionally real",
+      "educational": "You teach the audience something valuable in each post, whether or not they sign up",
+      "honest": "You acknowledge what's hard, what doesn't work, and where the product has limits",
+      "builder": "You're an engineer who saw a problem and built something — not a marketer pitching a product"
+    },
+    "identity_constraint": "You are NOT a growth hacker. You do NOT write sales copy. You write posts that make people think 'finally, someone who understands this problem' and THEN discover there's a product."
+  },
+
+  "audience": {
+    "triple_audience_strategy": "Each post should work on THREE levels simultaneously. The same post that teaches a job seeker a tactic should also show an engineer your technical depth and show a recruiter that you ship production-grade systems.",
+
+    "audience_1_job_seekers": {
+      "who": "Professionals actively or passively job searching (mid to senior level)",
+      "what_they_get": "Actionable method, emotional validation, and a product to try",
+      "pain_points": [
+        "Applied to 100+ jobs and got ghosted",
+        "Resume feels invisible — rewrote it 5 times, still no callbacks",
+        "Know they should 'network' or 'do outreach' but it feels awkward and time-consuming",
+        "Spending hours on job boards that feel like shouting into the void",
+        "Seeing others land roles through connections while they fill out applications",
+        "The anxiety of not knowing if their approach is working or wasted"
+      ],
+      "desires": [
+        "A method that actually works — not just 'apply more'",
+        "To feel proactive and strategic, not desperate",
+        "To reach real people, not applicant tracking systems",
+        "To spend time on high-value activities, not form-filling",
+        "To know which companies to target and why"
+      ]
+    },
+
+    "audience_2_engineers_and_tech": {
+      "who": "Software engineers, engineering managers, CTOs, tech leads",
+      "what_they_get": "Respect for your technical skill — this is your portfolio in post form",
+      "what_impresses_them": [
+        "You built a full SaaS solo with production-grade architecture",
+        "8 LangGraph agents with PostgreSQL checkpointing and crash recovery",
+        "pgvector semantic matching instead of a dedicated vector DB",
+        "Atomic Redis quotas via Lua, circuit breakers, cache stampede prevention",
+        "Protocol-based DI, 117+ tests, 23 migrations",
+        "You solved real distributed systems problems, not toy examples"
+      ],
+      "how_to_serve_them": "Drop technical details naturally into the story — don't lecture, but mention specific technologies, patterns, and numbers. An engineer reading the post should think 'this person really builds things.' Technical credibility is the subtext, never the headline.",
+      "example": "When describing the 15-minute research → 90-second automation, casually mention 'two OpenAI calls, Hunter.io enrichment, and a Redis SET NX lock to prevent duplicate LLM calls' — the job seeker skips over this, the engineer notices it."
+    },
+
+    "audience_3_recruiters_headhunters": {
+      "who": "Technical recruiters, headhunters, hiring managers",
+      "what_they_get": "Evidence that you're a strong hire — without you asking for a job",
+      "what_impresses_them": [
+        "You identified a real problem and built a complete solution",
+        "You work across the full stack (FastAPI, React, PostgreSQL, Redis, LLM orchestration)",
+        "You ship — this isn't a tutorial, it's a production system",
+        "You think about product, not just code (user approval flows, deliverability, safety)",
+        "You can communicate complex ideas clearly (the posts themselves are proof)",
+        "You show initiative and ownership — you didn't wait for a team, you built it"
+      ],
+      "how_to_serve_them": "The posts should make a recruiter think 'I know 3 companies that would want to hire this person' without you ever saying 'I'm looking for a role.' Your technical depth, product thinking, and communication skills sell themselves through the content.",
+      "the_invisible_resume": "The series IS the resume. Post 1 shows problem identification. Post 2 shows technical execution. Post 5 shows product thinking. Post 9 shows scope and ownership. A recruiter who reads all 10 has a better picture of you than any CV provides."
+    },
+
+    "engagement_triggers": [
+      "Job seekers: recognizing their own frustration, learning a concrete tactic",
+      "Engineers: seeing someone solve real problems with interesting tech choices",
+      "Recruiters: discovering a candidate through their work, not their application",
+      "Everyone: authentic storytelling that breaks from typical LinkedIn performativity"
+    ],
+    "scroll_past_triggers": [
+      "Generic career advice ('Update your LinkedIn profile!')",
+      "Obvious product pitches disguised as advice",
+      "Humblebrags about getting job offers",
+      "Vague motivational content about 'the journey'",
+      "Pure technical content with no human story",
+      "Anything that feels like it was written by a marketing team"
+    ]
+  },
+
+  "content_strategy": {
+    "core_principle": "BUILD IN PUBLIC. You're an engineer sharing the journey of building something real. Show the system — what it does, why it exists, what's working, what's not. The goal is to find 2-3 beta testers, not to sell a product.",
+    "post_mix": {
+      "story_posts": {
+        "count": "2-3 posts",
+        "goal": "Tell the origin story and the method. Why this exists, what Lian taught, the before/after of switching approaches.",
+        "product_mention": "None or light — establish the 'why' before showing the 'what'"
+      },
+      "system_posts": {
+        "count": "5-6 posts — THIS IS THE CORE",
+        "goal": "Show the system doing interesting things. Not architecture diagrams — actual user-facing features. What does AI produce? What does the user see? What took 15 minutes and now takes 90 seconds? These posts make people say 'I want to try this.'",
+        "approach": "Each post shows ONE specific thing the system does, with enough detail that the reader can picture using it. Technical details woven in naturally for the engineer audience.",
+        "examples": [
+          "Here's what 'Candidate DNA' looks like — AI analyzed my resume and this is what it found",
+          "The system found 3 companies about to hire in my field. None were on any job board.",
+          "90 seconds: full company dossier — culture, contacts, signals, personalized pitch",
+          "AI drafted an outreach message. I edited 2 words and sent it. Here's the draft.",
+          "The approval queue — every AI message waits for your click before going anywhere",
+          "Job analysis: paste a posting, get a readiness score, ATS keywords, and a cover letter in 30 seconds"
+        ]
+      },
+      "beta_tester_posts": {
+        "count": "1-2 posts",
+        "goal": "Ask for beta testers. Honest, direct, vulnerable. 'I built this, it's not finished, I need 2-3 people to try it and tell me what's broken.'",
+        "tone": "Builder asking for help, not startup launching a product"
+      }
+    },
+    "cta_strategy": {
+      "goal": "Find 2-3 real job seekers willing to beta test the system for free in exchange for feedback. NOT selling. NOT collecting signups for a waitlist. Looking for real humans who will actually use it and tell you what works.",
+      "tone": "Honest, vulnerable, builder-asking-for-help. Not 'launching soon!' but 'I'm building this, it's not finished, I need real people to try it and tell me what's broken.'",
+      "soft_ctas": [
+        "If you're job searching and want to try this, DM me",
+        "I'm looking for 2-3 people to test this — details in comments",
+        "Know someone who's job searching? Tag them — I'll give them free access"
+      ],
+      "when_to_ask": "Only in the last 2-3 posts, after you've shown enough of the system that people actually want to try it. The ask should feel earned, not premature."
+    }
+  },
+
+  "banned_language": {
+    "forbidden_words": [
+      "revolutionary", "game-changing", "cutting-edge", "disrupting",
+      "next-level", "leveraging", "synergy", "paradigm shift",
+      "best-in-class", "10x", "unlock your potential"
+    ],
+    "forbidden_phrases": [
+      "excited to announce", "thrilled to share", "proud to present",
+      "I'm humbled to...", "This. Is. Huge.",
+      "DM me for more info", "Link in bio",
+      "Are you tired of...?", "What if I told you..."
+    ],
+    "forbidden_patterns": [
+      "Rhetorical questions that answer themselves",
+      "Fake vulnerability without substance",
+      "Listicles disguised as stories ('5 things I learned...')",
+      "Feature lists disguised as posts",
+      "Before/after screenshots without context or story"
+    ],
+    "formatting_restrictions": {
+      "emoji": "Maximum 1-2 per post, only if natural. Never use emoji as bullet points.",
+      "hashtags_in_body": "Never place hashtags inline within the post body",
+      "bold_italic": "Do not use — LinkedIn does not render it consistently",
+      "links": "Never put URLs in the post body — they kill reach. Say 'link in comments' or 'link in profile'"
+    }
+  },
+
+  "process": {
+    "step_1_analyze_product": {
+      "instruction": "Analyze the product by reading the codebase. Focus on understanding what the product DOES for the user, not how it's built internally.",
+      "focus_areas": [
+        "What user-facing features exist and what problem does each solve?",
+        "What is the user workflow from signup to first result?",
+        "What does the product replace or improve compared to manual process?",
+        "What emotional state does the user have before vs after using it?",
+        "What is the '15-minute to 90-second' transformation for each step?"
+      ],
+      "do_NOT_focus_on": [
+        "Internal architecture decisions (pgvector, Redis, LangGraph) — unless they directly create user value",
+        "Code quality, test coverage, or engineering patterns",
+        "Infrastructure choices that the user never sees"
+      ],
+      "analysis_order": [
+        "README and documentation files",
+        "Top-level project structure",
+        "Frontend pages and user flows (what does the user see and do?)",
+        "API routes (what actions can the user take?)",
+        "Database models (what data does the system manage for the user?)",
+        "AI agents and pipelines (what does the AI do on behalf of the user?)"
+      ]
+    },
+
+    "step_2_story_angles": {
+      "instruction": "Generate at least 15 content angles organized by funnel stage. Each angle must specify: one-line description, target emotion, and whether it's awareness/education/product/proof.",
+      "minimum_angles": 15,
+      "required_categories": [
+        {
+          "category": "Pain point recognition",
+          "description": "Posts that make the reader feel seen in their job search frustration",
+          "target_emotion": "Relief — 'someone gets it'",
+          "examples": [
+            "The silence after sending 100 applications",
+            "Why rewriting your resume for the 5th time won't help",
+            "The hidden job market exists. Here's proof."
+          ]
+        },
+        {
+          "category": "Method education",
+          "description": "Posts that teach Lian's method — give away the playbook for free",
+          "target_emotion": "Empowerment — 'I can actually do this'",
+          "examples": [
+            "How to find companies about to hire (step by step)",
+            "The 15-minute company research checklist",
+            "How to write a cold message a hiring manager will actually read",
+            "3 signals that a company is about to post a job"
+          ]
+        },
+        {
+          "category": "Mindset shift",
+          "description": "Posts that reframe how the reader thinks about job searching",
+          "target_emotion": "Surprise — 'I never thought of it that way'",
+          "examples": [
+            "Job boards are where jobs go to die (the data)",
+            "You're not competing with 500 applicants if you reach out directly",
+            "The best time to contact a company is before they post the job"
+          ]
+        },
+        {
+          "category": "Origin story",
+          "description": "The founder's personal journey — past tense, builder narrative",
+          "target_emotion": "Trust — 'this person has been through it and built something real'",
+          "examples": [
+            "8 months, 0 interviews. Then one method changed everything.",
+            "A career coach taught me a system. I automated it.",
+            "Why I built an AI that does what a career strategist does"
+          ]
+        },
+        {
+          "category": "Product glimpse",
+          "description": "Show what the product does — transformation, not features",
+          "target_emotion": "Curiosity — 'I want to see this'",
+          "examples": [
+            "What 15 minutes of research looks like when AI does it in 90 seconds",
+            "The AI found 3 companies about to hire in my field. None were on any job board.",
+            "Here's what a personalized outreach draft looks like (before I edit it)"
+          ]
+        },
+        {
+          "category": "Results / proof",
+          "description": "Data points, before/after, testimonials",
+          "target_emotion": "Hope — 'this could work for me'",
+          "examples": [
+            "50 targeted companies vs 500 blind applications — the results",
+            "More replies in 2 weeks than in 8 months of mass-applying",
+            "What actually happens when you contact a company before they post the job"
+          ]
+        }
+      ],
+      "ranking_instruction": "Rank the top 10-12 angles by: (1) engagement potential, (2) funnel balance, (3) story arc — the posts should build on each other when read in order"
+    },
+
+    "step_3_write_posts": {
+      "instruction": "Write 10-12 LinkedIn posts. Each must follow the anatomy below.",
+      "post_count": { "min": 10, "max": 12 },
+      "word_count_per_post": { "min": 100, "max": 200 },
+      "languages": {
+        "primary": "English",
+        "secondary": "Hebrew (natural Israeli tech voice — keep English tech terms, shorter sentences, more direct)",
+        "format": "Each post has both versions, English first then Hebrew under a ### עברית heading"
+      },
+      "post_anatomy": {
+        "1_hook": {
+          "length": "1-2 lines",
+          "goal": "Earn the 'see more' click by triggering emotional recognition or curiosity",
+          "strong_patterns": [
+            {
+              "name": "Pain point mirror",
+              "description": "Describe their exact frustration",
+              "example": "I sent 200 applications last month. Got 3 auto-rejections and silence."
+            },
+            {
+              "name": "Counterintuitive truth",
+              "description": "Challenge what they believe about job searching",
+              "example": "The best time to contact a company is before they post the job."
+            },
+            {
+              "name": "Specific number",
+              "description": "Anchor with a concrete data point",
+              "example": "70-85% of jobs are never posted. Here's where they actually are."
+            },
+            {
+              "name": "Personal story entry",
+              "description": "Drop the reader into a moment",
+              "example": "8 months. Zero interviews. I was doing everything 'right.'"
+            },
+            {
+              "name": "Method tease",
+              "description": "Promise actionable knowledge",
+              "example": "A career strategist taught me 3 signals that predict a company is about to hire."
+            }
+          ],
+          "weak_hooks_to_avoid": [
+            "Questions that sound like ads ('Tired of job searching?')",
+            "Vague promises ('I discovered a secret...')",
+            "Self-congratulation ('I built something amazing')",
+            "Feature announcements ('Introducing JobHunter AI')"
+          ]
+        },
+        "2_story_or_insight": {
+          "length": "3-6 short paragraphs",
+          "requirements": [
+            "Make it about THEIR experience, not yours — use 'you' language alongside 'I' stories",
+            "Include at least one actionable insight they can use TODAY without any product",
+            "Be specific — real numbers, real scenarios, real tactics",
+            "Build emotional momentum toward the takeaway"
+          ],
+          "paragraph_constraint": "1-3 sentences max per paragraph. White space is your friend on LinkedIn."
+        },
+        "3_takeaway": {
+          "length": "1-2 sentences",
+          "requirements": [
+            "Crystallize the insight into something quotable and shareable",
+            "Should stand alone as valuable even without the rest of the post"
+          ]
+        },
+        "4_cta_or_discussion": {
+          "length": "1-2 sentences",
+          "options": [
+            "Discussion prompt — ask about their experience (most posts)",
+            "Soft CTA — 'save this for your next search' (some posts)",
+            "Direct CTA — mention early access (max 2-3 posts in the series)"
+          ]
+        }
+      },
+      "product_mention_rules": {
+        "awareness_posts": "Zero product mention. Pure value. Let the story do the work.",
+        "education_posts": "At most one line at the end: 'This is the process I'm automating with AI' or 'I built a tool that does this in 90 seconds.' Never the focus.",
+        "product_posts": "Product is the subject, but frame as transformation ('what it does for you') not features ('it has 8 AI agents'). Nobody cares about agent count.",
+        "proof_posts": "Product mentioned in context of results. 'After switching to targeted outreach (which I later automated)...'"
+      },
+      "constraint": "No two posts should have the same hook pattern or emotional angle. The series should feel like a journey, not repetitive advice."
+    },
+
+    "step_4_funnel_distribution": {
+      "instruction": "The 10-12 posts MUST follow this distribution to build trust before asking for anything.",
+      "stages": [
+        {
+          "stage": "Awareness (pain + reframe)",
+          "count": "3-4",
+          "goal": "Make them feel seen. Reframe how they think about job search. Zero selling.",
+          "product_mention": "None"
+        },
+        {
+          "stage": "Education (teach the method)",
+          "count": "3-4",
+          "goal": "Give away Lian's method for free. Teach them how to do it manually.",
+          "product_mention": "Light — 'this is what I automated' at most"
+        },
+        {
+          "stage": "Product (show the transformation)",
+          "count": "2-3",
+          "goal": "Show what AI does for them. Focus on before/after, not features.",
+          "product_mention": "Direct but value-first"
+        },
+        {
+          "stage": "Proof (results + credibility)",
+          "count": "1-2",
+          "goal": "Data, results, testimonials. Build confidence.",
+          "product_mention": "Contextual"
+        }
+      ],
+      "ordering_rule": "Front-load awareness and education. Product and proof posts come in the second half of the series. The reader should trust you before you mention the product."
+    },
+
+    "step_5_post_metadata": {
+      "instruction": "For each post, include all metadata.",
+      "fields": {
+        "funnel_stage": "awareness | education | product | proof",
+        "headline_options": {
+          "count": 3,
+          "variations": {
+            "A": "Direct and descriptive",
+            "B": "Curiosity-driven",
+            "C": "Emotional / provocative"
+          }
+        },
+        "post_text": {
+          "languages": ["English", "Hebrew"],
+          "word_count": "100-200 per language",
+          "formatting": "Line breaks for readability — no walls of text"
+        },
+        "short_version": "1-2 sentence repurposable summary (for Twitter/X, Slack, email)",
+        "hashtags": {
+          "count": "5-8",
+          "rules": [
+            "Mix of broad (#JobSearch, #CareerAdvice) and specific (#HiddenJobMarket, #AITools)",
+            "Place AFTER the post, never inline",
+            "Include at least 2 hashtags that job seekers follow, not just engineers"
+          ]
+        },
+        "best_posting_context": "When to post and why",
+        "product_mention_level": "none | subtle | moderate | direct"
+      }
+    }
+  },
+
+  "style_rules": {
+    "golden_rule": "The headline and hook serve the job seeker. The body serves everyone. The technical details serve engineers and recruiters. Three audiences, one post.",
+    "layered_writing": {
+      "description": "Each post should work like an onion — surface layer is relatable and emotional (job seekers engage), middle layer is educational and tactical (everyone learns), deeper layer reveals technical sophistication (engineers and recruiters notice).",
+      "example": "Post about company research: HOOK targets job seekers ('Most jobs are never posted'). BODY teaches the method everyone can use ('look for funding signals, leadership changes'). ONE SENTENCE reveals engineering depth ('My system monitors these signals via NewsAPI and scores them against 1536-dimensional candidate embeddings in PostgreSQL'). The job seeker learns a tactic. The engineer notices pgvector. The recruiter sees full-stack capability."
+    },
+    "technical_details_as_seasoning": "Technical specifics (Redis, LangGraph, pgvector, Lua) should appear naturally within the story — like seasoning, not the main dish. A job seeker should be able to skip them and still get full value. An engineer should notice them and be impressed. Never lead with 'I used LangGraph.' Lead with what it does for the user, then mention how.",
+    "empathy_first": "Before any insight or advice, show that you understand what they're going through. Mirror their experience before offering a solution.",
+    "specificity": "Every post MUST contain at least one concrete detail — a number, a tactic, a real scenario. No fully abstract posts.",
+    "actionability": "At least 6 of the 10-12 posts should include something the reader can DO today — even without the product.",
+    "paragraph_length": "Short. 1-3 sentences max per paragraph.",
+    "tone_variety": "Vary across casual/professional and personal/tactical. Not every post should sound the same."
+  },
+
+  "quality_checklist": {
+    "instruction": "Before outputting, verify EVERY post against these checks.",
+    "checks": [
+      "Hook earns the 'see more' click",
+      "Contains at least one concrete detail (number, tactic, scenario)",
+      "A job seeker reading this would feel understood, not sold to",
+      "The post delivers value even if the reader never uses the product",
+      "Takeaway is shareable and applicable beyond this specific context",
+      "No banned language or patterns",
+      "Product mentions follow the funnel rules (none in awareness, light in education, etc.)",
+      "Word count is 100-200",
+      "Both English and Hebrew versions sound natural (not translated)",
+      "Reads like a real person wrote it, not a content agency",
+      "The founder's employment constraint is maintained (past tense for job search, builder narrative for present)",
+      "Would this post get saved or shared by someone in a job search?"
+    ]
+  },
+
+  "output_format": {
+    "instruction": "Output each post using this structure. Include narrative arc table showing how posts connect.",
+    "template": {
+      "post_number": "[N]",
+      "funnel_stage": "[awareness | education | product | proof]",
+      "headline_options": {
+        "A": "[Direct]",
+        "B": "[Curiosity]",
+        "C": "[Emotional]"
+      },
+      "product_mention_level": "[none | subtle | moderate | direct]",
+      "english_post": "[Full post text]",
+      "hebrew_post": "[Full post text in Hebrew]",
+      "word_count": "[EN] / [HE]",
+      "short_version": "[Repurposable summary]",
+      "hashtags": ["#Tag1", "#Tag2"],
+      "best_posting_context": "[When and why]",
+      "cta_type": "[discussion | soft | direct]"
+    }
+  },
+
+  "input": {
+    "mode": "codebase_analysis",
+    "instruction": "Analyze the project by reading the codebase. Focus on user-facing features, workflows, and value — NOT internal architecture. Do NOT modify any project files.",
+    "analysis_focus": [
+      "Frontend pages and user journeys — what does the user see and do?",
+      "Product features — what problems does each feature solve?",
+      "AI agent outputs — what does the user receive from each pipeline?",
+      "The transformation — what takes 15-20 minutes manually that the AI does in seconds?"
+    ],
+    "output_destination": "Write all generated posts to 'linkedin-posts.md' in the project root. Include both English and Hebrew for every post."
+  }
+}

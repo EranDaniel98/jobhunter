@@ -1,7 +1,6 @@
 import uuid
 
 import pytest
-import pytest_asyncio
 
 from app.config import settings
 from app.graphs.interview_prep import build_interview_prep_pipeline

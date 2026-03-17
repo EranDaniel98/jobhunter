@@ -1,3 +1,5 @@
+from datetime import UTC
+
 import pytest
 from httpx import AsyncClient
 
@@ -32,9 +34,9 @@ async def test_quota_enforced_returns_429(client: AsyncClient, auth_headers: dic
     candidate_id = resp.json()["id"]
 
     # Set the discovery counter to the free plan limit (3)
-    from datetime import datetime, timezone
+    from datetime import datetime
     redis = get_redis()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
     key = f"quota:{candidate_id}:discovery:{today}"
     await redis.set(key, "3")
 
@@ -46,6 +48,7 @@ async def test_quota_enforced_returns_429(client: AsyncClient, auth_headers: dic
 def test_discovery_rate_limit_is_2_per_hour():
     """Verify the rate-limit decorator is set to 2/hour (aligned with free tier quota)."""
     import inspect
+
     from app.api import companies
 
     source = inspect.getsource(companies)

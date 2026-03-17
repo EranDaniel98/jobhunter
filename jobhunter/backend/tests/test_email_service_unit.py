@@ -2,8 +2,7 @@
 
 import hashlib
 import hmac
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,9 +10,7 @@ import pytest
 from app.services.email_service import (
     generate_unsubscribe_link,
     verify_unsubscribe_token,
-    _sign_email,
 )
-
 
 # ---------------------------------------------------------------------------
 # Unsubscribe link generation / verification (pure functions)
@@ -63,7 +60,7 @@ class TestUnsubscribeLinkGeneration:
         with patch("app.services.email_service.settings") as mock_settings:
             mock_settings.UNSUBSCRIBE_SECRET = "test-secret"
             # Build a token with a very old timestamp
-            old_ts = str(int(datetime.now(timezone.utc).timestamp()) - 91 * 86400)
+            old_ts = str(int(datetime.now(UTC).timestamp()) - 91 * 86400)
             email = "user@example.com"
             msg = f"{old_ts}:{email}"
             sig = hmac.new(b"test-secret", msg.encode(), hashlib.sha256).hexdigest()

@@ -1,6 +1,6 @@
 """Load test - simulates typical user workflows."""
 
-from locust import HttpUser, task, between
+from locust import HttpUser, between, task
 
 
 class JobHunterUser(HttpUser):

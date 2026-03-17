@@ -1,11 +1,8 @@
 """Tests for performance optimizations: subqueries, SQL aggregation, concurrent broadcast, numpy cosine, caching."""
-import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings

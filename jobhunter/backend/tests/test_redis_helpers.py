@@ -1,14 +1,13 @@
 """Tests for Redis helper functions with graceful degradation."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from app.infrastructure.redis_client import (
+    get_redis,
     redis_safe_get,
     redis_safe_setex,
-    get_redis,
-    init_redis,
-    close_redis,
 )
 
 

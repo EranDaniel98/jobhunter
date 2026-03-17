@@ -2,17 +2,15 @@
 
 import uuid
 
-import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.config import settings
 from app.models.candidate import Candidate, CandidateDNA
 from app.models.company import Company
 from app.models.signal import CompanySignal
 from app.utils.security import hash_password
-from app.config import settings
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -37,7 +35,7 @@ async def patch_graph_db(graph_session_factory, monkeypatch):
 async def patch_stubs(monkeypatch):
     """Ensure the graph nodes use test stubs."""
     import app.dependencies as deps
-    from tests.conftest import OpenAIStub, NewsAPIStub
+    from tests.conftest import NewsAPIStub, OpenAIStub
     deps._openai_client = OpenAIStub()
     deps._newsapi_client = NewsAPIStub()
     yield

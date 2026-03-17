@@ -1,11 +1,9 @@
 import uuid
 
 import pytest
-import pytest_asyncio
 
 from app.config import settings
 from app.graphs.apply_pipeline import build_apply_pipeline
-from app.infrastructure.url_scraper import scrape_job_url
 
 
 class TestApplyGraph:

@@ -1,7 +1,7 @@
 """Unit tests for invite_service – no real DB required."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -31,9 +31,9 @@ def _make_invite(*, code="abc123", is_used=False, expired=False, invite_id=None)
     inv.code = code
     inv.is_used = is_used
     if expired:
-        inv.expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+        inv.expires_at = datetime.now(UTC) - timedelta(days=1)
     else:
-        inv.expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        inv.expires_at = datetime.now(UTC) + timedelta(days=7)
     inv.invited_by = _make_candidate()
     return inv
 

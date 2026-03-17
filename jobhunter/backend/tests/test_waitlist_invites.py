@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -79,7 +79,7 @@ async def test_create_system_invite(db_session):
     assert invite.invited_by_id is None
     assert invite.email == "test@example.com"
     assert invite.is_used is False
-    assert invite.expires_at > datetime.now(timezone.utc)
+    assert invite.expires_at > datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -207,9 +207,9 @@ async def test_admin_invite_quota_exceeded(
 async def test_registration_updates_waitlist_status(db_session):
     """Registering with an invite code updates the matching waitlist entry to 'registered'."""
     from app.models.waitlist import WaitlistEntry
-    from app.services.invite_service import create_system_invite
-    from app.services.auth_service import register
     from app.schemas.auth import RegisterRequest
+    from app.services.auth_service import register
+    from app.services.invite_service import create_system_invite
 
     entry = WaitlistEntry(email="hook@example.com", source="landing", status="invited")
     db_session.add(entry)

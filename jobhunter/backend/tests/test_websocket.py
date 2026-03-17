@@ -2,7 +2,6 @@
 import pytest
 from httpx import AsyncClient
 
-from app.config import settings
 from app.infrastructure.websocket_manager import ConnectionManager
 
 
@@ -113,10 +112,10 @@ async def test_ws_reject_invalid_token(client: AsyncClient):
     """WebSocket with invalid token should be rejected."""
     # We can't easily test actual WebSocket connections via httpx,
     # but we can verify the endpoint exists and the auth logic
-    from app.utils.security import decode_token
-
     # Invalid token should raise
     import jwt
+
+    from app.utils.security import decode_token
     with pytest.raises(jwt.PyJWTError):
         decode_token("invalid-token-here")
 

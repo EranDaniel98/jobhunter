@@ -3,7 +3,6 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.utils.security import create_verification_token

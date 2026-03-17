@@ -1,11 +1,13 @@
-import pytest
 import asyncio
+
+import pytest
+
 from app.infrastructure.dossier_cache import (
-    get_cached_dossier,
-    cache_dossier,
-    invalidate_dossier,
     _compute_input_hash,
     acquire_stampede_lock,
+    cache_dossier,
+    get_cached_dossier,
+    invalidate_dossier,
     release_stampede_lock,
 )
 

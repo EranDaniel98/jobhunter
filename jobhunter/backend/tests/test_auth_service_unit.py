@@ -1,33 +1,33 @@
 """Unit tests for auth_service – no real DB/Redis required."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import jwt
 import pytest
 from fastapi import HTTPException
 
+from app.config import settings
+from app.schemas.auth import LoginRequest, TokenPair
 from app.services.auth_service import (
     TOKEN_BLACKLIST_PREFIX,
     forgot_password,
     login,
     logout,
     refresh_token,
-    register,
     reset_password,
 )
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenPair
 from app.utils.security import (
     create_access_token,
-    create_refresh_token as create_refresh,
     create_reset_token,
     decode_token,
     hash_password,
     verify_password,
 )
-from app.config import settings
-
+from app.utils.security import (
+    create_refresh_token as create_refresh,
+)
 
 # ---------------------------------------------------------------------------
 # Password hashing (pure utility)
@@ -73,7 +73,7 @@ class TestJWT:
     def test_decode_token_expired_raises(self):
         payload = {
             "sub": "cand-789",
-            "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+            "exp": datetime.now(UTC) - timedelta(hours=1),
             "type": "access",
             "jti": str(uuid.uuid4()),
         }
@@ -84,7 +84,7 @@ class TestJWT:
     def test_decode_token_wrong_secret_raises(self):
         payload = {
             "sub": "cand-789",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "exp": datetime.now(UTC) + timedelta(hours=1),
             "type": "access",
         }
         token = jwt.encode(payload, "wrong-secret", algorithm="HS256")

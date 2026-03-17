@@ -1,11 +1,11 @@
 """Tests for storage backends (R2Storage and LocalStorage)."""
 
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 
-from app.infrastructure.storage import R2Storage, LocalStorage, get_storage
-
+from app.infrastructure.storage import LocalStorage, R2Storage, get_storage
 
 # ---------------------------------------------------------------------------
 # R2Storage tests (mocked boto3)

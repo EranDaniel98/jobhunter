@@ -2,7 +2,6 @@
 
 import uuid
 
-import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -13,7 +12,6 @@ from app.models.contact import Contact
 from app.models.outreach import OutreachMessage
 from app.models.pending_action import PendingAction
 from app.utils.security import hash_password
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -172,6 +170,7 @@ async def test_full_draft_pipeline(
 ):
     """Runs gather → generate → quality_check → create_approval (interrupt pauses)."""
     from langgraph.checkpoint.memory import MemorySaver
+
     from app.graphs.outreach import _builder
 
     checkpointer = MemorySaver()
@@ -218,6 +217,7 @@ async def test_resume_after_approval(
     """Run first half, resume with approved=True, verify message sent."""
     from langgraph.checkpoint.memory import MemorySaver
     from langgraph.types import Command
+
     from app.graphs.outreach import _builder
 
     checkpointer = MemorySaver()
@@ -258,6 +258,7 @@ async def test_rejection_skips_send(
     """Resume with approved=False, verify message stays draft and no send."""
     from langgraph.checkpoint.memory import MemorySaver
     from langgraph.types import Command
+
     from app.graphs.outreach import _builder
 
     checkpointer = MemorySaver()

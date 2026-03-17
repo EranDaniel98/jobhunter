@@ -1,5 +1,6 @@
-import pytest
 import uuid
+
+import pytest
 
 from app.config import settings
 from app.graphs.analytics_pipeline import build_analytics_pipeline

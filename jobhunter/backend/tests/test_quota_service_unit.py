@@ -1,18 +1,16 @@
 """Unit tests for quota_service – no real Redis required."""
 
 import uuid
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException
 
 from app.services.quota_service import (
-    QUOTA_KEY,
     USER_FACING_QUOTAS,
     check_and_increment,
     get_usage,
 )
-
 
 CANDIDATE_ID = str(uuid.uuid4())
 

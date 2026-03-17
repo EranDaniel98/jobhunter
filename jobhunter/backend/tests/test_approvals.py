@@ -6,12 +6,9 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.candidate import Candidate
 from app.models.company import Company
 from app.models.contact import Contact
 from app.models.outreach import OutreachMessage
-from app.models.pending_action import PendingAction
-from app.utils.security import hash_password
 
 API = settings.API_V1_PREFIX
 

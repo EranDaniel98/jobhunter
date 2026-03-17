@@ -1,0 +1,192 @@
+<h2>Which design direction feels right?</h2>
+<p class="subtitle">Same card (Post 1: Strategy vs Volume) rendered three ways. Click to select.</p>
+
+<div class="cards">
+
+  <!-- Option A: Cinematic Glow -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;">
+    <div class="card-image" style="padding:0;height:420px;position:relative;overflow:hidden;">
+      <div style="width:100%;height:100%;background:#1A1A2E;position:relative;">
+        <!-- Ambient background glow -->
+        <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(232,113,42,0.15) 0%,transparent 70%);top:20%;right:10%;filter:blur(40px);"></div>
+        <div style="position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(232,64,87,0.1) 0%,transparent 70%);top:30%;left:5%;filter:blur(30px);"></div>
+        <!-- Noise overlay -->
+        <div style="position:absolute;inset:0;background:url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22256%22 height=%22256%22 filter=%22url(%23n)%22 opacity=%220.04%22/%3E%3C/svg%3E');opacity:0.5;"></div>
+
+        <!-- Content -->
+        <div style="position:absolute;top:24px;left:28px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(123,143,161,0.5);letter-spacing:2px;">DAY 1/10</div>
+
+        <!-- Left funnel with depth -->
+        <div style="position:absolute;left:40px;top:60px;width:220px;text-align:center;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#7B8FA1;margin-bottom:12px;letter-spacing:1px;">500 Applications</div>
+          <svg width="200" height="220" viewBox="0 0 200 220">
+            <defs>
+              <linearGradient id="grayF" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#7B8FA1" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#7B8FA1" stop-opacity="0.03"/>
+              </linearGradient>
+              <filter id="shadow1">
+                <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.3"/>
+              </filter>
+            </defs>
+            <path d="M10,5 L190,5 L125,215 L75,215 Z" fill="url(#grayF)" stroke="#7B8FA1" stroke-width="1" stroke-opacity="0.3" filter="url(#shadow1)"/>
+            <!-- Inner glow lines -->
+            <path d="M30,40 L170,40" stroke="#7B8FA1" stroke-width="0.5" opacity="0.15"/>
+            <path d="M45,80 L155,80" stroke="#7B8FA1" stroke-width="0.5" opacity="0.12"/>
+            <path d="M55,120 L145,120" stroke="#7B8FA1" stroke-width="0.5" opacity="0.09"/>
+            <path d="M65,160 L135,160" stroke="#7B8FA1" stroke-width="0.5" opacity="0.06"/>
+          </svg>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#E84057;font-weight:700;margin-top:4px;text-shadow:0 0 20px rgba(232,64,87,0.4);">4–10%</div>
+        </div>
+
+        <!-- Center VS -->
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;">
+          <div style="font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;color:#F5F5F5;letter-spacing:-1px;text-shadow:0 2px 20px rgba(0,0,0,0.5);">Volume</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:28px;font-weight:300;color:#E8712A;margin:4px 0;">vs</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;color:#F5F5F5;letter-spacing:-1px;text-shadow:0 2px 20px rgba(0,0,0,0.5);">Precision</div>
+        </div>
+
+        <!-- Right funnel with glow -->
+        <div style="position:absolute;right:40px;top:60px;width:220px;text-align:center;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#E8712A;margin-bottom:12px;letter-spacing:1px;">50 Targeted</div>
+          <svg width="200" height="220" viewBox="0 0 200 220">
+            <defs>
+              <linearGradient id="orangeF" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#E8712A" stop-opacity="0.1"/>
+                <stop offset="100%" stop-color="#E8712A" stop-opacity="0.35"/>
+              </linearGradient>
+              <filter id="glow1">
+                <feGaussianBlur stdDeviation="6" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <path d="M50,5 L150,5 L190,215 L10,215 Z" fill="url(#orangeF)" stroke="#E8712A" stroke-width="1.5" filter="url(#glow1)"/>
+            <!-- Inner glow lines -->
+            <path d="M52,40 L148,40" stroke="#E8712A" stroke-width="0.5" opacity="0.2"/>
+            <path d="M42,80 L158,80" stroke="#E8712A" stroke-width="0.5" opacity="0.2"/>
+            <path d="M32,120 L168,120" stroke="#E8712A" stroke-width="0.5" opacity="0.2"/>
+            <path d="M22,160 L178,160" stroke="#E8712A" stroke-width="0.5" opacity="0.2"/>
+          </svg>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#4ADE80;font-weight:700;margin-top:4px;text-shadow:0 0 20px rgba(74,222,128,0.4);">33–80%</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Cinematic Glow</h3>
+      <p>Ambient radial glows, drop shadows on shapes, subtle grain texture, glowing text. Feels like a developer tool landing page.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Glassmorphism + Bold Type -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;">
+    <div class="card-image" style="padding:0;height:420px;position:relative;overflow:hidden;">
+      <div style="width:100%;height:100%;background:linear-gradient(135deg,#0F0F1A 0%,#1A1A2E 50%,#1F1530 100%);position:relative;">
+        <!-- Gradient mesh blobs -->
+        <div style="position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(232,113,42,0.2) 0%,transparent 60%);top:-10%;right:-5%;filter:blur(60px);"></div>
+        <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(123,143,161,0.12) 0%,transparent 60%);bottom:0;left:0;filter:blur(50px);"></div>
+        <!-- Grid pattern -->
+        <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(123,143,161,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(123,143,161,0.04) 1px,transparent 1px);background-size:40px 40px;"></div>
+
+        <div style="position:absolute;top:24px;left:28px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(123,143,161,0.5);letter-spacing:2px;">DAY 1/10</div>
+
+        <!-- Glass card left -->
+        <div style="position:absolute;left:50px;top:70px;width:240px;height:280px;background:rgba(123,143,161,0.06);border:1px solid rgba(123,143,161,0.15);border-radius:16px;backdrop-filter:blur(10px);padding:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+          <div style="font-family:'Outfit',sans-serif;font-size:72px;font-weight:800;color:#7B8FA1;line-height:1;opacity:0.7;">500</div>
+          <div style="width:100%;height:8px;border-radius:4px;background:rgba(123,143,161,0.15);overflow:hidden;"><div style="width:8%;height:100%;background:linear-gradient(90deg,#E84057,#E84057);border-radius:4px;box-shadow:0 0 10px rgba(232,64,87,0.5);"></div></div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#7B8FA1;">applications sent</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:#E84057;">4-10%</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(123,143,161,0.6);">response rate</div>
+        </div>
+
+        <!-- Glass card right (highlighted) -->
+        <div style="position:absolute;right:50px;top:70px;width:240px;height:280px;background:rgba(232,113,42,0.06);border:1px solid rgba(232,113,42,0.25);border-radius:16px;backdrop-filter:blur(10px);padding:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;box-shadow:0 0 40px rgba(232,113,42,0.1),0 8px 32px rgba(0,0,0,0.3);">
+          <div style="font-family:'Outfit',sans-serif;font-size:72px;font-weight:800;color:#E8712A;line-height:1;text-shadow:0 0 30px rgba(232,113,42,0.3);">50</div>
+          <div style="width:100%;height:8px;border-radius:4px;background:rgba(232,113,42,0.15);overflow:hidden;"><div style="width:65%;height:100%;background:linear-gradient(90deg,#E8712A,#4ADE80);border-radius:4px;box-shadow:0 0 10px rgba(74,222,128,0.5);"></div></div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E8712A;">targeted outreach</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:#4ADE80;">33-80%</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(232,113,42,0.6);">response rate</div>
+        </div>
+
+        <!-- Center label -->
+        <div style="position:absolute;left:50%;bottom:30px;transform:translateX(-50%);text-align:center;">
+          <div style="font-family:'Outfit',sans-serif;font-size:28px;font-weight:800;color:#F5F5F5;letter-spacing:-1px;">Volume <span style="color:#E8712A;font-weight:300;">vs</span> Precision</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Glass Cards + Grid</h3>
+      <p>Glassmorphism cards with progress bars, gradient mesh background, subtle grid lines. Data-dashboard feel. Bold numbers dominate.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Neon Blueprint -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)" style="padding:0;overflow:hidden;">
+    <div class="card-image" style="padding:0;height:420px;position:relative;overflow:hidden;">
+      <div style="width:100%;height:100%;background:#0A0A1A;position:relative;">
+        <!-- Blueprint grid -->
+        <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(232,113,42,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(232,113,42,0.03) 1px,transparent 1px);background-size:24px 24px;"></div>
+        <!-- Larger grid -->
+        <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(232,113,42,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(232,113,42,0.06) 1px,transparent 1px);background-size:120px 120px;"></div>
+
+        <div style="position:absolute;top:24px;left:28px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(232,113,42,0.4);letter-spacing:2px;">DAY 1/10</div>
+
+        <!-- Left: scatter plot style -->
+        <svg style="position:absolute;left:30px;top:60px;" width="240" height="300" viewBox="0 0 240 300">
+          <!-- Axis lines -->
+          <line x1="30" y1="10" x2="30" y2="260" stroke="#E8712A" stroke-width="0.5" opacity="0.3"/>
+          <line x1="30" y1="260" x2="230" y2="260" stroke="#E8712A" stroke-width="0.5" opacity="0.3"/>
+          <!-- Scattered dots (many, few hits) -->
+          <g opacity="0.3">
+            <circle cx="60" cy="40" r="3" fill="#7B8FA1"/><circle cx="90" cy="80" r="3" fill="#7B8FA1"/>
+            <circle cx="120" cy="50" r="3" fill="#7B8FA1"/><circle cx="150" cy="110" r="3" fill="#7B8FA1"/>
+            <circle cx="70" cy="130" r="3" fill="#7B8FA1"/><circle cx="180" cy="70" r="3" fill="#7B8FA1"/>
+            <circle cx="100" cy="160" r="3" fill="#7B8FA1"/><circle cx="200" cy="140" r="3" fill="#7B8FA1"/>
+            <circle cx="140" cy="190" r="3" fill="#7B8FA1"/><circle cx="170" cy="220" r="3" fill="#7B8FA1"/>
+            <circle cx="55" cy="210" r="3" fill="#7B8FA1"/><circle cx="210" cy="200" r="3" fill="#7B8FA1"/>
+          </g>
+          <!-- Hit zone (small) -->
+          <rect x="80" y="230" width="80" height="24" rx="4" fill="rgba(232,64,87,0.15)" stroke="#E84057" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="120" y="246" text-anchor="middle" fill="#E84057" font-family="JetBrains Mono" font-size="10">4-10% land here</text>
+          <!-- Label -->
+          <text x="120" y="290" text-anchor="middle" fill="#7B8FA1" font-family="JetBrains Mono" font-size="16" font-weight="700">500 sent</text>
+        </svg>
+
+        <!-- Center: big neon VS -->
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:'Outfit',sans-serif;font-size:48px;font-weight:800;color:#E8712A;text-shadow:0 0 30px rgba(232,113,42,0.6),0 0 60px rgba(232,113,42,0.2);letter-spacing:-2px;">vs</div>
+
+        <!-- Right: focused cluster -->
+        <svg style="position:absolute;right:30px;top:60px;" width="240" height="300" viewBox="0 0 240 300">
+          <line x1="30" y1="10" x2="30" y2="260" stroke="#E8712A" stroke-width="0.5" opacity="0.3"/>
+          <line x1="30" y1="260" x2="230" y2="260" stroke="#E8712A" stroke-width="0.5" opacity="0.3"/>
+          <!-- Focused cluster (fewer, more hits) -->
+          <g>
+            <circle cx="100" cy="200" r="5" fill="#E8712A" opacity="0.7"/>
+            <circle cx="130" cy="180" r="5" fill="#E8712A" opacity="0.7"/>
+            <circle cx="110" cy="220" r="5" fill="#E8712A" opacity="0.8"/>
+            <circle cx="150" cy="210" r="5" fill="#E8712A" opacity="0.8"/>
+            <circle cx="120" cy="240" r="5" fill="#4ADE80" opacity="0.9"/>
+            <circle cx="140" cy="230" r="5" fill="#4ADE80" opacity="0.9"/>
+            <circle cx="160" cy="240" r="5" fill="#4ADE80" opacity="0.9"/>
+            <circle cx="100" cy="245" r="5" fill="#4ADE80" opacity="0.8"/>
+          </g>
+          <!-- Hit zone (large) -->
+          <rect x="70" y="170" width="120" height="90" rx="6" fill="none" stroke="#4ADE80" stroke-width="1.5" opacity="0.5"/>
+          <text x="130" y="168" text-anchor="middle" fill="#4ADE80" font-family="JetBrains Mono" font-size="10">33-80% convert</text>
+          <text x="130" y="290" text-anchor="middle" fill="#E8712A" font-family="JetBrains Mono" font-size="16" font-weight="700">50 targeted</text>
+        </svg>
+
+        <!-- Bottom title bar -->
+        <div style="position:absolute;bottom:0;left:0;right:0;height:50px;background:linear-gradient(to top,rgba(10,10,26,0.95),transparent);display:flex;align-items:flex-end;justify-content:center;padding-bottom:12px;">
+          <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:#F5F5F5;letter-spacing:-0.5px;">Volume <span style="color:#E8712A">vs</span> Precision</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Neon Blueprint</h3>
+      <p>Dark blueprint grid, scatter-plot data visualization, neon text glow, axis lines. Feels like a technical analysis tool or terminal UI.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:24px;">All three add depth through: ambient glow, layered backgrounds, shadows, grain texture, and stronger typography. The question is which <em>flavor</em> of depth.</p>

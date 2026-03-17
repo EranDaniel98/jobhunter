@@ -1,13 +1,11 @@
 """Tests for the in-process event bus."""
 
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
 
 from app.events.bus import Event, EventBus, get_event_bus
-
 
 # ---------------------------------------------------------------------------
 # EventBus core behaviour
@@ -79,9 +77,9 @@ async def test_event_has_correct_timestamp_and_payload():
         captured.append(event)
 
     bus.subscribe("ts.event", capture)
-    before = datetime.now(timezone.utc)
+    before = datetime.now(UTC)
     await bus.publish("ts.event", {"data": 42}, source="test_suite")
-    after = datetime.now(timezone.utc)
+    after = datetime.now(UTC)
 
     assert len(captured) == 1
     evt = captured[0]

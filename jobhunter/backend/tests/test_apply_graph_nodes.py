@@ -1,6 +1,5 @@
 """Tests for the LangGraph apply pipeline node functions."""
 
-import json
 import uuid
 
 import pytest
@@ -11,7 +10,6 @@ from app.models.candidate import Candidate, CandidateDNA, Skill
 from app.models.company import Company, CompanyDossier
 from app.models.job_posting import JobPosting
 from app.utils.security import hash_password
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

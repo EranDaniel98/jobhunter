@@ -5,7 +5,6 @@ from unittest.mock import patch
 import jwt
 import pytest
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 
 from app.middleware.tenant import TenantMiddleware

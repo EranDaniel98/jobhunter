@@ -11,7 +11,6 @@ from app.models.candidate import Candidate
 from app.plans import PlanTier
 from app.services import billing_service
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -1,6 +1,5 @@
 """Tests for the LangGraph interview prep pipeline node functions."""
 
-import json
 import uuid
 
 import pytest
@@ -10,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.models.candidate import Candidate, CandidateDNA
 from app.models.company import Company, CompanyDossier
 from app.utils.security import hash_password
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
