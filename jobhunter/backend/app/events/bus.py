@@ -126,6 +126,8 @@ class EventBus:
 
     async def _listen_loop(self) -> None:
         """XREADGROUP loop for consuming cross-worker events."""
+        if self._redis is None:
+            return
         streams = {f"events:{et}": ">" for et in self._handlers}
         if not streams:
             return
@@ -160,7 +162,7 @@ class EventBus:
                 logger.warning("event_bus_listen_error", error=str(e))
                 await asyncio.sleep(5)
 
-    async def _process_stream_message(self, stream: str, msg_id, msg_data: dict) -> None:
+    async def _process_stream_message(self, stream: str, msg_id: str, msg_data: dict) -> None:
         """Process a single message from a Redis Stream.
 
         If the message was published by this worker, only ACK it (handlers already
@@ -195,6 +197,7 @@ class EventBus:
                             error=str(e),
                         )
 
+        assert self._redis is not None  # guaranteed by _listen_loop guard
         await self._redis.xack(stream, CONSUMER_GROUP, msg_id)
 
     @property

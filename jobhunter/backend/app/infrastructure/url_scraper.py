@@ -16,9 +16,10 @@ async def _validate_url(url: str) -> None:
     parsed = urlparse(str(url))
     if parsed.scheme not in ("http", "https"):
         raise ValueError("Only HTTP/HTTPS URLs are allowed")
+    hostname = parsed.hostname or ""
     try:
         loop = asyncio.get_running_loop()
-        resolved = await loop.run_in_executor(None, socket.gethostbyname, parsed.hostname)
+        resolved = await loop.run_in_executor(None, socket.gethostbyname, hostname)
         ip = ipaddress.ip_address(resolved)
         if ip.is_private or ip.is_loopback or ip.is_link_local:
             raise ValueError("Internal/private URLs are not allowed")
