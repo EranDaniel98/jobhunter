@@ -25,6 +25,12 @@ REQUEST_DURATION = Histogram(
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if request.url.path == "/metrics":
+            from app.config import settings
+
+            if settings.METRICS_SECRET:
+                secret = request.headers.get("X-Metrics-Token", "")
+                if secret != settings.METRICS_SECRET:
+                    return Response(status_code=403, content="Forbidden")
             return Response(
                 content=generate_latest(),
                 media_type=CONTENT_TYPE_LATEST,

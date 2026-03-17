@@ -104,7 +104,7 @@ async def draft_message(
     """Draft a personalized outreach email."""
     # Load contact+company and DNA in parallel; dossier depends on company
     contact, dna = await asyncio.gather(
-        _get_contact_with_company(db, contact_id),
+        _get_contact_with_company(db, contact_id, candidate_id),
         _get_dna(db, candidate_id),
     )
     company = contact.company
@@ -182,8 +182,8 @@ async def draft_linkedin_message(
     db: AsyncSession, candidate_id: uuid.UUID, contact_id: uuid.UUID, language: str = "en"
 ) -> OutreachMessage:
     """Draft a LinkedIn connection/InMail message."""
-    contact = await _get_contact(db, contact_id)
-    company = await _get_company(db, contact.company_id)
+    contact = await _get_contact(db, contact_id, candidate_id)
+    company = await _get_company(db, contact.company_id, candidate_id)
     dossier = await _get_dossier(db, company.id)
     dna = await _get_dna(db, candidate_id)
 
@@ -244,16 +244,22 @@ def _next_message_type(existing_messages: list[OutreachMessage]) -> str:
     return "breakup"
 
 
-async def _get_contact(db: AsyncSession, contact_id: uuid.UUID) -> Contact:
-    result = await db.execute(select(Contact).where(Contact.id == contact_id))
+async def _get_contact(db: AsyncSession, contact_id: uuid.UUID, candidate_id: uuid.UUID) -> Contact:
+    result = await db.execute(
+        select(Contact).where(Contact.id == contact_id, Contact.candidate_id == candidate_id)
+    )
     contact = result.scalar_one_or_none()
     if not contact:
         raise ValueError("Contact not found")
     return contact
 
 
-async def _get_contact_with_company(db: AsyncSession, contact_id: uuid.UUID) -> Contact:
-    result = await db.execute(select(Contact).where(Contact.id == contact_id).options(selectinload(Contact.company)))
+async def _get_contact_with_company(db: AsyncSession, contact_id: uuid.UUID, candidate_id: uuid.UUID) -> Contact:
+    result = await db.execute(
+        select(Contact)
+        .where(Contact.id == contact_id, Contact.candidate_id == candidate_id)
+        .options(selectinload(Contact.company))
+    )
     contact = result.scalar_one_or_none()
     if not contact:
         raise ValueError("Contact not found")
@@ -262,8 +268,11 @@ async def _get_contact_with_company(db: AsyncSession, contact_id: uuid.UUID) -> 
     return contact
 
 
-async def _get_company(db: AsyncSession, company_id: uuid.UUID) -> Company:
-    result = await db.execute(select(Company).where(Company.id == company_id))
+async def _get_company(db: AsyncSession, company_id: uuid.UUID, candidate_id: uuid.UUID | None = None) -> Company:
+    query = select(Company).where(Company.id == company_id)
+    if candidate_id:
+        query = query.where(Company.candidate_id == candidate_id)
+    result = await db.execute(query)
     company = result.scalar_one_or_none()
     if not company:
         raise ValueError("Company not found")

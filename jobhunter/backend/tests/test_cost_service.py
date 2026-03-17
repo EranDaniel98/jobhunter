@@ -185,14 +185,12 @@ async def test_concurrency_semaphore_allows_within_limit():
 async def test_concurrency_semaphore_rejects_over_limit():
     """4th concurrent request should get 429."""
 
-    from app.services.concurrency import _semaphores, acquire_ai_slot
+    from app.services.concurrency import _get_semaphore, acquire_ai_slot
 
     user_id = "test-overload-user"
-    # Clear any existing semaphore for this user
-    _semaphores.pop(user_id, None)
 
     # Acquire all 3 slots
-    sem = _semaphores[user_id]
+    sem = _get_semaphore(user_id)
     await sem.acquire()
     await sem.acquire()
     await sem.acquire()
@@ -260,7 +258,9 @@ def test_rls_listener_installs_when_enabled():
         mock_settings.ENABLE_RLS = True
         install_rls_listener(mock_engine)
 
-    mock_event.listens_for.assert_called_once_with(mock_engine.sync_engine, "do_orm_execute")
+    from sqlalchemy.orm import Session
+
+    mock_event.listens_for.assert_called_once_with(Session, "do_orm_execute")
 
 
 def test_has_candidate_id_column_true():

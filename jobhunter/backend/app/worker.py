@@ -19,6 +19,7 @@ from arq.connections import RedisSettings
 from sqlalchemy import exists, select
 
 from app.config import settings
+from app.middleware.tenant import current_tenant_id
 from app.models.enums import ActionStatus, MessageStatus
 
 logger = structlog.get_logger()
@@ -66,7 +67,7 @@ async def _process_chunk(
                     },
                 )
 
-    await asyncio.gather(*[_run(item) for item in items], return_exceptions=True)
+    await asyncio.gather(*[_run(item) for item in items])
     logger.info(
         "chunk.complete",
         extra={
@@ -180,82 +181,86 @@ async def process_followup_chunk(ctx, message_ids: list):
         from app.models.outreach import OutreachMessage
         from app.models.pending_action import PendingAction
 
-        async with sf() as db:
-            result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == message_id))
-            msg = result.scalar_one_or_none()
-            if msg is None:
-                return
+        token = current_tenant_id.set(None)
+        try:
+            async with sf() as db:
+                result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == message_id))
+                msg = result.scalar_one_or_none()
+                if msg is None:
+                    return
 
-            # Check there's no newer message for this contact
-            newer_check = await db.execute(
-                select(OutreachMessage.id)
-                .where(
-                    OutreachMessage.contact_id == msg.contact_id,
-                    OutreachMessage.candidate_id == msg.candidate_id,
-                    OutreachMessage.channel == "email",
-                    OutreachMessage.created_at > msg.created_at,
+                # Check there's no newer message for this contact
+                newer_check = await db.execute(
+                    select(OutreachMessage.id)
+                    .where(
+                        OutreachMessage.contact_id == msg.contact_id,
+                        OutreachMessage.candidate_id == msg.candidate_id,
+                        OutreachMessage.channel == "email",
+                        OutreachMessage.created_at > msg.created_at,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
-            )
-            if newer_check.scalar_one_or_none():
-                return  # Skip - newer message exists
+                if newer_check.scalar_one_or_none():
+                    return  # Skip - newer message exists
 
-            # Skip if a pending action already exists for this message
-            pending_check = await db.execute(
-                select(PendingAction.id)
-                .where(
-                    PendingAction.entity_id == msg.id,
-                    PendingAction.status == ActionStatus.PENDING,
+                # Skip if a pending action already exists for this message
+                pending_check = await db.execute(
+                    select(PendingAction.id)
+                    .where(
+                        PendingAction.entity_id == msg.id,
+                        PendingAction.status == ActionStatus.PENDING,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
+                if pending_check.scalar_one_or_none():
+                    return  # Skip - pending action already exists
+
+                # Look up candidate plan_tier
+                cand_result = await db.execute(select(Candidate).where(Candidate.id == msg.candidate_id))
+                cand = cand_result.scalar_one_or_none()
+                plan_tier = cand.plan_tier if cand else "free"
+
+            # Launch the outreach graph for follow-up drafting
+            # Graph handles: context → draft → quality check → approval → interrupt
+            from app.graphs.outreach import get_outreach_pipeline
+
+            # Determine next_type from FOLLOWUP_THRESHOLDS for logging
+            _next_type, _days = FOLLOWUP_THRESHOLDS.get(msg.message_type, (None, 0))
+
+            thread_id = f"outreach-followup-{uuid.uuid4()}"
+            state = {
+                "candidate_id": str(msg.candidate_id),
+                "contact_id": str(msg.contact_id),
+                "plan_tier": plan_tier,
+                "language": "en",
+                "variant": None,
+                "attach_resume": True,
+                "context": None,
+                "message_type": None,
+                "outreach_message_id": None,
+                "draft_data": None,
+                "action_id": None,
+                "approval_decision": None,
+                "external_message_id": None,
+                "status": "pending",
+                "error": None,
+            }
+
+            graph = get_outreach_pipeline()
+            await graph.ainvoke(
+                state,
+                config={"configurable": {"thread_id": thread_id}},
             )
-            if pending_check.scalar_one_or_none():
-                return  # Skip - pending action already exists
 
-            # Look up candidate plan_tier
-            cand_result = await db.execute(select(Candidate).where(Candidate.id == msg.candidate_id))
-            cand = cand_result.scalar_one_or_none()
-            plan_tier = cand.plan_tier if cand else "free"
-
-        # Launch the outreach graph for follow-up drafting
-        # Graph handles: context → draft → quality check → approval → interrupt
-        from app.graphs.outreach import get_outreach_pipeline
-
-        # Determine next_type from FOLLOWUP_THRESHOLDS for logging
-        _next_type, _days = FOLLOWUP_THRESHOLDS.get(msg.message_type, (None, 0))
-
-        thread_id = f"outreach-followup-{uuid.uuid4()}"
-        state = {
-            "candidate_id": str(msg.candidate_id),
-            "contact_id": str(msg.contact_id),
-            "plan_tier": plan_tier,
-            "language": "en",
-            "variant": None,
-            "attach_resume": True,
-            "context": None,
-            "message_type": None,
-            "outreach_message_id": None,
-            "draft_data": None,
-            "action_id": None,
-            "approval_decision": None,
-            "external_message_id": None,
-            "status": "pending",
-            "error": None,
-        }
-
-        graph = get_outreach_pipeline()
-        await graph.ainvoke(
-            state,
-            config={"configurable": {"thread_id": thread_id}},
-        )
-
-        logger.info(
-            "followup_graph_launched",
-            prev_message_id=str(msg.id),
-            followup_type=_next_type,
-            candidate_id=str(msg.candidate_id),
-            thread_id=thread_id,
-        )
+            logger.info(
+                "followup_graph_launched",
+                prev_message_id=str(msg.id),
+                followup_type=_next_type,
+                candidate_id=str(msg.candidate_id),
+                thread_id=thread_id,
+            )
+        finally:
+            current_tenant_id.reset(token)
 
     await _process_chunk(
         message_ids,
@@ -325,30 +330,34 @@ async def process_scout_chunk(ctx, candidate_ids: list):
         from app.infrastructure.database import async_session_factory as sf
         from app.models.candidate import Candidate
 
-        async with sf() as db:
-            cand_result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
-            cand = cand_result.scalar_one_or_none()
-            plan_tier = cand.plan_tier if cand else "free"
+        token = current_tenant_id.set(None)
+        try:
+            async with sf() as db:
+                cand_result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+                cand = cand_result.scalar_one_or_none()
+                plan_tier = cand.plan_tier if cand else "free"
 
-        thread_id = f"scout-cron-{uuid.uuid4()}"
-        state = {
-            "candidate_id": str(candidate_id),
-            "plan_tier": plan_tier,
-            "search_queries": None,
-            "raw_articles": None,
-            "parsed_companies": None,
-            "scored_companies": None,
-            "companies_created": 0,
-            "status": "pending",
-            "error": None,
-        }
+            thread_id = f"scout-cron-{uuid.uuid4()}"
+            state = {
+                "candidate_id": str(candidate_id),
+                "plan_tier": plan_tier,
+                "search_queries": None,
+                "raw_articles": None,
+                "parsed_companies": None,
+                "scored_companies": None,
+                "companies_created": 0,
+                "status": "pending",
+                "error": None,
+            }
 
-        graph = get_scout_pipeline()
-        await graph.ainvoke(
-            state,
-            config={"configurable": {"thread_id": thread_id}},
-        )
-        logger.info("daily_scout_candidate_done", candidate_id=str(candidate_id), thread_id=thread_id)
+            graph = get_scout_pipeline()
+            await graph.ainvoke(
+                state,
+                config={"configurable": {"thread_id": thread_id}},
+            )
+            logger.info("daily_scout_candidate_done", candidate_id=str(candidate_id), thread_id=thread_id)
+        finally:
+            current_tenant_id.reset(token)
 
     await _process_chunk(
         candidate_ids,
@@ -416,21 +425,25 @@ async def process_analytics_chunk(ctx, candidate_ids: list):
     async def process_one_candidate(candidate_id):
         from app.graphs.analytics_pipeline import get_analytics_pipeline
 
-        thread_id = f"analytics-weekly-{uuid.uuid4()}"
-        graph = get_analytics_pipeline()
-        await graph.ainvoke(
-            {
-                "candidate_id": str(candidate_id),
-                "include_email": True,
-                "raw_data": None,
-                "insights": None,
-                "insights_saved": 0,
-                "status": "pending",
-                "error": None,
-            },
-            config={"configurable": {"thread_id": thread_id}},
-        )
-        logger.info("weekly_analytics_candidate_done", candidate_id=str(candidate_id), thread_id=thread_id)
+        token = current_tenant_id.set(None)
+        try:
+            thread_id = f"analytics-weekly-{uuid.uuid4()}"
+            graph = get_analytics_pipeline()
+            await graph.ainvoke(
+                {
+                    "candidate_id": str(candidate_id),
+                    "include_email": True,
+                    "raw_data": None,
+                    "insights": None,
+                    "insights_saved": 0,
+                    "status": "pending",
+                    "error": None,
+                },
+                config={"configurable": {"thread_id": thread_id}},
+            )
+            logger.info("weekly_analytics_candidate_done", candidate_id=str(candidate_id), thread_id=thread_id)
+        finally:
+            current_tenant_id.reset(token)
 
     await _process_chunk(
         candidate_ids,
@@ -461,8 +474,9 @@ async def send_approved_message(ctx, outreach_id: str):
     from app.infrastructure.database import async_session_factory
     from app.services.email_service import send_outreach
 
-    async with async_session_factory() as db:
-        try:
+    token = current_tenant_id.set(None)
+    try:
+        async with async_session_factory() as db:
             from sqlalchemy import select
 
             from app.models.candidate import Candidate
@@ -478,13 +492,16 @@ async def send_approved_message(ctx, outreach_id: str):
                     plan_tier = cand.plan_tier
             await send_outreach(db, uuid.UUID(outreach_id), plan_tier=plan_tier)
             logger.info("approved_message_sent", message_id=outreach_id)
-        except Exception as e:
-            logger.error("approved_message_send_failed", message_id=outreach_id, error=str(e))
+    except Exception as e:
+        logger.error("approved_message_send_failed", message_id=outreach_id, error=str(e))
+        raise  # Let ARQ mark as failed and retry
+    finally:
+        current_tenant_id.reset(token)
 
 
 class WorkerSettings:
     functions: ClassVar[list] = [
-        send_approved_message,
+        func(send_approved_message, timeout=120),
         func(process_followup_chunk, timeout=600),
         func(process_scout_chunk, timeout=600),
         func(process_analytics_chunk, timeout=600),

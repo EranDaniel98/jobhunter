@@ -35,7 +35,7 @@ async def test_health_checks_structure(client: AsyncClient):
     assert "migration_version" in checks
     assert "connection_mode" in checks
     assert "pgbouncer_configured" in checks
-    assert "db_reachable" in checks
+    # db_reachable was removed — database key covers reachability
 
 
 @pytest.mark.asyncio

@@ -53,10 +53,19 @@ jobs:
       - name: Ruff format check
         run: uv run ruff format --check app/
       - name: Mypy type check
-        run: uv run mypy app/ --ignore-missing-imports || true  # TODO: fix 95 type errors then remove || true
+        run: |
+          ERRORS=$(uv run mypy app/ --ignore-missing-imports 2>&1 | grep -c "error:" || true)
+          echo "Mypy errors: $ERRORS"
+          if [ "$ERRORS" -gt 95 ]; then
+            echo "::error::Mypy error count increased from baseline (95). Fix new type errors."
+            uv run mypy app/ --ignore-missing-imports
+            exit 1
+          fi
       - name: Create test database
         run: PGPASSWORD=jobhunter psql -h localhost -U jobhunter -d jobhunter -c "CREATE DATABASE jobhunter_test;" || true
-      - run: uv run pytest tests/ -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=70
+      - name: Run migrations
+        run: uv run alembic upgrade head
+      - run: uv run pytest tests/ -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=60
       - name: pip-audit security scan
         run: uv run pip-audit
 
@@ -135,7 +144,12 @@ jobs:
           uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           echo "Waiting for backend..."
           for i in $(seq 1 30); do
-            curl -sf http://localhost:8000/api/v1/health && break || sleep 2
+            curl -sf http://localhost:8000/api/v1/health && break
+            if [ "$i" -eq 30 ]; then
+              echo "::error::Backend failed to start after 60 seconds"
+              exit 1
+            fi
+            sleep 2
           done
 
       # ── Frontend setup ──

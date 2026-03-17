@@ -16,13 +16,12 @@ from app.infrastructure.protocols import (
 )
 from app.infrastructure.redis_client import get_redis
 from app.models.candidate import Candidate
+from app.utils.constants import TOKEN_BLACKLIST_PREFIX
 from app.utils.security import decode_token
 
 logger = structlog.get_logger()
 
 security = HTTPBearer()
-
-TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 
 # Singleton client instances (initialized on first use)
 _openai_client: OpenAIClientProtocol | None = None
@@ -37,9 +36,13 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
 
 
 async def get_admin_db() -> AsyncSession:  # type: ignore[misc]
-    """Admin database session that bypasses RLS filtering."""
+    """Admin database session that bypasses RLS filtering.
+
+    When ENABLE_RLS is active, admin paths bypass filtering because
+    TenantMiddleware skips admin routes (current_tenant_id stays None).
+    """
     async for session in get_session():
-        yield session.execution_options(_bypass_rls=True)
+        yield session
 
 
 def get_openai() -> OpenAIClientProtocol:
@@ -76,6 +79,14 @@ def get_email_client() -> EmailClientProtocol:
 
         _email_client = ResendClient()
     return _email_client
+
+
+async def close_clients() -> None:
+    """Close all HTTP clients on shutdown."""
+    global _hunter_client, _newsapi_client, _email_client
+    for client in (_hunter_client, _newsapi_client, _email_client):
+        if client and hasattr(client, "aclose"):
+            await client.aclose()
 
 
 async def get_current_candidate(

@@ -18,7 +18,9 @@ async def find_contact(
     from app.models.company import Company
 
     # Get company domain
-    result = await db.execute(select(Company).where(Company.id == company_id))
+    result = await db.execute(
+        select(Company).where(Company.id == company_id, Company.candidate_id == candidate_id)
+    )
     company = result.scalar_one_or_none()
     if not company:
         raise ValueError("Company not found")

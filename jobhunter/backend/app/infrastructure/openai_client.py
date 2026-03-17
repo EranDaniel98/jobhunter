@@ -13,7 +13,12 @@ logger = structlog.get_logger()
 
 class OpenAIClient:
     def __init__(self):
-        self._client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        import httpx as _httpx
+
+        self._client = AsyncOpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=_httpx.Timeout(60.0, connect=10.0),
+        )
 
     @retry_on_rate_limit
     async def parse_structured(
