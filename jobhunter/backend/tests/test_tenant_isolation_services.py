@@ -1,6 +1,8 @@
 import uuid
+
 import pytest
-from app.services.outreach_service import _get_contact, _get_contact_with_company
+
+from app.services.outreach_service import _get_contact
 
 
 def _make_candidate(tenant_id):

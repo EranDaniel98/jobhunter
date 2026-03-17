@@ -420,7 +420,7 @@ async def update_user_plan(
     try:
         PlanTier(new_tier)
     except ValueError:
-        raise ValueError(f"Invalid plan tier: {new_tier}")
+        raise ValueError(f"Invalid plan tier: {new_tier}") from None
 
     result = await db.execute(select(Candidate).where(Candidate.id == user_id))
     candidate = result.scalar_one_or_none()

@@ -164,6 +164,7 @@ async def upload_resume(db: AsyncSession, candidate_id: uuid.UUID, file_bytes: b
 
     # Extract text (offload CPU-bound parsing to thread pool)
     import asyncio
+
     extractor = _extract_text_from_pdf if ext == "pdf" else _extract_text_from_docx
     raw_text = await asyncio.to_thread(extractor, file_bytes)
 

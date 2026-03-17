@@ -245,9 +245,7 @@ def _next_message_type(existing_messages: list[OutreachMessage]) -> str:
 
 
 async def _get_contact(db: AsyncSession, contact_id: uuid.UUID, candidate_id: uuid.UUID) -> Contact:
-    result = await db.execute(
-        select(Contact).where(Contact.id == contact_id, Contact.candidate_id == candidate_id)
-    )
+    result = await db.execute(select(Contact).where(Contact.id == contact_id, Contact.candidate_id == candidate_id))
     contact = result.scalar_one_or_none()
     if not contact:
         raise ValueError("Contact not found")

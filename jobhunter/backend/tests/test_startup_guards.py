@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 
 @pytest.mark.asyncio
@@ -13,7 +14,7 @@ async def test_default_jwt_secret_blocks_startup():
         mock_settings.APP_NAME = "test"
         mock_settings.FRONTEND_URL = "http://localhost:3000"
 
-        from app.main import lifespan, app
+        from app.main import app, lifespan
 
         with pytest.raises(SystemExit):
             async with lifespan(app):

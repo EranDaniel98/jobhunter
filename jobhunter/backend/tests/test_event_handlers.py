@@ -1,7 +1,8 @@
 """Tests for event handlers in app/events/handlers.py."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from app.events.bus import Event
 from app.events.handlers import (
