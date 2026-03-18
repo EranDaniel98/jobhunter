@@ -1,0 +1,39 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: Deploy backend to staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          cd jobhunter/backend
+          railway link ${{ vars.RAILWAY_PROJECT_ID }}
+          railway service link jobhunter-staging
+          railway up --detach
+
+      - name: Wait for deploy and health check
+        run: |
+          echo "Waiting 60s for deploy to propagate..."
+          sleep 60
+          for i in $(seq 1 10); do
+            STATUS=$(curl -sf "${{ vars.STAGING_API_URL }}/health" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "unreachable")
+            echo "Attempt $i: $STATUS"
+            if [ "$STATUS" = "healthy" ]; then
+              echo "Staging is healthy!"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Staging health check failed after 10 attempts"
+          exit 1

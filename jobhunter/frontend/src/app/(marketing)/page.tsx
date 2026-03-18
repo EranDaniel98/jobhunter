@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { trackEvent } from "@/lib/analytics";
 import {
   FileText,
   Building2,
@@ -395,6 +396,7 @@ export default function LandingPage() {
       const data = await res.json();
       if (res.ok) {
         setStatus("success");
+        trackEvent("Waitlist Signup", { source: "landing_page" });
         setMessage(data.message);
         setEmail("");
       } else {
@@ -443,6 +445,7 @@ export default function LandingPage() {
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
                 <a
                   href="#waitlist"
+                  onClick={() => trackEvent("CTA Click", { location: "hero" })}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all hover:shadow-xl hover:shadow-primary/30 no-underline"
                   data-slot="nav"
                 >
@@ -451,6 +454,7 @@ export default function LandingPage() {
                 </a>
                 <a
                   href="#how-it-works"
+                  onClick={() => trackEvent("CTA Click", { location: "hero_secondary" })}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 py-3.5 text-base font-semibold text-foreground hover:bg-accent transition-colors no-underline"
                   data-slot="nav"
                 >
@@ -844,6 +848,7 @@ export default function LandingPage() {
 
                 <a
                   href="#waitlist"
+                  onClick={() => trackEvent("Pricing Click", { tier: tier.name })}
                   className={`mt-8 block rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors no-underline ${
                     tier.highlight
                       ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25"

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
@@ -50,6 +51,17 @@ export default function RootLayout({
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
+        {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN && (
+          <>
+            <Script
+              src="https://plausible.io/js/pa-ZIb_SQe3jQBLvVRLrZin1.js"
+              strategy="afterInteractive"
+            />
+            <Script id="plausible-init" strategy="afterInteractive">
+              {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init();`}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );
