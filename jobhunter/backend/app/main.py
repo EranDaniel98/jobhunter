@@ -78,6 +78,16 @@ async def lifespan(app: FastAPI):
     bus.subscribe("resume_parsed", on_resume_parsed)
     logger.info("event_bus_initialized", handler_count=bus.handler_count)
 
+    # Connect event bus to Redis for cross-worker durability
+    try:
+        from app.infrastructure.redis_client import get_redis as _get_redis
+
+        redis = _get_redis()
+        await bus.connect(redis)
+        await bus.start_listening()
+    except Exception as e:
+        logger.warning("event_bus_redis_connect_failed", error=str(e))
+
     # Warn if migrations are behind
     try:
         from sqlalchemy import text as sa_text
@@ -102,7 +112,11 @@ async def lifespan(app: FastAPI):
 
     yield
     logger.info("shutting_down", app=settings.APP_NAME)
+    await bus.stop_listening()
     await close_checkpointer()
+    from app.dependencies import close_clients
+
+    await close_clients()
     await close_redis()
     await engine.dispose()
 

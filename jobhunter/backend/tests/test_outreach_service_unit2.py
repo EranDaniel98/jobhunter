@@ -323,7 +323,7 @@ class TestGetContactWithCompany:
         db.execute.return_value = _scalar_result(None)
 
         with pytest.raises(ValueError, match="Contact not found"):
-            await _get_contact_with_company(db, uuid.uuid4())
+            await _get_contact_with_company(db, uuid.uuid4(), uuid.uuid4())
 
     @pytest.mark.asyncio
     async def test_raises_when_company_not_loaded(self):
@@ -335,7 +335,7 @@ class TestGetContactWithCompany:
         db.execute.return_value = _scalar_result(contact)
 
         with pytest.raises(ValueError, match="Company not found"):
-            await _get_contact_with_company(db, uuid.uuid4())
+            await _get_contact_with_company(db, uuid.uuid4(), uuid.uuid4())
 
     @pytest.mark.asyncio
     async def test_returns_contact_with_company(self):
@@ -349,7 +349,7 @@ class TestGetContactWithCompany:
         db = AsyncMock()
         db.execute.return_value = _scalar_result(contact)
 
-        result = await _get_contact_with_company(db, uuid.uuid4())
+        result = await _get_contact_with_company(db, uuid.uuid4(), uuid.uuid4())
 
         assert result is contact
         assert result.company.name == "Stripe"

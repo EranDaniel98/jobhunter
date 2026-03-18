@@ -141,9 +141,7 @@ class TestDiscoverCompanies:
             await discover_companies(mock_db, uuid.uuid4())
 
     @pytest.mark.asyncio
-    async def test_raises_http_exception_when_no_dna(self):
-        from fastapi import HTTPException
-
+    async def test_raises_value_error_when_no_dna(self):
         from app.services.company_service import discover_companies
 
         candidate = _make_candidate()
@@ -160,9 +158,8 @@ class TestDiscoverCompanies:
         with patch("app.services.company_service.settings") as mock_settings:
             mock_settings.OPENAI_API_KEY = "test-key"
             mock_settings.HUNTER_API_KEY = "test-key"
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(ValueError, match="Upload and process a resume"):
                 await discover_companies(mock_db, candidate.id)
-        assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
     async def test_raises_when_no_openai_key(self):

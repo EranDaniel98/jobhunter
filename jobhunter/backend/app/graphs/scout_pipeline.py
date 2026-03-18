@@ -224,6 +224,43 @@ async def search_news_node(state: ScoutState) -> dict:
         except Exception as e:
             logger.warning("scout_search_query_failed", query=query, error=str(e))
 
+    # Also search DuckDuckGo for broader coverage (best-effort)
+    try:
+        import asyncio
+
+        from duckduckgo_search import DDGS
+
+        ddg_queries = [f"{q} hiring" for q in queries[:2]]
+
+        def _ddg_search_sync() -> list[dict]:
+            collected = []
+            with DDGS() as ddgs:
+                for query in ddg_queries:
+                    try:
+                        results = ddgs.text(query, max_results=5)
+                        for r in results:
+                            url = r.get("href", "")
+                            if url and url not in seen_urls:
+                                seen_urls.add(url)
+                                collected.append(
+                                    {
+                                        "title": r.get("title", ""),
+                                        "description": r.get("body", ""),
+                                        "url": url,
+                                        "source": {"name": "DuckDuckGo"},
+                                    }
+                                )
+                    except Exception:
+                        continue
+            return collected
+
+        ddg_results = await asyncio.to_thread(_ddg_search_sync)
+        all_articles.extend(ddg_results)
+        if ddg_results:
+            logger.info("scout_ddg_searched", ddg_articles=len(ddg_results))
+    except Exception as e:
+        logger.warning("scout_ddg_search_failed", error=str(e))
+
     logger.info("scout_news_searched", total_articles=len(all_articles))
 
     if not all_articles:
@@ -267,7 +304,7 @@ async def parse_articles_node(state: ScoutState) -> dict:
         return {"parsed_companies": [], "companies_created": 0, "status": "completed"}
 
     # Attach source URLs from articles (best effort match by company name)
-    article_urls = {}
+    article_urls: dict[str, list[str]] = {}
     for a in articles:
         title = (a.get("title") or "").lower()
         desc = (a.get("description") or "").lower()
@@ -344,52 +381,50 @@ async def create_companies_node(state: ScoutState) -> dict:
     candidate_id = uuid.UUID(state["candidate_id"])
     created = 0
 
-    async with _db_mod.async_session_factory() as db:
-        for c in scored:
-            try:
-                async with db.begin_nested():
-                    company = Company(
-                        id=uuid.uuid4(),
-                        candidate_id=candidate_id,
-                        name=c["company_name"],
-                        domain=c["domain"],
-                        industry=c.get("industry"),
-                        description=c.get("description"),
-                        funding_stage=c.get("funding_round"),
-                        fit_score=c.get("fit_score"),
-                        embedding=c.get("embedding"),
-                        status="suggested",
-                        research_status="pending",
-                        source="scout_funding",
-                    )
-                    db.add(company)
-                    await db.flush()
+    for c in scored:
+        try:
+            async with _db_mod.async_session_factory() as db:
+                company = Company(
+                    id=uuid.uuid4(),
+                    candidate_id=candidate_id,
+                    name=c["company_name"],
+                    domain=c["domain"],
+                    industry=c.get("industry"),
+                    description=c.get("description"),
+                    funding_stage=c.get("funding_round"),
+                    fit_score=c.get("fit_score"),
+                    embedding=c.get("embedding"),
+                    status="suggested",
+                    research_status="pending",
+                    source="scout_funding",
+                )
+                db.add(company)
+                await db.flush()
 
-                    signal = CompanySignal(
-                        id=uuid.uuid4(),
-                        company_id=company.id,
-                        candidate_id=candidate_id,
-                        signal_type="funding_round",
-                        title=f"{c['company_name']} raised {c.get('funding_round', 'funding')}",
-                        description=c.get("description"),
-                        source_url=c.get("source_url"),
-                        signal_strength=c.get("fit_score"),
-                        detected_at=datetime.now(UTC),
-                        metadata_={
-                            "funding_round": c.get("funding_round"),
-                            "amount": c.get("amount"),
-                        },
-                    )
-                    db.add(signal)
+                signal = CompanySignal(
+                    id=uuid.uuid4(),
+                    company_id=company.id,
+                    candidate_id=candidate_id,
+                    signal_type="funding_round",
+                    title=f"{c['company_name']} raised {c.get('funding_round', 'funding')}",
+                    description=c.get("description"),
+                    source_url=c.get("source_url"),
+                    signal_strength=c.get("fit_score"),
+                    detected_at=datetime.now(UTC),
+                    metadata_={
+                        "funding_round": c.get("funding_round"),
+                        "amount": c.get("amount"),
+                    },
+                )
+                db.add(signal)
+                await db.commit()
                 created += 1
-            except IntegrityError:
-                logger.info("scout_company_duplicate", domain=c["domain"])
-                continue
-            except Exception as e:
-                logger.error("scout_create_company_failed", company=c["company_name"], error=str(e))
-                continue
-
-        await db.commit()
+        except IntegrityError:
+            logger.info("scout_company_duplicate", domain=c.get("domain"))
+            continue
+        except Exception as e:
+            logger.error("scout_company_create_failed", domain=c.get("domain"), error=str(e))
+            continue
 
     logger.info("scout_companies_created", count=created)
     return {"companies_created": created}

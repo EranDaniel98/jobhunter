@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.dependencies import get_current_candidate, get_db, get_email_client
+from app.infrastructure.protocols import EmailClientProtocol
 from app.infrastructure.redis_client import redis_safe_get, redis_safe_setex
 from app.models.candidate import Candidate
 from app.rate_limit import limiter
@@ -36,13 +37,18 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 logger = structlog.get_logger()
 
 
-@router.post("/register", response_model=CandidateResponse, status_code=201)
-async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    candidate = await auth_service.register(db, data)
+def _to_candidate_response(candidate: Candidate) -> CandidateResponse:
     return CandidateResponse(
         id=str(candidate.id),
         email=candidate.email,
         full_name=candidate.full_name,
+        headline=candidate.headline,
+        location=candidate.location,
+        target_roles=candidate.target_roles,
+        target_industries=candidate.target_industries,
+        target_locations=candidate.target_locations,
+        salary_min=candidate.salary_min,
+        salary_max=candidate.salary_max,
         is_admin=candidate.is_admin,
         email_verified=candidate.email_verified,
         preferences=candidate.preferences,
@@ -52,6 +58,16 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
         tour_completed_at=candidate.tour_completed_at,
         tour_completed=candidate.tour_completed_at is not None,
     )
+
+
+@router.post("/register", response_model=CandidateResponse, status_code=201)
+async def register(
+    data: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+    email_client: EmailClientProtocol = Depends(get_email_client),
+):
+    candidate = await auth_service.register(db, data, email_client=email_client)
+    return _to_candidate_response(candidate)
 
 
 @router.post("/login", response_model=TokenPair)
@@ -74,8 +90,13 @@ async def logout(request: Request, data: LogoutRequest | None = None):
 
 @router.post("/forgot-password", status_code=200)
 @limiter.limit("5/hour")
-async def forgot_password(request: Request, data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    await auth_service.forgot_password(db, data.email)
+async def forgot_password(
+    request: Request,
+    data: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    email_client: EmailClientProtocol = Depends(get_email_client),
+):
+    await auth_service.forgot_password(db, data.email, email_client=email_client)
     return {"message": "If an account with that email exists, a reset link has been sent."}
 
 
@@ -88,26 +109,7 @@ async def reset_password(request: Request, data: ResetPasswordRequest, db: Async
 
 @router.get("/me", response_model=CandidateResponse)
 async def get_me(candidate: Candidate = Depends(get_current_candidate)):
-    return CandidateResponse(
-        id=str(candidate.id),
-        email=candidate.email,
-        full_name=candidate.full_name,
-        headline=candidate.headline,
-        location=candidate.location,
-        target_roles=candidate.target_roles,
-        target_industries=candidate.target_industries,
-        target_locations=candidate.target_locations,
-        salary_min=candidate.salary_min,
-        salary_max=candidate.salary_max,
-        is_admin=candidate.is_admin,
-        email_verified=candidate.email_verified,
-        preferences=candidate.preferences,
-        plan_tier=candidate.plan_tier,
-        onboarding_completed_at=candidate.onboarding_completed_at,
-        onboarding_completed=candidate.onboarding_completed_at is not None,
-        tour_completed_at=candidate.tour_completed_at,
-        tour_completed=candidate.tour_completed_at is not None,
-    )
+    return _to_candidate_response(candidate)
 
 
 @router.patch("/me", response_model=CandidateResponse)
@@ -122,26 +124,7 @@ async def update_me(
     await db.commit()
     await db.refresh(candidate)
     logger.info("candidate_updated", candidate_id=str(candidate.id), fields=list(update_data.keys()))
-    return CandidateResponse(
-        id=str(candidate.id),
-        email=candidate.email,
-        full_name=candidate.full_name,
-        headline=candidate.headline,
-        location=candidate.location,
-        target_roles=candidate.target_roles,
-        target_industries=candidate.target_industries,
-        target_locations=candidate.target_locations,
-        salary_min=candidate.salary_min,
-        salary_max=candidate.salary_max,
-        is_admin=candidate.is_admin,
-        email_verified=candidate.email_verified,
-        preferences=candidate.preferences,
-        plan_tier=candidate.plan_tier,
-        onboarding_completed_at=candidate.onboarding_completed_at,
-        onboarding_completed=candidate.onboarding_completed_at is not None,
-        tour_completed_at=candidate.tour_completed_at,
-        tour_completed=candidate.tour_completed_at is not None,
-    )
+    return _to_candidate_response(candidate)
 
 
 @router.post("/complete-onboarding", response_model=CandidateResponse)
@@ -155,26 +138,7 @@ async def complete_onboarding(
         await db.commit()
         await db.refresh(candidate)
         logger.info("onboarding_completed", candidate_id=str(candidate.id))
-    return CandidateResponse(
-        id=str(candidate.id),
-        email=candidate.email,
-        full_name=candidate.full_name,
-        headline=candidate.headline,
-        location=candidate.location,
-        target_roles=candidate.target_roles,
-        target_industries=candidate.target_industries,
-        target_locations=candidate.target_locations,
-        salary_min=candidate.salary_min,
-        salary_max=candidate.salary_max,
-        is_admin=candidate.is_admin,
-        email_verified=candidate.email_verified,
-        preferences=candidate.preferences,
-        plan_tier=candidate.plan_tier,
-        onboarding_completed_at=candidate.onboarding_completed_at,
-        onboarding_completed=candidate.onboarding_completed_at is not None,
-        tour_completed_at=candidate.tour_completed_at,
-        tour_completed=candidate.tour_completed_at is not None,
-    )
+    return _to_candidate_response(candidate)
 
 
 @router.post("/complete-tour", response_model=CandidateResponse)
@@ -188,26 +152,7 @@ async def complete_tour(
         await db.commit()
         await db.refresh(candidate)
         logger.info("tour_completed", candidate_id=str(candidate.id))
-    return CandidateResponse(
-        id=str(candidate.id),
-        email=candidate.email,
-        full_name=candidate.full_name,
-        headline=candidate.headline,
-        location=candidate.location,
-        target_roles=candidate.target_roles,
-        target_industries=candidate.target_industries,
-        target_locations=candidate.target_locations,
-        salary_min=candidate.salary_min,
-        salary_max=candidate.salary_max,
-        is_admin=candidate.is_admin,
-        email_verified=candidate.email_verified,
-        preferences=candidate.preferences,
-        plan_tier=candidate.plan_tier,
-        onboarding_completed_at=candidate.onboarding_completed_at,
-        onboarding_completed=candidate.onboarding_completed_at is not None,
-        tour_completed_at=candidate.tour_completed_at,
-        tour_completed=candidate.tour_completed_at is not None,
-    )
+    return _to_candidate_response(candidate)
 
 
 @router.post("/me/password", status_code=204)

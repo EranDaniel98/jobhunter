@@ -171,42 +171,13 @@ async def update_user_plan(
     db: AsyncSession = Depends(get_db),
 ):
     """Admin endpoint to change a user's plan tier."""
-    from app.models.audit import AdminAuditLog
-    from app.plans import PlanTier
-
-    # Validate tier
     try:
-        PlanTier(body.plan_tier)
-    except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid plan tier: {body.plan_tier}") from None
-
-    # Find user
-    from sqlalchemy import select
-
-    result = await db.execute(select(Candidate).where(Candidate.id == user_id))
-    candidate = result.scalar_one_or_none()
+        candidate = await admin_service.update_user_plan(db, user_id, body.plan_tier, admin.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
     if not candidate:
         raise HTTPException(status_code=404, detail="User not found")
-
-    old_tier = candidate.plan_tier
-    candidate.plan_tier = body.plan_tier
-
-    # Audit log
-    audit = AdminAuditLog(
-        id=uuid.uuid4(),
-        admin_id=admin.id,
-        action="change_plan",
-        target_user_id=user_id,
-        details={"old_tier": old_tier, "new_tier": body.plan_tier},
-    )
-    db.add(audit)
-    await db.commit()
-
-    logger.info(
-        "plan_changed", user_id=str(user_id), old_tier=old_tier, new_tier=body.plan_tier, admin_id=str(admin.id)
-    )
-    user = await admin_service.get_user_detail(db, user_id)
-    return user
+    return await admin_service.get_user_detail(db, user_id)
 
 
 @router.get("/api-costs")
@@ -331,13 +302,16 @@ async def _get_daily_quota_used(redis) -> int:
     return int(val) if val else 0
 
 
-async def _increment_daily_quota(redis, amount: int = 1) -> int:
+async def _try_reserve_quota(redis, amount: int = 1) -> bool:
+    """Atomically reserve invite quota. Returns True if within limit."""
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     key = DAILY_INVITE_QUOTA_KEY.format(date=today)
     new_val = await redis.incrby(key, amount)
-    # Set TTL to 48 hours so the key auto-expires after the day rolls over
     await redis.expire(key, 172800)
-    return new_val
+    if new_val > settings.MAX_DAILY_INVITES:
+        await redis.decrby(key, amount)
+        return False
+    return True
 
 
 @router.get("/waitlist", response_model=WaitlistListResponse)
@@ -390,15 +364,13 @@ async def invite_waitlist_entry(
                 expires_at=existing_code.expires_at,
             )
 
-    # Quota check
-    used = await _get_daily_quota_used(redis)
-    if used >= settings.MAX_DAILY_INVITES:
+    # Quota check (atomic reserve)
+    if not await _try_reserve_quota(redis):
         logger.warning(
             "waitlist_invite_quota_exceeded",
             feature="waitlist",
             action="invite",
             admin_id=str(admin.id),
-            used=used,
             limit=settings.MAX_DAILY_INVITES,
         )
         return JSONResponse(
@@ -406,9 +378,6 @@ async def invite_waitlist_entry(
             content={"detail": "Daily invite quota exceeded. Resets at midnight UTC."},
             headers={"Retry-After": "86400"},
         )
-
-    # Reserve quota before sending
-    await _increment_daily_quota(redis, 1)
 
     # Create invite code and update entry
     invite = await create_system_invite(db, entry.email)
@@ -427,7 +396,7 @@ async def invite_waitlist_entry(
             subject="You're invited to JobHunter!",
             body=(
                 f"Hi,\n\nYou're invited to join JobHunter. Use the link below to register:\n\n"
-                f"https://app.hunter-job.com/register?code={invite.code}\n\n"
+                f"{settings.FRONTEND_URL}/register?code={invite.code}\n\n"
                 f"This invite expires in {settings.INVITE_EXPIRE_DAYS} days.\n\nGood luck!"
             ),
         )
@@ -479,10 +448,9 @@ async def invite_waitlist_batch(
     if len(body.ids) > 50:
         raise HTTPException(status_code=400, detail="Batch size cannot exceed 50")
 
-    # Quota check up-front
+    # Quota check up-front (non-reserving)
     used = await _get_daily_quota_used(redis)
-    remaining = settings.MAX_DAILY_INVITES - used
-    if remaining <= 0:
+    if used >= settings.MAX_DAILY_INVITES:
         return JSONResponse(
             status_code=429,
             content={"detail": "Daily invite quota exceeded. Resets at midnight UTC."},
@@ -495,9 +463,8 @@ async def invite_waitlist_batch(
     errors: list[str] = []
 
     for entry_id in body.ids:
-        # Re-check quota per item
-        used = await _get_daily_quota_used(redis)
-        if used >= settings.MAX_DAILY_INVITES:
+        # Atomically reserve quota per item
+        if not await _try_reserve_quota(redis):
             skipped += len(body.ids) - invited - skipped - failed
             break
 
@@ -514,9 +481,6 @@ async def invite_waitlist_batch(
             continue
 
         try:
-            # Reserve quota
-            await _increment_daily_quota(redis, 1)
-
             invite = await create_system_invite(db, entry.email)
             entry.status = "invited"
             entry.invited_at = datetime.now(UTC)
@@ -531,7 +495,7 @@ async def invite_waitlist_batch(
                 subject="You're invited to JobHunter!",
                 body=(
                     f"Hi,\n\nYou're invited to join JobHunter. Use the link below to register:\n\n"
-                    f"https://app.hunter-job.com/register?code={invite.code}\n\n"
+                    f"{settings.FRONTEND_URL}/register?code={invite.code}\n\n"
                     f"This invite expires in {settings.INVITE_EXPIRE_DAYS} days.\n\nGood luck!"
                 ),
             )
