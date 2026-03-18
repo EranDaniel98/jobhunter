@@ -19,9 +19,21 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
+  staging-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify staging is healthy
+        run: |
+          STATUS=$(curl -sf "${{ vars.STAGING_API_URL }}/health" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || echo "unreachable")
+          if [ "$STATUS" != "healthy" ]; then
+            echo "::error::Staging is not healthy ($STATUS). Deploy to staging first."
+            exit 1
+          fi
+          echo "Staging is healthy. Proceeding to production deploy."
+
   deploy:
     runs-on: ubuntu-latest
-    needs: [ci]
+    needs: [ci, staging-gate]
     environment: ${{ github.event.inputs.environment || 'production' }}
     concurrency:
       group: deploy-${{ github.event.inputs.environment || 'production' }}
