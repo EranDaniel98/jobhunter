@@ -9,7 +9,7 @@ import asyncio
 import pytest
 from fastapi import HTTPException
 
-from app.services.concurrency import _semaphores, acquire_ai_slot
+from app.services.concurrency import _get_semaphore, acquire_ai_slot
 
 # ---------------------------------------------------------------------------
 # Basic acquire / release
@@ -20,11 +20,10 @@ from app.services.concurrency import _semaphores, acquire_ai_slot
 async def test_acquire_and_release():
     """Single acquire should succeed and properly release."""
     user = "test-concurrency-basic"
-    _semaphores.pop(user, None)
 
     async with acquire_ai_slot(user):
         # Inside the slot - semaphore should be acquired
-        sem = _semaphores[user]
+        sem = _get_semaphore(user)
         # We acquired 1 of 3 slots, so 2 more should be available
         # Try acquiring another to verify
         await asyncio.wait_for(sem.acquire(), timeout=0.1)
@@ -37,7 +36,6 @@ async def test_acquire_and_release():
 async def test_three_concurrent_slots_allowed():
     """Up to 3 concurrent acquisitions should succeed."""
     user = "test-concurrency-three"
-    _semaphores.pop(user, None)
 
     acquired = []
 
@@ -59,9 +57,8 @@ async def test_three_concurrent_slots_allowed():
 async def test_fourth_concurrent_raises_429():
     """4th concurrent request should get HTTP 429."""
     user = "test-concurrency-overflow"
-    _semaphores.pop(user, None)
 
-    sem = _semaphores[user]
+    sem = _get_semaphore(user)
 
     # Manually acquire all 3 slots
     await sem.acquire()
@@ -84,7 +81,6 @@ async def test_fourth_concurrent_raises_429():
 async def test_slot_released_after_exception():
     """Slot should be released even if the operation raises an exception."""
     user = "test-concurrency-exception"
-    _semaphores.pop(user, None)
 
     with pytest.raises(ValueError, match="test error"):
         async with acquire_ai_slot(user):
@@ -100,11 +96,9 @@ async def test_different_users_independent():
     """Slots for different users should be independent."""
     user_x = "test-concurrency-x"
     user_y = "test-concurrency-y"
-    _semaphores.pop(user_x, None)
-    _semaphores.pop(user_y, None)
 
     # Exhaust user_x's slots
-    sem_x = _semaphores[user_x]
+    sem_x = _get_semaphore(user_x)
     await sem_x.acquire()
     await sem_x.acquire()
     await sem_x.acquire()
@@ -123,7 +117,6 @@ async def test_different_users_independent():
 async def test_slot_becomes_available_after_release():
     """Once a slot is released, a waiting request should proceed."""
     user = "test-concurrency-wait"
-    _semaphores.pop(user, None)
 
     results = []
 
@@ -152,11 +145,5 @@ async def test_semaphore_per_user_isolation():
     """Each user gets their own semaphore instance."""
     user1 = "test-isolation-1"
     user2 = "test-isolation-2"
-    _semaphores.pop(user1, None)
-    _semaphores.pop(user2, None)
 
-    # Access semaphores
-    _ = _semaphores[user1]
-    _ = _semaphores[user2]
-
-    assert _semaphores[user1] is not _semaphores[user2]
+    assert _get_semaphore(user1) is not _get_semaphore(user2)

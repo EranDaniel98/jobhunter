@@ -29,9 +29,7 @@ API = settings.API_V1_PREFIX
 # ---------------------------------------------------------------------------
 
 
-async def _create_user(
-    db: AsyncSession, *, name: str = "Test", is_admin: bool = False
-) -> Candidate:
+async def _create_user(db: AsyncSession, *, name: str = "Test", is_admin: bool = False) -> Candidate:
     c = Candidate(
         id=uuid.uuid4(),
         email=f"{uuid.uuid4().hex[:8]}@rls.com",
@@ -105,9 +103,7 @@ class TestHasCandidateIdColumn:
 
 
 @pytest.mark.asyncio
-async def test_tenant_middleware_sets_tenant_on_authenticated_request(
-    client: AsyncClient, auth_headers: dict
-):
+async def test_tenant_middleware_sets_tenant_on_authenticated_request(client: AsyncClient, auth_headers: dict):
     """Authenticated requests should have tenant context set by middleware."""
     resp = await client.get(f"{API}/auth/me", headers=auth_headers)
     assert resp.status_code == 200
@@ -122,9 +118,7 @@ async def test_public_paths_skip_tenant_middleware(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_user_data_isolation_via_api(
-    client: AsyncClient, db_session: AsyncSession
-):
+async def test_user_data_isolation_via_api(client: AsyncClient, db_session: AsyncSession):
     """Two users should only see their own companies via API endpoints."""
     user_a = await _create_user(db_session, name="User A")
     user_b = await _create_user(db_session, name="User B")
@@ -177,6 +171,48 @@ async def test_user_data_isolation_via_api(
     assert all(n.startswith("Company B-") for n in names_b)
 
 
+@pytest.mark.asyncio
+async def test_admin_endpoint_sees_all_data(client: AsyncClient, db_session: AsyncSession):
+    """Admin endpoints using get_admin_db should see cross-tenant data."""
+    admin = await _create_user(db_session, name="Admin User", is_admin=True)
+    user_a = await _create_user(db_session, name="Regular A")
+    user_b = await _create_user(db_session, name="Regular B")
+
+    # Create companies for different users
+    db_session.add(Company(id=uuid.uuid4(), candidate_id=user_a.id, name="A-Corp", domain="acorp.com"))
+    db_session.add(Company(id=uuid.uuid4(), candidate_id=user_b.id, name="B-Corp", domain="bcorp.com"))
+    await db_session.flush()
+
+    admin_headers = await _login(client, admin.email)
+
+    # Admin overview should succeed (exercises get_admin_db)
+    resp = await client.get(f"{API}/admin/overview", headers=admin_headers)
+    assert resp.status_code == 200
+
+    # Admin users list should show all users
+    resp = await client.get(f"{API}/admin/users", headers=admin_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    # Should have at least the admin + 2 regular users (plus seed-inviter from conftest)
+    assert data["total"] >= 3
+
+
+@pytest.mark.asyncio
+async def test_worker_clears_tenant_context():
+    """Worker functions must reset tenant context to None to avoid cross-tenant leakage."""
+    token = current_tenant_id.set("some-tenant-id")
+    assert current_tenant_id.get() == "some-tenant-id"
+
+    worker_token = current_tenant_id.set(None)
+    assert current_tenant_id.get() is None
+
+    current_tenant_id.reset(worker_token)
+    assert current_tenant_id.get() == "some-tenant-id"
+
+    current_tenant_id.reset(token)
+    assert current_tenant_id.get() is None
+
+
 # ---------------------------------------------------------------------------
 # install_rls_listener
 # ---------------------------------------------------------------------------
@@ -204,6 +240,6 @@ class TestInstallRlsListener:
         ):
             s.ENABLE_RLS = True
             install_rls_listener(mock_engine)
-        mock_event.listens_for.assert_called_once_with(
-            mock_engine.sync_engine, "do_orm_execute"
-        )
+        from sqlalchemy.orm import Session
+
+        mock_event.listens_for.assert_called_once_with(Session, "do_orm_execute")

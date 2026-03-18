@@ -12,6 +12,7 @@ from app.infrastructure.redis_client import get_redis
 from app.models.candidate import Candidate
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenPair
 from app.services import invite_service
+from app.utils.constants import TOKEN_BLACKLIST_PREFIX
 from app.utils.security import (
     create_access_token,
     create_refresh_token,
@@ -24,10 +25,8 @@ from app.utils.security import (
 
 logger = structlog.get_logger()
 
-TOKEN_BLACKLIST_PREFIX = "token:blacklist:"
 
-
-async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
+async def register(db: AsyncSession, data: RegisterRequest, email_client=None) -> Candidate:
     # Check for existing email
     result = await db.execute(select(Candidate).where(Candidate.email == data.email))
     if result.scalar_one_or_none():
@@ -81,8 +80,8 @@ async def register(db: AsyncSession, data: RegisterRequest) -> Candidate:
     try:
         token = create_verification_token(str(candidate.id))
         verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-        email_client = get_email_client()
-        await email_client.send(
+        _email = email_client or get_email_client()
+        await _email.send(
             to=candidate.email,
             from_email=settings.SENDER_EMAIL,
             subject=f"Verify your {settings.APP_NAME} account",
@@ -171,7 +170,7 @@ async def refresh_token(token: str) -> TokenPair:
     return TokenPair(access_token=access_token, refresh_token=new_refresh)
 
 
-async def forgot_password(db: AsyncSession, email: str) -> None:
+async def forgot_password(db: AsyncSession, email: str, email_client=None) -> None:
     """Send a password reset email. Always returns success (no email enumeration)."""
     result = await db.execute(select(Candidate).where(Candidate.email == email))
     candidate = result.scalar_one_or_none()
@@ -183,8 +182,8 @@ async def forgot_password(db: AsyncSession, email: str) -> None:
     token = create_reset_token(str(candidate.id))
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
     try:
-        email_client = get_email_client()
-        await email_client.send(
+        _email = email_client or get_email_client()
+        await _email.send(
             to=candidate.email,
             from_email=settings.SENDER_EMAIL,
             subject=f"Reset your {settings.APP_NAME} password",
