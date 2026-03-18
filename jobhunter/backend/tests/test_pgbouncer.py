@@ -37,5 +37,5 @@ async def test_health_reports_connection_mode(client, auth_headers):
     checks = data.get("checks", data)  # health endpoint wraps in "checks" key
     assert "connection_mode" in checks
     assert checks["connection_mode"] in ("direct", "pgbouncer")
-    assert "db_reachable" in checks
-    assert checks["db_reachable"] is True
+    assert "database" in checks
+    assert checks["database"] == "healthy"

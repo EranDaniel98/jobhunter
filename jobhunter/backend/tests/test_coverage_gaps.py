@@ -622,20 +622,23 @@ class TestDossierCacheGaps:
 
 
 class TestUrlScraperValidation:
-    def test_non_http_scheme_raises_value_error(self):
+    @pytest.mark.asyncio
+    async def test_non_http_scheme_raises_value_error(self):
         """ftp:// or file:// URLs must be rejected."""
         from app.infrastructure.url_scraper import _validate_url
 
         with pytest.raises(ValueError, match="Only HTTP/HTTPS URLs are allowed"):
-            _validate_url("ftp://evil.com/file.txt")
+            await _validate_url("ftp://evil.com/file.txt")
 
-    def test_file_scheme_raises_value_error(self):
+    @pytest.mark.asyncio
+    async def test_file_scheme_raises_value_error(self):
         from app.infrastructure.url_scraper import _validate_url
 
         with pytest.raises(ValueError, match="Only HTTP/HTTPS URLs are allowed"):
-            _validate_url("file:///etc/passwd")
+            await _validate_url("file:///etc/passwd")
 
-    def test_private_ip_raises_value_error(self):
+    @pytest.mark.asyncio
+    async def test_private_ip_raises_value_error(self):
         """URLs resolving to private IPs must be blocked (SSRF prevention)."""
         from app.infrastructure.url_scraper import _validate_url
 
@@ -643,18 +646,20 @@ class TestUrlScraperValidation:
             patch("app.infrastructure.url_scraper.socket.gethostbyname", return_value="192.168.1.1"),
             pytest.raises(ValueError, match="Internal/private URLs are not allowed"),
         ):
-            _validate_url("http://internal-service.local/resource")
+            await _validate_url("http://internal-service.local/resource")
 
-    def test_loopback_ip_raises_value_error(self):
+    @pytest.mark.asyncio
+    async def test_loopback_ip_raises_value_error(self):
         from app.infrastructure.url_scraper import _validate_url
 
         with (
             patch("app.infrastructure.url_scraper.socket.gethostbyname", return_value="127.0.0.1"),
             pytest.raises(ValueError, match="Internal/private URLs are not allowed"),
         ):
-            _validate_url("http://localhost/admin")
+            await _validate_url("http://localhost/admin")
 
-    def test_dns_failure_is_allowed(self):
+    @pytest.mark.asyncio
+    async def test_dns_failure_is_allowed(self):
         """gaierror means the host doesn't resolve — log a warning and allow."""
         import socket
 
@@ -665,7 +670,7 @@ class TestUrlScraperValidation:
             side_effect=socket.gaierror("not found"),
         ):
             # Should not raise — unknown host is allowed through
-            _validate_url("https://unresolvable-host.example.com/job")
+            await _validate_url("https://unresolvable-host.example.com/job")
 
 
 # ===========================================================================

@@ -41,10 +41,9 @@ class TestGetDb:
         assert sessions[0] is mock_session
 
     @pytest.mark.asyncio
-    async def test_get_admin_db_yields_session_with_rls_bypass(self):
-        """get_admin_db applies execution_options(_bypass_rls=True)."""
+    async def test_get_admin_db_yields_session(self):
+        """get_admin_db yields a regular session (admin bypasses RLS via TenantMiddleware skip)."""
         mock_session = MagicMock()
-        mock_session.execution_options.return_value = mock_session
 
         async def _fake_get_session():
             yield mock_session
@@ -54,8 +53,8 @@ class TestGetDb:
             async for s in get_admin_db():
                 sessions.append(s)
 
-        mock_session.execution_options.assert_called_once_with(_bypass_rls=True)
         assert len(sessions) == 1
+        assert sessions[0] is mock_session
 
 
 # ---------------------------------------------------------------------------

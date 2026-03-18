@@ -98,7 +98,7 @@ class TestGetContact:
         db = AsyncMock()
         db.execute.return_value = result_mock
 
-        result = await _get_contact(db, uuid.uuid4())
+        result = await _get_contact(db, uuid.uuid4(), uuid.uuid4())
         assert result is contact
 
     @pytest.mark.asyncio
@@ -111,7 +111,7 @@ class TestGetContact:
         db.execute.return_value = result_mock
 
         with pytest.raises(ValueError, match="Contact not found"):
-            await _get_contact(db, uuid.uuid4())
+            await _get_contact(db, uuid.uuid4(), uuid.uuid4())
 
 
 # ---------------------------------------------------------------------------

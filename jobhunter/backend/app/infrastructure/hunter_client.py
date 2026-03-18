@@ -17,6 +17,9 @@ class HunterClient:
         self._api_key = settings.HUNTER_API_KEY
         self._client = httpx.AsyncClient(timeout=30.0)
 
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
     async def _check_circuit_breaker(self) -> None:
         redis = get_redis()
         if await redis.get(f"{CIRCUIT_BREAKER_KEY}:open"):

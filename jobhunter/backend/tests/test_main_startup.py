@@ -114,6 +114,9 @@ async def test_startup_accepts_custom_jwt_secret():
         mock_bus = MagicMock()
         mock_bus.subscribe = MagicMock()
         mock_bus.handler_count = 4
+        mock_bus.connect = AsyncMock()
+        mock_bus.start_listening = AsyncMock()
+        mock_bus.stop_listening = AsyncMock()
         mock_get_bus.return_value = mock_bus
 
         async with lifespan(mock_app):
@@ -147,6 +150,9 @@ async def test_startup_warns_when_unsubscribe_secret_empty():
     ):
         mock_bus = MagicMock()
         mock_bus.handler_count = 4
+        mock_bus.connect = AsyncMock()
+        mock_bus.start_listening = AsyncMock()
+        mock_bus.stop_listening = AsyncMock()
         mock_get_bus.return_value = mock_bus
 
         async with lifespan(mock_app):
@@ -178,6 +184,9 @@ async def test_startup_warns_when_openai_key_empty():
     ):
         mock_bus = MagicMock()
         mock_bus.handler_count = 4
+        mock_bus.connect = AsyncMock()
+        mock_bus.start_listening = AsyncMock()
+        mock_bus.stop_listening = AsyncMock()
         mock_get_bus.return_value = mock_bus
 
         async with lifespan(mock_app):
@@ -209,6 +218,9 @@ async def test_startup_warns_when_hunter_key_empty():
     ):
         mock_bus = MagicMock()
         mock_bus.handler_count = 4
+        mock_bus.connect = AsyncMock()
+        mock_bus.start_listening = AsyncMock()
+        mock_bus.stop_listening = AsyncMock()
         mock_get_bus.return_value = mock_bus
 
         async with lifespan(mock_app):
@@ -248,6 +260,9 @@ async def test_startup_errors_when_localhost_frontend_in_railway():
     ):
         mock_bus = MagicMock()
         mock_bus.handler_count = 4
+        mock_bus.connect = AsyncMock()
+        mock_bus.start_listening = AsyncMock()
+        mock_bus.stop_listening = AsyncMock()
         mock_get_bus.return_value = mock_bus
 
         async with lifespan(mock_app):
@@ -293,6 +308,9 @@ async def test_startup_initializes_sentry_when_dsn_set():
         ):
             mock_bus = MagicMock()
             mock_bus.handler_count = 4
+            mock_bus.connect = AsyncMock()
+            mock_bus.start_listening = AsyncMock()
+            mock_bus.stop_listening = AsyncMock()
             mock_get_bus.return_value = mock_bus
 
             async with lifespan(mock_app):
@@ -339,6 +357,9 @@ async def test_startup_handles_migration_check_failure_gracefully():
     ):
         mock_bus = MagicMock()
         mock_bus.handler_count = 4
+        mock_bus.connect = AsyncMock()
+        mock_bus.start_listening = AsyncMock()
+        mock_bus.stop_listening = AsyncMock()
         mock_get_bus.return_value = mock_bus
 
         # Should not raise — failure is caught and logged

@@ -13,6 +13,9 @@ class NewsAPIClient:
         self._api_key = settings.NEWSAPI_KEY
         self._client = httpx.AsyncClient(timeout=30.0)
 
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
     async def search_articles(
         self,
         query: str,

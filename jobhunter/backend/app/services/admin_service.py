@@ -411,6 +411,39 @@ async def export_users_csv(db: AsyncSession) -> str:
     return output.getvalue()
 
 
+async def update_user_plan(
+    db: AsyncSession, user_id: uuid.UUID, new_tier: str, admin_id: uuid.UUID
+) -> Candidate | None:
+    """Change a user's plan tier with audit logging."""
+    from app.plans import PlanTier
+
+    try:
+        PlanTier(new_tier)
+    except ValueError:
+        raise ValueError(f"Invalid plan tier: {new_tier}") from None
+
+    result = await db.execute(select(Candidate).where(Candidate.id == user_id))
+    candidate = result.scalar_one_or_none()
+    if not candidate:
+        return None
+
+    old_tier = candidate.plan_tier
+    candidate.plan_tier = new_tier
+
+    audit = AdminAuditLog(
+        id=uuid.uuid4(),
+        admin_id=admin_id,
+        action="change_plan",
+        target_user_id=user_id,
+        details={"old_tier": old_tier, "new_tier": new_tier},
+    )
+    db.add(audit)
+    await db.commit()
+
+    logger.info("plan_changed", user_id=str(user_id), old_tier=old_tier, new_tier=new_tier, admin_id=str(admin_id))
+    return candidate
+
+
 async def create_audit_log(
     db: AsyncSession,
     admin_id: uuid.UUID,
