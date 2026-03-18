@@ -3,12 +3,12 @@ import { trackEvent } from "../analytics";
 
 describe("trackEvent", () => {
   beforeEach(() => {
-    delete (window as any).plausible;
+    window.plausible = undefined;
   });
 
   it("calls window.plausible when available", () => {
     const mock = vi.fn();
-    (window as any).plausible = mock;
+    window.plausible = mock;
 
     trackEvent("Waitlist Signup", { source: "landing" });
 
@@ -23,7 +23,7 @@ describe("trackEvent", () => {
 
   it("works without props", () => {
     const mock = vi.fn();
-    (window as any).plausible = mock;
+    window.plausible = mock;
 
     trackEvent("CTA Click");
 
