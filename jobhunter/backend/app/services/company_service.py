@@ -1,7 +1,6 @@
 import uuid
 
 import structlog
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -314,10 +313,7 @@ async def discover_companies(
     dna = dna_result.scalar_one_or_none()
 
     if not dna:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Upload and process a resume before discovering companies",
-        )
+        raise ValueError("Upload and process a resume before discovering companies")
 
     if not settings.OPENAI_API_KEY:
         raise ValueError("OpenAI API key not configured. Please set OPENAI_API_KEY.")

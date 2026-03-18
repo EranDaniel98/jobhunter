@@ -243,8 +243,9 @@ class TestSendApprovedMessage:
             patch("app.infrastructure.database.async_session_factory", mock_factory),
             patch("app.services.email_service.send_outreach", mock_send),
         ):
-            # Should not raise - errors are caught and logged
-            await send_approved_message(ctx, outreach_id)
+            # Worker now re-raises errors for ARQ retry
+            with pytest.raises(ValueError, match="send failed"):
+                await send_approved_message(ctx, outreach_id)
 
 
 # ---------------------------------------------------------------------------

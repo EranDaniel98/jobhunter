@@ -157,6 +157,7 @@ async def test_search_news_node_redis_failure_continues():
     with (
         patch("app.graphs.scout_pipeline.get_redis", return_value=mock_redis),
         patch("app.graphs.scout_pipeline.get_newsapi", return_value=mock_newsapi),
+        patch("asyncio.to_thread", new_callable=AsyncMock, return_value=[]),
     ):
         result = await search_news_node(state)
 
@@ -187,6 +188,7 @@ async def test_search_news_node_query_failure_continues():
     with (
         patch("app.graphs.scout_pipeline.get_redis", return_value=mock_redis),
         patch("app.graphs.scout_pipeline.get_newsapi", return_value=mock_newsapi),
+        patch("asyncio.to_thread", new_callable=AsyncMock, return_value=[]),
     ):
         result = await search_news_node(state)
 

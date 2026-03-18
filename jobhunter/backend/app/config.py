@@ -56,14 +56,17 @@ class Settings(BaseSettings):
     STRIPE_PRICE_EXPLORER: str = ""
     STRIPE_PRICE_HUNTER: str = ""
 
-    # Multi-tenant RLS (feature flag - enable only after thorough testing)
-    ENABLE_RLS: bool = False
+    # Multi-tenant RLS (SQLAlchemy ORM-level row filtering by candidate_id)
+    ENABLE_RLS: bool = False  # Fixed to use Session-level listener; enable after admin bypass is validated
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:3000"
 
     # Logging
     LOG_LEVEL: str = "INFO"
+
+    # Metrics
+    METRICS_SECRET: str = ""
 
     # Sentry (leave empty to disable)
     SENTRY_DSN: str = ""
