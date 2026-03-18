@@ -15,13 +15,10 @@ jobs:
 
       - name: Deploy backend to staging
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}
         run: |
           cd jobhunter/backend
-          railway link ${{ vars.RAILWAY_PROJECT_ID }}
-          railway environment staging
-          railway service link jobhunter
-          railway up --detach
+          railway up --service jobhunter
 
       - name: Wait for deploy and health check
         run: |
