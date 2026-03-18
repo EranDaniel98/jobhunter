@@ -18,7 +18,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}
         run: |
           cd jobhunter/backend
-          railway up --service jobhunter
+          railway up --service jobhunter --detach
 
       - name: Wait for deploy and health check
         run: |
