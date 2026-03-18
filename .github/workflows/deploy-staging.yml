@@ -19,7 +19,8 @@ jobs:
         run: |
           cd jobhunter/backend
           railway link ${{ vars.RAILWAY_PROJECT_ID }}
-          railway service link jobhunter-staging
+          railway environment staging
+          railway service link jobhunter
           railway up --detach
 
       - name: Wait for deploy and health check
