@@ -162,8 +162,11 @@ async def upload_resume(db: AsyncSession, candidate_id: uuid.UUID, file_bytes: b
     storage = get_storage()
     await storage.upload(storage_key, file_bytes, content_type)
 
-    # Extract text
-    raw_text = _extract_text_from_pdf(file_bytes) if ext == "pdf" else _extract_text_from_docx(file_bytes)
+    # Extract text (offload CPU-bound parsing to thread pool)
+    import asyncio
+
+    extractor = _extract_text_from_pdf if ext == "pdf" else _extract_text_from_docx
+    raw_text = await asyncio.to_thread(extractor, file_bytes)
 
     # Mark previous resumes as non-primary (atomic single UPDATE)
     await db.execute(

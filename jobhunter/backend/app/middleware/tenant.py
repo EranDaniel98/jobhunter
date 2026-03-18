@@ -104,7 +104,9 @@ def install_rls_listener(engine) -> None:
         logger.info("rls_disabled", reason="ENABLE_RLS=False")
         return
 
-    @event.listens_for(engine.sync_engine, "do_orm_execute")
+    from sqlalchemy.orm import Session
+
+    @event.listens_for(Session, "do_orm_execute")
     def _apply_rls_filter(orm_execute_state: ORMExecuteState):
         # Skip if RLS bypass is set (admin sessions)
         if orm_execute_state.execution_options.get("_bypass_rls", False):
