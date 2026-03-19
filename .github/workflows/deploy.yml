@@ -38,7 +38,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           cd jobhunter/backend
-          railway up --service jobhunter
+          railway up --service jobhunter --detach
 
       - name: Wait for deployment to stabilize
         run: sleep 30
