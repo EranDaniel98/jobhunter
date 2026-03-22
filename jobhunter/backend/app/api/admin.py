@@ -396,7 +396,7 @@ async def invite_waitlist_entry(
             subject="You're invited to JobHunter!",
             body=(
                 f"Hi,\n\nYou're invited to join JobHunter. Use the link below to register:\n\n"
-                f"{settings.FRONTEND_URL}/register?code={invite.code}\n\n"
+                f"{settings.FRONTEND_URL}/register?invite={invite.code}\n\n"
                 f"This invite expires in {settings.INVITE_EXPIRE_DAYS} days.\n\nGood luck!"
             ),
         )
@@ -495,7 +495,7 @@ async def invite_waitlist_batch(
                 subject="You're invited to JobHunter!",
                 body=(
                     f"Hi,\n\nYou're invited to join JobHunter. Use the link below to register:\n\n"
-                    f"{settings.FRONTEND_URL}/register?code={invite.code}\n\n"
+                    f"{settings.FRONTEND_URL}/register?invite={invite.code}\n\n"
                     f"This invite expires in {settings.INVITE_EXPIRE_DAYS} days.\n\nGood luck!"
                 ),
             )
