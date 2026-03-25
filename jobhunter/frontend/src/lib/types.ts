@@ -93,12 +93,12 @@ export interface CompanyDossierResponse {
   red_flags: string[] | null;
   interview_format: string | null;
   interview_questions: string[] | null;
-  compensation_data: Record<string, unknown> | null;
+  compensation_data: Record<string, unknown> | string | null;
   key_people: Record<string, unknown>[] | null;
   why_hire_me: string | null;
   resume_bullets: string[] | null;
   fit_score_tips: string[] | null;
-  recent_news: Record<string, unknown>[] | null;
+  recent_news: (Record<string, unknown> | string)[] | null;
 }
 
 // Contacts

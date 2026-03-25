@@ -62,11 +62,11 @@ class CompanyDossierResponse(BaseModel):
     red_flags: list[str] | None = None
     interview_format: str | None = None
     interview_questions: list[str] | None = None
-    compensation_data: dict | None = None
+    compensation_data: dict | str | None = None
     key_people: list[dict] | None = None
     why_hire_me: str | None = None
     resume_bullets: list[str] | None = None
     fit_score_tips: list[str] | None = None
-    recent_news: list[dict] | None = None
+    recent_news: list[dict | str] | None = None
 
     model_config = {"from_attributes": True}

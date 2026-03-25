@@ -42,7 +42,7 @@ export function getErrorMessage(err: unknown, fallback = "Something went wrong")
   // Structured quota exceeded response
   if (status === 429 && isQuotaDetail(detail)) {
     const label = QUOTA_LABELS[detail.quota_type] || detail.quota_type;
-    return `Daily ${label} limit (${detail.limit}) reached. Upgrade for more.`;
+    return `Daily ${label} limit (${detail.limit}) reached. Try again tomorrow.`;
   }
 
   if (typeof detail === "string") return detail;

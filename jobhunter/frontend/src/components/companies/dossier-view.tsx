@@ -25,8 +25,8 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertTriangle className="mb-4 h-8 w-8 text-destructive" />
-        <p className="text-sm font-medium">Research failed</p>
-        <p className="text-xs text-muted-foreground">Please try approving the company again</p>
+        <p className="text-sm font-medium">Research failed — error sent to administrators.</p>
+        <p className="text-xs text-muted-foreground">Click &quot;Retry Research&quot; above to try again.</p>
       </div>
     );
   }
@@ -39,6 +39,14 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
         <CardSkeleton />
         <CardSkeleton />
       </div>
+    );
+  }
+
+  if (!dossier && researchStatus === "completed") {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Research completed but no dossier was generated. Try approving the company again.
+      </p>
     );
   }
 
@@ -160,7 +168,7 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
         </Card>
       )}
 
-      {dossier.compensation_data && Object.keys(dossier.compensation_data).length > 0 && (
+      {dossier.compensation_data && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -169,14 +177,18 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="space-y-2 text-sm">
-              {Object.entries(dossier.compensation_data).map(([key, value]) => (
-                <div key={key} className="flex justify-between">
-                  <dt className="capitalize text-muted-foreground">{key.replace(/_/g, " ")}</dt>
-                  <dd className="font-medium">{String(value)}</dd>
-                </div>
-              ))}
-            </dl>
+            {typeof dossier.compensation_data === "string" ? (
+              <p className="text-sm text-muted-foreground">{dossier.compensation_data}</p>
+            ) : (
+              <dl className="space-y-2 text-sm">
+                {Object.entries(dossier.compensation_data).map(([key, value]) => (
+                  <div key={key} className="flex justify-between">
+                    <dt className="capitalize text-muted-foreground">{key.replace(/_/g, " ")}</dt>
+                    <dd className="font-medium">{String(value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </CardContent>
         </Card>
       )}
@@ -216,10 +228,16 @@ export function DossierView({ dossier, isLoading, researchStatus }: DossierViewP
             <div className="space-y-2">
               {dossier.recent_news.map((news, i) => (
                 <div key={i} className="text-sm">
-                  <p className="font-medium">{String(news.title ?? news.headline ?? "")}</p>
-                  {news.summary ? (
-                    <p className="text-xs text-muted-foreground">{String(news.summary)}</p>
-                  ) : null}
+                  {typeof news === "string" ? (
+                    <p className="text-muted-foreground">{news}</p>
+                  ) : (
+                    <>
+                      <p className="font-medium">{String(news.title ?? news.headline ?? "")}</p>
+                      {news.summary ? (
+                        <p className="text-xs text-muted-foreground">{String(news.summary)}</p>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               ))}
             </div>
