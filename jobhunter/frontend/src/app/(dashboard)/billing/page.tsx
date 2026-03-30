@@ -131,11 +131,9 @@ export default function BillingPage() {
                     Manage Billing
                   </Button>
                 )}
-                <Button asChild className="flex-1">
+                <Button asChild variant="outline" className="flex-1">
                   <Link href="/plans">
-                    {currentTier === "free" || currentTier === "explorer"
-                      ? "Upgrade Plan"
-                      : "Change Plan"}
+                    View Plans
                     <ExternalLink className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
@@ -187,10 +185,7 @@ export default function BillingPage() {
                 <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-sm">
                   <p className="font-medium text-primary">Running low on quotas?</p>
                   <p className="text-muted-foreground mt-1">
-                    <Link href="/plans" className="text-primary underline underline-offset-4 hover:text-primary/80">
-                      Upgrade your plan
-                    </Link>{" "}
-                    for higher daily limits.
+                    Paid plans with higher limits are coming soon! Quotas reset daily at midnight UTC.
                   </p>
                 </div>
               )}

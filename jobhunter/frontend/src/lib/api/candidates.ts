@@ -35,6 +35,7 @@ export interface ResumeListItem {
   file_path: string;
   is_primary: boolean;
   parse_status: string;
+  parse_error: string | null;
   created_at: string;
 }
 

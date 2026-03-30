@@ -268,38 +268,13 @@ export default function PlansPage() {
                     </div>
                   )}
                   <div className="mt-6">
-                    {isCurrent ? (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        disabled
-                      >
-                        Current Plan
-                      </Button>
-                    ) : isUpgrade ? (
-                      <Button
-                        className="w-full"
-                        onClick={() => handleSelectPlan(plan)}
-                        disabled={isCheckingOut || checkout.isPending}
-                      >
-                        {isCheckingOut ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Redirecting...
-                          </>
-                        ) : (
-                          <>Upgrade to {plan.display_name}</>
-                        )}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => handleSelectPlan(plan)}
-                      >
-                        Downgrade
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      disabled
+                    >
+                      {isCurrent ? "Current Plan" : "Coming Soon"}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

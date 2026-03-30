@@ -24,8 +24,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CheckCircle2, Circle, FileText, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, FileText, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/providers/auth-provider";
 import type { CandidateDNAResponse, SkillResponse } from "@/lib/types";
 
 function calculateCompleteness(dna: CandidateDNAResponse, skills: SkillResponse[]): { score: number; checks: { label: string; done: boolean }[] } {
@@ -95,6 +96,7 @@ function CompletenessCard({ dna, skills }: { dna: CandidateDNAResponse; skills: 
 
 function ResumeHistoryCard() {
   const { data: resumes, isLoading } = useResumes();
+  const { user } = useAuth();
   const deleteMutation = useDeleteResume();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -115,8 +117,9 @@ function ResumeHistoryCard() {
             {resumes.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center justify-between rounded-md border px-4 py-3"
+                className="space-y-1"
               >
+                <div className="flex items-center justify-between rounded-md border px-4 py-3">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="text-sm truncate">{getFilename(r.file_path)}</span>
@@ -127,7 +130,7 @@ function ResumeHistoryCard() {
                     variant={r.parse_status === "completed" ? "secondary" : r.parse_status === "failed" ? "destructive" : "outline"}
                     className="shrink-0 text-[10px]"
                   >
-                    {r.parse_status}
+                    {r.parse_status === "failed" ? "Failed" : r.parse_status}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -145,6 +148,19 @@ function ResumeHistoryCard() {
                     </Button>
                   )}
                 </div>
+              </div>
+              {r.parse_status === "failed" && (
+                <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-4 py-2.5 text-sm">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+                  <div>
+                    <p className="text-destructive font-medium">Processing failed — error sent to administrators.</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">Please try uploading again. If the issue persists, we&apos;re working on it.</p>
+                    {user?.is_admin && r.parse_error && (
+                      <p className="text-xs text-destructive/70 mt-1 font-mono break-all">{r.parse_error}</p>
+                    )}
+                  </div>
+                </div>
+              )}
               </div>
             ))}
           </div>

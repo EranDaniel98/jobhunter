@@ -62,7 +62,9 @@ function eventToMessage(type: string, data: Record<string, unknown>): string {
     case "email_delivered": return "Email delivered";
     case "email_opened": return "Your email was opened";
     case "email_clicked": return "Link clicked in your email";
-    case "resume_parsed": return "Resume parsed successfully";
+    case "resume_parsed": return (data as { status?: string }).status === "failed"
+      ? "Resume processing failed — our team has been notified"
+      : "Resume parsed successfully";
     case "research_completed": return `Research completed for ${(data as { company_name?: string }).company_name || "a company"}`;
     default: return type.replace(/_/g, " ");
   }

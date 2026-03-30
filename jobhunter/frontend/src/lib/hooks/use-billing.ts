@@ -3,6 +3,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { createCheckout, createPortal, getSubscription } from "../api/billing";
 import { toastError } from "../api/error-utils";
+import { toast } from "sonner";
 
 export function useSubscription() {
   return useQuery({
@@ -21,6 +22,10 @@ export function useCheckout() {
   return useMutation({
     mutationFn: (tier: string) => createCheckout(tier),
     onSuccess: (data) => {
+      if (data.status === "coming_soon") {
+        toast.info("Paid plans are coming soon! Enjoy the free tier for now.");
+        return;
+      }
       if (data.url) window.location.href = data.url;
     },
     onError: (err) => toastError(err, "Failed to start checkout"),

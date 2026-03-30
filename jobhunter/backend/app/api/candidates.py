@@ -184,6 +184,10 @@ async def list_resumes(
             file_path=r.file_path,
             is_primary=r.is_primary,
             parse_status=r.parse_status,
+            parse_error=(
+                r.parsed_data.get("_error") if candidate.is_admin and r.parsed_data and "_error" in r.parsed_data
+                else None
+            ),
             created_at=r.created_at.isoformat() if r.created_at else "",
         )
         for r in resumes
