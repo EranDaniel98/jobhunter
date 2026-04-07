@@ -62,3 +62,8 @@ data/
 
 # Claude superpowers plugin temp files
 .superpowers/
+
+# Loadtest runtime state
+.loadtest-staging-url
+.loadtest-runner-ip
+.loadtest-runner-name
