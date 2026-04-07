@@ -57,9 +57,16 @@ def get_openai() -> OpenAIClientProtocol:
 def get_hunter() -> HunterClientProtocol:
     global _hunter_client
     if _hunter_client is None:
-        from app.infrastructure.hunter_client import HunterClient
+        from app.config import settings
 
-        _hunter_client = HunterClient()
+        if settings.LOADTEST_MODE:
+            from app.infrastructure.mock_hunter_client import MockHunterClient
+
+            _hunter_client = MockHunterClient()
+        else:
+            from app.infrastructure.hunter_client import HunterClient
+
+            _hunter_client = HunterClient()
     return _hunter_client
 
 
@@ -75,9 +82,16 @@ def get_newsapi() -> NewsAPIClientProtocol:
 def get_email_client() -> EmailClientProtocol:
     global _email_client
     if _email_client is None:
-        from app.infrastructure.resend_client import ResendClient
+        from app.config import settings
 
-        _email_client = ResendClient()
+        if settings.LOADTEST_MODE:
+            from app.infrastructure.mock_resend_client import MockResendClient
+
+            _email_client = MockResendClient()
+        else:
+            from app.infrastructure.resend_client import ResendClient
+
+            _email_client = ResendClient()
     return _email_client
 
 
