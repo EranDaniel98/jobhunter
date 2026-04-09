@@ -181,6 +181,7 @@ export interface AdminUser {
   companies_count: number;
   messages_sent_count: number;
   is_active: boolean;
+  plan_tier: PlanTier;
 }
 
 export interface AdminUserList {
