@@ -1,6 +1,13 @@
 "use client";
 
-import { useAdminUser, useToggleAdmin, useToggleActive, useDeleteUser } from "@/lib/hooks/use-admin";
+import {
+  useAdminUser,
+  useToggleAdmin,
+  useToggleActive,
+  useDeleteUser,
+  useUpdateUserPlan,
+} from "@/lib/hooks/use-admin";
+import type { PlanTier } from "@/lib/types";
 import { useState } from "react";
 
 import {
@@ -23,6 +30,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Shield,
   ShieldOff,
   UserCheck,
@@ -33,6 +47,7 @@ import {
   Mail,
   Calendar,
   Link2,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +63,52 @@ export function UserDetailDrawer({ userId, currentUserId, onClose }: UserDetailD
   const toggleActive = useToggleActive();
   const deleteUser = useDeleteUser();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const updatePlan = useUpdateUserPlan();
+  const [isEditingTier, setIsEditingTier] = useState(false);
+  const [pendingTier, setPendingTier] = useState<PlanTier | null>(null);
+
+  const TIER_OPTIONS: { value: PlanTier; label: string }[] = [
+    { value: "free", label: "Free" },
+    { value: "explorer", label: "Explorer" },
+    { value: "hunter", label: "Hunter" },
+  ];
+
+  const handleTierSelect = (value: string) => {
+    if (!user) return;
+    const next = value as PlanTier;
+    if (next === user.plan_tier) {
+      setIsEditingTier(false);
+      return;
+    }
+    setPendingTier(next);
+  };
+
+  const handleConfirmTierChange = () => {
+    if (!user || !pendingTier) return;
+    const newTier = pendingTier;
+    updatePlan.mutate(
+      { id: user.id, planTier: newTier },
+      {
+        onSuccess: () => {
+          toast.success(`Tier updated to ${newTier}`);
+          setIsEditingTier(false);
+          setPendingTier(null);
+        },
+        onError: (err: unknown) => {
+          const message =
+            (err as { response?: { data?: { detail?: string } } })?.response?.data
+              ?.detail ?? "Failed to update tier";
+          toast.error(message);
+          setPendingTier(null);
+        },
+      }
+    );
+  };
+
+  const handleCancelTierEdit = () => {
+    setIsEditingTier(false);
+    setPendingTier(null);
+  };
 
   const handleToggleAdmin = () => {
     if (!user) return;
@@ -147,6 +208,61 @@ export function UserDetailDrawer({ userId, currentUserId, onClose }: UserDetailD
 
               <Separator />
 
+              {/* Plan tier */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Plan tier:</span>
+                  {!isEditingTier ? (
+                    <>
+                      <Badge variant="outline" className="capitalize">
+                        {user.plan_tier}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto h-7 px-2"
+                        disabled={isSelf}
+                        title={isSelf ? "You cannot change your own tier" : undefined}
+                        onClick={() => setIsEditingTier(true)}
+                      >
+                        Edit
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="ml-auto flex items-center gap-2">
+                      <Select
+                        value={user.plan_tier}
+                        onValueChange={handleTierSelect}
+                        disabled={updatePlan.isPending}
+                      >
+                        <SelectTrigger className="h-8 w-[130px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIER_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={handleCancelTierEdit}
+                        disabled={updatePlan.isPending}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-md border p-3 text-center">
@@ -234,6 +350,40 @@ export function UserDetailDrawer({ userId, currentUserId, onClose }: UserDetailD
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pendingTier !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTier(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change plan tier?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Change {user?.email}&apos;s tier from{" "}
+              <span className="font-medium capitalize">{user?.plan_tier}</span>{" "}
+              to{" "}
+              <span className="font-medium capitalize">{pendingTier}</span>.
+              This takes effect immediately and is recorded in the audit log.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatePlan.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmTierChange}
+              disabled={updatePlan.isPending}
+            >
+              {updatePlan.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
