@@ -3,7 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as adminApi from "@/lib/api/admin";
 import { toastError } from "@/lib/api/error-utils";
-import type { WaitlistStatus } from "@/lib/types";
+import type { WaitlistStatus, PlanTier } from "@/lib/types";
 
 export function useSystemOverview() {
   return useQuery({
@@ -66,6 +66,19 @@ export function useDeleteUser() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
       qc.invalidateQueries({ queryKey: ["admin", "overview"] });
+      qc.invalidateQueries({ queryKey: ["admin", "audit-log"] });
+    },
+  });
+}
+
+export function useUpdateUserPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, planTier }: { id: string; planTier: PlanTier }) =>
+      adminApi.updateUserPlan(id, planTier),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "user", vars.id] });
       qc.invalidateQueries({ queryKey: ["admin", "audit-log"] });
     },
   });
