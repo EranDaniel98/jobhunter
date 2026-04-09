@@ -14,6 +14,7 @@ import type {
   WaitlistBatchInviteResponse,
   WaitlistStatus,
   EmailHealthResponse,
+  PlanTier,
 } from "../types";
 
 export async function getOverview(): Promise<SystemOverview> {
@@ -52,6 +53,17 @@ export async function toggleActive(
   const { data } = await api.patch<AdminUserDetail>(
     `/admin/users/${id}/active`,
     { is_active: isActive }
+  );
+  return data;
+}
+
+export async function updateUserPlan(
+  id: string,
+  planTier: PlanTier
+): Promise<AdminUserDetail> {
+  const { data } = await api.patch<AdminUserDetail>(
+    `/admin/users/${id}/plan`,
+    { plan_tier: planTier }
   );
   return data;
 }
