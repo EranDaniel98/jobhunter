@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"C:/Users/Eran/Desktop/Personal/JobSearch/.claude/hooks/session-start-inject-memory.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
