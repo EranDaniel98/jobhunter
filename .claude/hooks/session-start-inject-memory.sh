@@ -9,4 +9,8 @@
 
 set -euo pipefail
 
-python "C:/Users/Eran/Desktop/Personal/JobSearch/.claude/hooks/session-start-inject-memory.py"
+# Resolve project root from this script's location: hooks/ -> .claude/ -> project root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+python "$SCRIPT_DIR/session-start-inject-memory.py" "$PROJECT_ROOT/memory"
