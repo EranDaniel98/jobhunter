@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.database import get_session
 from app.infrastructure.protocols import (
     EmailClientProtocol,
+    GitHubClientProtocol,
     HunterClientProtocol,
     NewsAPIClientProtocol,
     OpenAIClientProtocol,
@@ -28,6 +29,7 @@ _openai_client: OpenAIClientProtocol | None = None
 _hunter_client: HunterClientProtocol | None = None
 _email_client: EmailClientProtocol | None = None
 _newsapi_client: NewsAPIClientProtocol | None = None
+_github_client: GitHubClientProtocol | None = None
 
 
 async def get_db() -> AsyncSession:  # type: ignore[misc]
@@ -68,6 +70,14 @@ def get_hunter() -> HunterClientProtocol:
 
             _hunter_client = HunterClient()
     return _hunter_client
+
+
+def get_github() -> GitHubClientProtocol:
+    global _github_client
+    if _github_client is None:
+        from app.infrastructure.github_client import GitHubClient
+        _github_client = GitHubClient()
+    return _github_client
 
 
 def get_newsapi() -> NewsAPIClientProtocol:
