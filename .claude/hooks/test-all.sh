@@ -144,6 +144,42 @@ run_test_idempotent \
   "$HOOK_DIR/session-start-inject-memory.sh" \
   '{"hook_event_name":"SessionStart","session_id":"test"}'
 
+# === post-edit: happy path (python backend file) ===
+run_test \
+  "post-edit / python file" \
+  "$HOOK_DIR/post-edit.sh" \
+  '{"tool_name":"Edit","tool_input":{"file_path":"jobhunter/backend/app/main.py"}}' \
+  'import json, sys; raw = sys.stdin.read(); True'
+
+# === post-edit: skip non-python file ===
+run_test \
+  "post-edit / tsx file (skip)" \
+  "$HOOK_DIR/post-edit.sh" \
+  '{"tool_name":"Edit","tool_input":{"file_path":"jobhunter/frontend/src/app/page.tsx"}}' \
+  'import sys; raw = sys.stdin.read().strip(); assert len(raw) == 0, f"expected no output for non-py file, got: {raw!r}"'
+
+# === post-edit: idempotence ===
+# Uses a custom check instead of run_test_idempotent because post-edit.sh
+# legitimately produces empty output for clean files (no ruff violations),
+# which would fail the generic JSON-validity guard in run_test_idempotent.
+echo "--- post-edit / idempotent"
+_pe_payload='{"tool_name":"Edit","tool_input":{"file_path":"jobhunter/backend/app/main.py"}}'
+_pe_script="$HOOK_DIR/post-edit.sh"
+if [ ! -f "$_pe_script" ]; then
+  echo "  SKIP: $_pe_script not found"
+else
+  _pe_run1=$(printf '%s' "$_pe_payload" | bash "$_pe_script" 2>&1); _pe_e1=$?
+  _pe_run2=$(printf '%s' "$_pe_payload" | bash "$_pe_script" 2>&1); _pe_e2=$?
+  if [ $_pe_e1 -ne 0 ] || [ $_pe_e2 -ne 0 ]; then
+    _record_fail "post-edit / idempotent" "non-zero exit" "$_pe_run1"
+  elif [ "$_pe_run1" != "$_pe_run2" ]; then
+    _record_fail "post-edit / idempotent" "outputs differ between runs"
+  else
+    _record_pass
+  fi
+  unset _pe_payload _pe_script _pe_run1 _pe_run2 _pe_e1 _pe_e2
+fi
+
 # === Add new hook tests above this line ===
 
 echo
