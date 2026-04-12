@@ -197,9 +197,9 @@ export default function CompanyDetailPage({
         </Card>
       )}
 
-      <Tabs defaultValue="dossier">
+      <Tabs defaultValue={company.status === "approved" ? "dossier" : "contacts"}>
         <TabsList>
-          <TabsTrigger value="dossier">Dossier</TabsTrigger>
+          <TabsTrigger value="dossier" disabled={company.status !== "approved"}>Dossier</TabsTrigger>
           <TabsTrigger value="contacts">
             Contacts {contactsQuery.data ? `(${contactsQuery.data.length})` : ""}
           </TabsTrigger>
