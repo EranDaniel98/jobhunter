@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_candidate, get_db
 from app.models.candidate import Candidate, CandidateDNA, Resume, Skill
+from app.models.enums import ParseStatus
 from app.rate_limit import limiter
 from app.schemas.candidate import CandidateDNAResponse, ResumeListItem, ResumeUploadResponse, SkillResponse
 from app.services import resume_service
@@ -66,7 +67,39 @@ async def upload_resume(
 
 async def _run_async_background(resume_id, candidate_id):
     """Run the LangGraph resume processing pipeline."""
+    from app.config import settings
     from app.graphs.resume_pipeline import get_resume_pipeline
+    from app.loadtest_guard import AIBudgetExceeded, enforce_ai_budget
+
+    # Load-test safety: hard cap on expensive AI pipeline runs. No-op in production.
+    if settings.LOADTEST_MODE:
+        from app.infrastructure.redis_client import get_redis
+
+        try:
+            await enforce_ai_budget(get_redis(), settings.LOADTEST_AI_BUDGET)
+        except AIBudgetExceeded as e:
+            logger.warning("loadtest.ai_budget_exceeded", error=str(e), resume_id=str(resume_id))
+            # Mark the resume as failed with a distinct error_message so the k6
+            # polling scenario still sees a terminal state. We reuse
+            # ParseStatus.FAILED rather than adding a new 'skipped' enum value to
+            # avoid an Alembic migration just for load-testing.
+            from app.infrastructure.database import async_session_factory
+
+            async with async_session_factory() as db:
+                try:
+                    r = await db.execute(select(Resume).where(Resume.id == resume_id))
+                    resume = r.scalar_one_or_none()
+                    if resume:
+                        resume.parse_status = ParseStatus.FAILED
+                        resume.parsed_data = {"_error": "loadtest_budget_exceeded"}
+                        await db.commit()
+                except Exception as inner:
+                    logger.error(
+                        "loadtest.skipped_status_update_failed",
+                        resume_id=str(resume_id),
+                        error=str(inner),
+                    )
+            return
 
     graph = get_resume_pipeline()
     config = {"configurable": {"thread_id": f"resume:{resume_id}"}}

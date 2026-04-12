@@ -427,6 +427,23 @@ export interface ApplyAnalysisResponse {
   status: string;
 }
 
+// Incidents
+export type IncidentCategory = "bug" | "feature_request" | "question" | "other";
+
+export interface IncidentResponse {
+  id: string;
+  category: IncidentCategory;
+  title: string;
+  github_issue_url: string | null;
+  github_status: "pending" | "synced" | "failed";
+  created_at: string;
+}
+
+export interface IncidentStats {
+  total: number;
+  failed: number;
+}
+
 // DNS / Email Health
 export type DnsCheckStatus = "pass" | "fail" | "warning" | "timeout";
 

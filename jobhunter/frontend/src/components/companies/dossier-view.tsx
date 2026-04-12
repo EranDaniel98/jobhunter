@@ -8,9 +8,18 @@ interface DossierViewProps {
   dossier: CompanyDossierResponse | null;
   isLoading: boolean;
   researchStatus: string;
+  companyStatus: string;
 }
 
-export function DossierView({ dossier, isLoading, researchStatus }: DossierViewProps) {
+export function DossierView({ dossier, isLoading, researchStatus, companyStatus }: DossierViewProps) {
+  if (researchStatus === "pending" && companyStatus !== "approved") {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Approve this company to generate a dossier.
+      </p>
+    );
+  }
+
   if (researchStatus === "pending" || researchStatus === "in_progress") {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">

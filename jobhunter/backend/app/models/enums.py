@@ -130,3 +130,17 @@ class RoleType(StrEnum):
     RECRUITER = "recruiter"
     HIRING_MANAGER = "hiring_manager"
     TEAM_LEAD = "team_lead"
+
+
+# ── Incidents ────────────────────────────────────────────────────────
+
+class IncidentCategory(StrEnum):
+    BUG = "bug"
+    FEATURE_REQUEST = "feature_request"
+    QUESTION = "question"
+    OTHER = "other"
+
+class GitHubSyncStatus(StrEnum):
+    PENDING = "pending"
+    SYNCED = "synced"
+    FAILED = "failed"
