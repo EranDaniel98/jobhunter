@@ -1,0 +1,39 @@
+[Day 7/9]
+
+I found what looked like the perfect role.
+
+Backend engineering. Fintech. Series B. My exact search criteria.
+
+I pasted the posting. The system came back with a readiness score.
+
+34 out of 100.
+
+Then I read the breakdown.
+
+The posting listed 14 requirements. I matched 9. But the system wasn't scoring what I had. It was scoring how I presented it.
+
+My resume said "built microservices." The posting said "designed distributed event-driven architectures." Same work. Different framing.
+The system flagged it as a gap because an ATS would too.
+
+Three of my "missing" skills weren't missing at all. They were buried in bullet points that didn't use the right keywords.
+
+The resume tips were specific. Not "add more metrics." Actual rewrites. 
+"Move distributed systems experience to line 1 of your summary."
+"Replace 'built APIs' with 'designed and scaled RESTful services handling X requests/day.'"
+
+I made the changes. Ran the analysis again.
+
+78.
+
+A 44-point jump. Same person. Same experience. Different presentation.
+
+The job posting wasn't the problem. My translation was.
+
+This only works if the experience is real. The system doesn't invent skills.
+It finds the ones you already have and puts them where an ATS will actually see them.
+
+It doesn't make you more qualified. It makes you more visible.
+
+Tomorrow: where AI still gets it wrong - and why I'm telling you before you find out yourself.
+
+What role did you skip because you took the requirements literally?

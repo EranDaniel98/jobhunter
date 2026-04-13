@@ -1,0 +1,43 @@
+[Day 2/9]
+
+Yesterday I shared how @Lian Sapan changed how I think about job searching.
+
+Today - what I actually did with that thinking.
+
+She showed me that most opportunities never make it to a job board. 
+Companies hire when something changes - a funding round, a new VP, a product launch.
+These are public signals. They're everywhere. I just wasn't looking.
+
+I won't walk you through her full framework here - it's her work, and she teaches it far better than I could summarize.
+
+But I'll tell you what shifted: I stopped applying and started researching.
+
+I found websites that track startup funding in real time. Every new round was a hiring signal hiding in plain sight.
+
+I used AI to dig into those companies - what they're building, what problems they're solving, what gaps their team might have.
+
+Then I'd check how my experience mapped to what they actually needed. Not what a job description said. What the company's situation demanded.
+
+I found the people who'd actually make the hiring decision. Not HR. Not a generic inbox. The person who'd feel the pain of an empty seat.
+
+And I learned to write messages that didn't sound like everyone else's. No templates. No "I'd love to connect." Something specific enough that they knew
+I'd done the work.
+
+Each one took time. Real attention. But the responses were immediate.
+
+More replies in two weeks than in the previous months.
+
+The method works. But it doesn't scale.
+
+And I'm an engineer.
+
+So I started building a system that carries this logic automatically - 7 AI agents that analyze the resume, find the signals, research the companies, identify the right people,
+and draft outreach that sounds like a human did the homework.
+
+Over the next few posts I'll show the actual output. What it finds, what it writes, and where it still gets things wrong.
+
+If you want the full thinking behind the approach, find Lian Sapan. She's the real deal.
+
+If you want to see what an engineer does with a great idea - keep reading.
+
+Have you ever turned a manual process into something automated? What made you take that leap?

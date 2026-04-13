@@ -1,0 +1,37 @@
+I built an AI that writes outreach messages.
+
+Then I built a kill switch into it.
+
+Nothing sends without my approval. Not one word.
+
+Here's why.
+
+I tested the outreach draft for a VP of Engineering at a fintech startup. The AI pulled from my candidate profile, the company dossier, even a recent podcast the VP appeared on.
+
+The draft was good. Referenced specific technical challenges. Mentioned their Series B. Connected my distributed systems work to their scaling problems.
+
+But it called their product "a payments platform."
+
+They're a lending platform.
+
+One word. Would have killed the whole message.
+
+It nailed the research. Then got the one thing wrong that actually mattered.
+
+So here's how it works.
+
+The system drafts the message, shows me why it chose each detail, and waits. I edit, rewrite, or trash it. Then — and only then — I hit send.
+
+I didn't want to build a faster version of "I noticed your impressive background and thought we'd be a great fit." Sent to 400 people. Personalized with nothing.
+
+AI drafts. Humans decide.
+
+That's not a limitation. That's the whole point.
+
+The person reading your message can tell the difference between something crafted and something blasted. Even when they can't explain how.
+
+Tomorrow: what happens when a job posting says "5+ years React" but actually needs something else entirely.
+
+What's the smallest mistake that cost you the biggest opportunity?
+
+[Day 6/9]
