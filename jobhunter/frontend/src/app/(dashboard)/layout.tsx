@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -9,6 +9,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { Footer } from "@/components/layout/footer";
 import { CommandMenu } from "@/components/layout/command-menu";
 import { TourOverlay } from "@/components/dashboard/tour-overlay";
+import { IncidentButton } from "@/components/incidents/incident-button";
 
 import { useWebSocket } from "@/lib/hooks/use-websocket";
 
@@ -18,6 +19,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { lastEvent } = useWebSocket();
+  const consoleErrorsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      const message = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
+      const errors = consoleErrorsRef.current;
+      errors.push(message);
+      if (errors.length > 10) errors.shift();
+      originalError.apply(console, args);
+    };
+    return () => { console.error = originalError; };
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -55,6 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Footer />
       </div>
       <TourOverlay />
+      <IncidentButton consoleErrors={consoleErrorsRef} />
     </div>
   );
 }

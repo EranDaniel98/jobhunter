@@ -70,12 +70,18 @@ export function useWebSocket() {
             case "email_clicked":
               debouncedInvalidate(["messages"], ["analytics"]);
               break;
-            case "resume_parsed":
-              debouncedInvalidate(["candidates"], ["dna"]);
-              toast.success("Resume parsed successfully");
+            case "resume_parsed": {
+              debouncedInvalidate(["candidates"], ["dna"], ["resumes"]);
+              const resumeData = parsed.data as { status?: string };
+              if (resumeData.status === "failed") {
+                toast.error("Resume processing failed. Our team has been notified — please try again later.");
+              } else {
+                toast.success("Resume parsed successfully");
+              }
               break;
+            }
             case "research_completed": {
-              debouncedInvalidate(["companies"]);
+              debouncedInvalidate(["companies"], ["company"], ["dossier"], ["contacts"]);
               const researchData = parsed.data as { company_name?: string; status?: string; error?: string };
               if (researchData.status === "failed") {
                 toast.error(researchData.error || `Research failed for ${researchData.company_name || "company"}`);

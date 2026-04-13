@@ -93,12 +93,12 @@ export interface CompanyDossierResponse {
   red_flags: string[] | null;
   interview_format: string | null;
   interview_questions: string[] | null;
-  compensation_data: Record<string, unknown> | null;
+  compensation_data: Record<string, unknown> | string | null;
   key_people: Record<string, unknown>[] | null;
   why_hire_me: string | null;
   resume_bullets: string[] | null;
   fit_score_tips: string[] | null;
-  recent_news: Record<string, unknown>[] | null;
+  recent_news: (Record<string, unknown> | string)[] | null;
 }
 
 // Contacts
@@ -181,6 +181,7 @@ export interface AdminUser {
   companies_count: number;
   messages_sent_count: number;
   is_active: boolean;
+  plan_tier: PlanTier;
 }
 
 export interface AdminUserList {
@@ -424,6 +425,23 @@ export interface ApplyAnalysisResponse {
   missing_skills: string[];
   matching_skills: string[];
   status: string;
+}
+
+// Incidents
+export type IncidentCategory = "bug" | "feature_request" | "question" | "other";
+
+export interface IncidentResponse {
+  id: string;
+  category: IncidentCategory;
+  title: string;
+  github_issue_url: string | null;
+  github_status: "pending" | "synced" | "failed";
+  created_at: string;
+}
+
+export interface IncidentStats {
+  total: number;
+  failed: number;
 }
 
 // DNS / Email Health

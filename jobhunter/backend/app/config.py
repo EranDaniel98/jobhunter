@@ -111,6 +111,14 @@ class Settings(BaseSettings):
     # Paths
     UPLOAD_DIR: str = str(BASE_DIR / "data" / "uploads")
 
+    # Load testing
+    LOADTEST_MODE: bool = False
+    LOADTEST_AI_BUDGET: int = 0  # 0 = unlimited, >0 = hard cap on resume pipeline runs
+
+    # GitHub (incident sync)
+    GITHUB_TOKEN: str = ""
+    GITHUB_REPO: str = "EranDaniel98/jobhunter"
+
     model_config = {
         "env_file": [str(BASE_DIR / ".env"), str(BASE_DIR.parent / ".env")],
         "extra": "ignore",

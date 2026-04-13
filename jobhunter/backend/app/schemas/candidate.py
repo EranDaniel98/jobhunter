@@ -57,6 +57,7 @@ class ResumeListItem(BaseModel):
     file_path: str
     is_primary: bool
     parse_status: str
+    parse_error: str | None = None
     created_at: str
 
     model_config = {"from_attributes": True}

@@ -236,6 +236,7 @@ async def mark_failed_node(state: ResumeProcessingState) -> dict:
         resume = result.scalar_one_or_none()
         if resume:
             resume.parse_status = ParseStatus.FAILED
+            resume.parsed_data = {"_error": error}
             await db.commit()
 
     await ws_manager.broadcast(

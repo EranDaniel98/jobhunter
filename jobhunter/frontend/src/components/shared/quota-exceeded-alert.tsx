@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
@@ -24,11 +23,9 @@ export function QuotaExceededAlert({ quotaType, limit }: QuotaExceededAlertProps
       <AlertTriangle className="h-4 w-4" />
       <AlertTitle>Limit reached</AlertTitle>
       <AlertDescription>
-        You&apos;ve used all {limit} daily {label} actions.{" "}
-        <Link href="/plans" className="font-medium underline">
-          Upgrade your plan
-        </Link>{" "}
-        for higher limits, or try again tomorrow.
+        You&apos;ve used all {limit} daily {label} actions.
+        Limits reset at midnight UTC — try again tomorrow.
+        Paid plans with higher limits are coming soon!
       </AlertDescription>
     </Alert>
   );

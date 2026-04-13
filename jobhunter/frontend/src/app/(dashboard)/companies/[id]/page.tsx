@@ -210,6 +210,7 @@ export default function CompanyDetailPage({
             dossier={dossierQuery.data || null}
             isLoading={dossierQuery.isLoading}
             researchStatus={company.research_status}
+            companyStatus={company.status}
           />
         </TabsContent>
         <TabsContent value="contacts" className="mt-4">

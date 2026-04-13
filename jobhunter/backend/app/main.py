@@ -165,6 +165,7 @@ from app.api.invites import router as invites_router  # noqa: E402
 from app.api.outreach import router as outreach_router  # noqa: E402
 from app.api.plans import router as plans_router  # noqa: E402
 from app.api.scout import router as scout_router  # noqa: E402
+from app.api.incidents import router as incidents_router  # noqa: E402
 from app.api.waitlist import router as waitlist_router  # noqa: E402
 from app.api.webhooks import router as webhooks_router  # noqa: E402
 from app.api.ws import router as ws_router  # noqa: E402
@@ -186,3 +187,4 @@ app.include_router(scout_router, prefix=settings.API_V1_PREFIX)
 app.include_router(interview_router, prefix=settings.API_V1_PREFIX)
 app.include_router(apply_router, prefix=settings.API_V1_PREFIX)
 app.include_router(waitlist_router, prefix=settings.API_V1_PREFIX)
+app.include_router(incidents_router, prefix=settings.API_V1_PREFIX)

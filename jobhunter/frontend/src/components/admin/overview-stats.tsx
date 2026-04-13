@@ -2,13 +2,16 @@
 
 import type { SystemOverview } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, Mail, UserCheck } from "lucide-react";
+import { Users, Building2, Mail, UserCheck, AlertTriangle } from "lucide-react";
+import { useIncidentStats } from "@/lib/hooks/use-incidents";
 
 interface OverviewStatsProps {
   data: SystemOverview;
 }
 
 export function OverviewStats({ data }: OverviewStatsProps) {
+  const { data: incidentStats } = useIncidentStats();
+
   const cards = [
     {
       title: "Total Users",
@@ -32,27 +35,49 @@ export function OverviewStats({ data }: OverviewStatsProps) {
       subtitle: `${data.total_invites_used} invites used`,
       icon: UserCheck,
     },
+    {
+      title: "Incidents",
+      value: incidentStats?.total ?? 0,
+      subtitle: incidentStats?.failed ? `${incidentStats.failed} failed sync` : undefined,
+      icon: AlertTriangle,
+      href: "https://github.com/EranDaniel98/jobhunter/issues",
+    },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       {cards.map((card) => {
         const Icon = card.icon;
+        const CardWrapper = card.href
+          ? ({ children }: { children: React.ReactNode }) => (
+              <a
+                href={card.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block hover:opacity-80 transition-opacity"
+              >
+                {children}
+              </a>
+            )
+          : ({ children }: { children: React.ReactNode }) => <>{children}</>;
+
         return (
-          <Card key={card.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {card.title}
-              </CardTitle>
-              <Icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
-              {card.subtitle && (
-                <p className="text-xs text-muted-foreground">{card.subtitle}</p>
-              )}
-            </CardContent>
-          </Card>
+          <CardWrapper key={card.title}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {card.title}
+                </CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+                {card.subtitle && (
+                  <p className="text-xs text-muted-foreground">{card.subtitle}</p>
+                )}
+              </CardContent>
+            </Card>
+          </CardWrapper>
         );
       })}
     </div>

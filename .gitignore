@@ -53,8 +53,9 @@ Thumbs.db
 package-lock.json
 yarn.lock
 
-# Claude Code (personal config)
-.claude/
+# Claude Code — only personal/local files; shared workflow (hooks,
+# commands, settings.json) is first-class committed config
+.claude/settings.local.json
 data/
 
 # Worktrees
@@ -62,3 +63,8 @@ data/
 
 # Claude superpowers plugin temp files
 .superpowers/
+
+# Loadtest runtime state
+.loadtest-staging-url
+.loadtest-runner-ip
+.loadtest-runner-name

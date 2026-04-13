@@ -91,3 +91,8 @@ class StorageProtocol(Protocol):
     async def delete(self, key: str) -> None:
         """Delete data by key."""
         ...
+
+
+@runtime_checkable
+class GitHubClientProtocol(Protocol):
+    async def create_issue(self, title: str, body: str, labels: list[str]) -> dict: ...
