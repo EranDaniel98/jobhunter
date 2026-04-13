@@ -153,7 +153,7 @@ export function UserDetailDrawer({ userId, currentUserId, onClose }: UserDetailD
   return (
     <>
       <Sheet open={!!userId} onOpenChange={(open) => !open && onClose()}>
-        <SheetContent className="w-[480px] sm:w-[540px] overflow-y-auto">
+        <SheetContent className="sm:max-w-xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle>User Details</SheetTitle>
           </SheetHeader>
