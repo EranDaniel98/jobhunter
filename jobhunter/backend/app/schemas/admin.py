@@ -110,6 +110,8 @@ class WaitlistEntryResponse(BaseModel):
 class WaitlistListResponse(BaseModel):
     entries: list[WaitlistEntryResponse]
     total: int
+    status_counts: dict[str, int]
+    quota_remaining: int
 
 
 class WaitlistInviteResponse(BaseModel):
