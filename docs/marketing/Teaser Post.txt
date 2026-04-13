@@ -1,0 +1,26 @@
+The system I built to automate what a career coach taught me.
+
+I spent months sending applications into the void. 
+Then a career strategist (@Lian Sapan) told me something that changed how I think about job searching:
+
+Most jobs are never posted. And 15 minutes of targeted research beats 50 blind applications.
+
+Her method worked incredibly well - it just required a lot of hands-on effort.
+So I built AI to do it.
+
+Over the next 9 days, I'm going to show you exactly how - including where it still gets things wrong.
+
+Here's what's coming:
+
+Day 1 - The story. What happened, what I learned, why I started building. 
+Day 2 - The method. The exact playbook you can try today, no tool needed. 
+Day 3 - What happens when AI reads your resume deeper than any ATS. 
+Day 4 - How the system finds companies about to hire - before they post. 
+Day 5 - 90-second company research. What it looks like when AI does your homework. 
+Day 6 - AI-drafted outreach. What it writes, what I changed, and why you approve every message. 
+Day 7 - Paste a job posting, get a battle plan in 30 seconds. 
+Day 8 - Where the AI still gets it wrong. Honest. 
+Day 9 - I need your help.
+
+Follow along if you're curious. Share if you know someone stuck in the job search grind.
+Starts tomorrow.

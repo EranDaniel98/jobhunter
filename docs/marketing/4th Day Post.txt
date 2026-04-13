@@ -1,0 +1,33 @@
+[Day 4/9]
+
+3 of the best-fit companies for my search weren't posting roles.
+
+No listings on LinkedIn. Nothing on Indeed. Zero presence on any job board for my function.
+
+But they were probably hiring.
+
+I gave the system four parameters: backend engineering, fintech, Tel Aviv area, mid-size companies. It came back with 12 ranked matches.
+
+One caught my attention. Series B closed six weeks ago. New VP of Engineering started last month. Five backend roles posted in the past two weeks — but nothing at my level.
+
+That pattern — fresh funding, new leadership, adjacent hiring velocity — almost always means the team is about to expand further. The role I'd want doesn't exist on any board yet. But the signal says it's coming.
+
+If I reach out now, I'm a conversation. In six weeks, I'm application #200.
+
+I would have missed it completely.
+
+Hiring doesn't start with a job post. It starts with a funding round. A new VP. A sudden burst of roles that means the team is growing.
+
+The best opportunities aren't hidden. They're just scattered across too many places to watch alone.
+
+So I built something that does. It monitors funding data, leadership changes, and hiring velocity — then scores each company against my Candidate DNA profile and ranks the results.
+
+Two of the 12 turned out to be noise — one had just done layoffs, another's "hiring burst" was backfilling churn. But the signal-to-noise ratio beat anything I'd found manually.
+
+The manual version of this — scanning Crunchbase, LinkedIn, and news for 12 companies — is about 3 hours of tab-switching.
+
+The system returned results before my laptop finished waking up.
+
+Tomorrow: what happens when you take one of these matches and build a full intelligence dossier before reaching out.
+
+When you're researching a company, what's the first thing you check to figure out if they're actually growing?

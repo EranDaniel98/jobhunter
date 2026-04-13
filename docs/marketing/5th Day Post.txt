@@ -1,0 +1,29 @@
+[Day 5/9]
+
+I'm preparing for an interview that doesn't exist yet.
+
+No job posting. No application. No recruiter call.
+
+Just a company I found yesterday through hiring signals - and a dossier that came back in about a minute.
+
+Their tech stack. Who I'd report to. What questions they're likely to ask. Why they should care about my background.
+
+The output that stopped me: a "Why hire me" paragraph I didn't write.
+
+It connected my distributed systems experience to a scaling problem they mentioned in a blog post last month. I wouldn't have found that connection on my own.
+
+That's the difference between showing up qualified and showing up inevitable.
+
+It also flagged a gap. Their stack includes a tool I haven't used in production. Now I know to address that before anyone asks.
+
+Not everything landed - the culture score pulled from stale Glassdoor data after a leadership change.
+
+But here's what changed.
+
+I used to walk into interviews hoping the right questions would come up. Now I walk in knowing which questions are coming - at a company that hasn't even posted the role.
+
+Preparation without a job listing feels strange - like studying for an exam no one assigned. Until you realize no one else studied either.
+
+Tomorrow: what happens when AI drafts the first message to the person who'd actually make the hire.
+
+What's the one thing you'd want to know about a company BEFORE wasting time on an application?

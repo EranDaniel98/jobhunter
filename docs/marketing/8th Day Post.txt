@@ -1,0 +1,51 @@
+[Day 8/9]
+
+Three things my AI job search system still gets wrong.
+
+I've spent 7 days showing you what works.
+
+Today: what doesn't.
+
+1. Stale data lies with confidence.
+
+My company dossier pulled Glassdoor reviews on a fintech I was targeting.
+
+"Strong engineering culture. Collaborative leadership."
+
+The CTO had left 4 months earlier. Half the senior team followed.
+
+The AI doesn't know when data expired. It just trusts the source.
+
+Fix: I cap leadership data at 14 days, culture reviews at 90. Better. Not solved.
+
+
+2. One wrong word breaks trust.
+
+The outreach agent called a lending startup a "payments platform."
+
+Close. But wrong.
+
+If I'd sent that, the founder would've known in 3 seconds I didn't actually read their site.
+
+Fix: Every draft now goes through a category-check pass before it hits my inbox for approval. Caught it twice this week. Once on a healthtech I almost called a "wellness app."
+
+
+3. Readiness score isn't actual fit.
+
+Yesterday I showed you a 34 to 78 jump on a job posting analysis.
+
+Here's the thing: that score measures presentation. How well my resume mirrors the posting.
+
+It doesn't know if I'd actually thrive there. It can't read a room.
+
+That gap is mine to close. Always will be.
+
+The moat isn't the AI.
+
+It's knowing exactly where the AI ends and you begin.
+
+Most tools won't tell you that. I'd rather you know upfront.
+
+Tomorrow I'll tell you what I still can't fix alone.
+
+What's the worst "almost right" mistake an AI tool has made on your behalf?

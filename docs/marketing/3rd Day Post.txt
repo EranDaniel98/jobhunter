@@ -1,0 +1,13 @@
+I uploaded my resume to the system I'm building. In about 30 seconds, it came back with something I didn't expect.
+
+Not just a list of skills — I've seen that before. It built what I call a "Candidate DNA" profile:
+
+An experience summary that captured my career arc, not just my last job title. Strengths I hadn't thought to articulate. Gaps I knew about but hadn't admitted. A career stage classification. And transferable skills I had from previous roles that I wasn't highlighting.
+
+The system extracted over 60 skills — categorized as explicit (things I listed), transferable (things I demonstrated but didn't name), and adjacent (skills I'm close to having based on my trajectory).
+
+Then it turned the whole profile into a vector — a 1536-dimensional mathematical representation of my professional identity. It uses this to match me against companies using semantic similarity, not keyword matching. So when a company's needs align with my actual experience, it surfaces the match — even if we're using different words for the same things.
+
+No ATS does this. They match keywords. This matches meaning.
+
+What would you want to know about your career profile that your resume doesn't tell you?
