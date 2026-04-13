@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.database import get_session
 from app.infrastructure.protocols import (
     EmailClientProtocol,
+    GitHubClientProtocol,
     HunterClientProtocol,
     NewsAPIClientProtocol,
     OpenAIClientProtocol,
@@ -28,6 +29,7 @@ _openai_client: OpenAIClientProtocol | None = None
 _hunter_client: HunterClientProtocol | None = None
 _email_client: EmailClientProtocol | None = None
 _newsapi_client: NewsAPIClientProtocol | None = None
+_github_client: GitHubClientProtocol | None = None
 
 
 async def get_db() -> AsyncSession:  # type: ignore[misc]
@@ -57,10 +59,25 @@ def get_openai() -> OpenAIClientProtocol:
 def get_hunter() -> HunterClientProtocol:
     global _hunter_client
     if _hunter_client is None:
-        from app.infrastructure.hunter_client import HunterClient
+        from app.config import settings
 
-        _hunter_client = HunterClient()
+        if settings.LOADTEST_MODE:
+            from app.infrastructure.mock_hunter_client import MockHunterClient
+
+            _hunter_client = MockHunterClient()
+        else:
+            from app.infrastructure.hunter_client import HunterClient
+
+            _hunter_client = HunterClient()
     return _hunter_client
+
+
+def get_github() -> GitHubClientProtocol:
+    global _github_client
+    if _github_client is None:
+        from app.infrastructure.github_client import GitHubClient
+        _github_client = GitHubClient()
+    return _github_client
 
 
 def get_newsapi() -> NewsAPIClientProtocol:
@@ -75,9 +92,16 @@ def get_newsapi() -> NewsAPIClientProtocol:
 def get_email_client() -> EmailClientProtocol:
     global _email_client
     if _email_client is None:
-        from app.infrastructure.resend_client import ResendClient
+        from app.config import settings
 
-        _email_client = ResendClient()
+        if settings.LOADTEST_MODE:
+            from app.infrastructure.mock_resend_client import MockResendClient
+
+            _email_client = MockResendClient()
+        else:
+            from app.infrastructure.resend_client import ResendClient
+
+            _email_client = ResendClient()
     return _email_client
 
 
