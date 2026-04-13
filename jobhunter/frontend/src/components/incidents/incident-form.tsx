@@ -89,7 +89,7 @@ export function IncidentForm({ open, onOpenChange, consoleErrors }: IncidentForm
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Report an Incident</SheetTitle>
           <SheetDescription>Help us improve by sharing what happened.</SheetDescription>
