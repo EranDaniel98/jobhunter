@@ -325,6 +325,17 @@ class ResendStub:
         import json
         return json.loads(payload)
 
+
+class GitHubStub:
+    """Stub for GitHubClientProtocol."""
+    def __init__(self):
+        self.created_issues = []
+
+    async def create_issue(self, title: str, body: str, labels: list[str]) -> dict:
+        issue = {"number": len(self.created_issues) + 1, "url": f"https://github.com/test/repo/issues/{len(self.created_issues) + 1}"}
+        self.created_issues.append({"title": title, "body": body, "labels": labels})
+        return issue
+
 # Use a separate test database (only replace the database name at the end of the URL)
 _base_url, _, _db_name = settings.DATABASE_URL.rpartition("/")
 TEST_DATABASE_URL = f"{_base_url}/{_db_name}_test"
@@ -378,6 +389,7 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     _deps._hunter_client = HunterStub()
     _deps._email_client = ResendStub()
     _deps._newsapi_client = NewsAPIStub()
+    _deps._github_client = GitHubStub()
 
     # Use in-memory storage stub for tests
     import app.infrastructure.storage as _storage_mod
@@ -392,6 +404,7 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
     _deps._hunter_client = None
     _deps._email_client = None
     _deps._newsapi_client = None
+    _deps._github_client = None
     _storage_mod._storage_instance = None
 
 

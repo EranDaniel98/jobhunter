@@ -67,15 +67,24 @@ async def lifespan(app: FastAPI):
 
     # Initialize event bus and register handlers
     from app.events.bus import get_event_bus
-    from app.events.handlers import log_event, on_company_approved, on_outreach_sent, on_resume_parsed
+    from app.events.handlers import (
+        log_event,
+        on_company_approved,
+        on_outreach_sent,
+        on_resume_parsed,
+        persist_analytics,
+    )
 
     bus = get_event_bus()
     bus.subscribe("company_approved", log_event)
     bus.subscribe("company_approved", on_company_approved)
+    bus.subscribe("company_approved", persist_analytics)
     bus.subscribe("outreach_sent", log_event)
     bus.subscribe("outreach_sent", on_outreach_sent)
+    bus.subscribe("outreach_sent", persist_analytics)
     bus.subscribe("resume_parsed", log_event)
     bus.subscribe("resume_parsed", on_resume_parsed)
+    bus.subscribe("resume_parsed", persist_analytics)
     logger.info("event_bus_initialized", handler_count=bus.handler_count)
 
     # Connect event bus to Redis for cross-worker durability

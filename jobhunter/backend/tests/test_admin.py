@@ -809,3 +809,31 @@ class TestEdgeCases:
             params={"limit": 101},
         )
         assert resp.status_code == 422
+
+
+class TestWaitlistStatusCounts:
+    @pytest.mark.asyncio
+    async def test_waitlist_returns_status_counts_and_quota(
+        self, client: AsyncClient, admin_headers: dict, db_session: AsyncSession,
+    ):
+        from app.models.waitlist import WaitlistEntry
+
+        db_session.add(WaitlistEntry(email="pending1@test.com", status="pending"))
+        db_session.add(WaitlistEntry(email="pending2@test.com", status="pending"))
+        db_session.add(WaitlistEntry(email="invited1@test.com", status="invited"))
+        db_session.add(WaitlistEntry(email="reg1@test.com", status="registered"))
+        await db_session.flush()
+
+        resp = await client.get(f"{API}/admin/waitlist", headers=admin_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert "status_counts" in data
+        assert data["status_counts"]["pending"] == 2
+        assert data["status_counts"]["invited"] == 1
+        assert data["status_counts"]["registered"] == 1
+        assert data["status_counts"]["invite_failed"] == 0
+
+        assert "quota_remaining" in data
+        assert isinstance(data["quota_remaining"], int)
+        assert data["quota_remaining"] > 0

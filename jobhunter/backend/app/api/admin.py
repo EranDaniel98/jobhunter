@@ -333,7 +333,36 @@ async def list_waitlist(
     entries_result = await db.execute(q.offset(skip).limit(limit))
     entries = list(entries_result.scalars().all())
 
-    return WaitlistListResponse(entries=entries, total=total)
+    # Status counts (always unfiltered so cards show global totals)
+    count_result = await db.execute(
+        select(WaitlistEntry.status, func.count()).group_by(WaitlistEntry.status)
+    )
+    raw_counts = dict(count_result.all())
+    status_counts = {
+        "pending": raw_counts.get("pending", 0),
+        "invited": raw_counts.get("invited", 0),
+        "invite_failed": raw_counts.get("invite_failed", 0),
+        "registered": raw_counts.get("registered", 0),
+    }
+
+    # Daily quota remaining
+    redis = get_redis()
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    key = f"admin:daily_invites:{today}"
+    used = 0
+    try:
+        val = await redis.get(key)
+        used = int(val) if val else 0
+    except Exception:
+        pass
+    quota_remaining = max(0, settings.MAX_DAILY_INVITES - used)
+
+    return WaitlistListResponse(
+        entries=entries,
+        total=total,
+        status_counts=status_counts,
+        quota_remaining=quota_remaining,
+    )
 
 
 @router.post("/waitlist/{entry_id}/invite", response_model=WaitlistInviteResponse)
