@@ -61,18 +61,3 @@ export function toastError(err: unknown, fallback?: string) {
   toast.error(getErrorMessage(err, fallback));
 }
 
-/**
- * Extract structured quota detail from a 429 error, if present.
- */
-export function getQuotaDetail(err: unknown): { quota_type: string; limit: number; plan_tier: string } | null {
-  const apiErr = err as ApiError;
-  const detail = apiErr?.response?.data?.detail;
-  if (apiErr?.response?.status === 429 && isQuotaDetail(detail)) {
-    return {
-      quota_type: detail.quota_type,
-      limit: detail.limit,
-      plan_tier: (detail as Record<string, unknown>).plan_tier as string || "free",
-    };
-  }
-  return null;
-}

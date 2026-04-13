@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/constants";
 import { MarketingShell } from "./marketing-shell";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
     title: "JobHunter - AI-Powered Job Search Platform",
     description:
       "AI-powered job search automation. 7 agents handle resume analysis, company research, personalized outreach, and interview prep.",
-    url: "https://hunter-job.com",
+    url: SITE_URL,
     siteName: "JobHunter",
     type: "website",
   },

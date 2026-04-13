@@ -319,7 +319,7 @@ export default function ResumePage() {
           {/* Skills section */}
           <section id="skills" className="space-y-6">
             <h2 className="text-lg font-semibold">Skills Inventory</h2>
-            <SkillsGrid skills={skillsQuery.data?.length ? skillsQuery.data : dnaQuery.data.skills} />
+            <SkillsGrid skills={skillsQuery.data?.length ? skillsQuery.data : dnaQuery.data?.skills ?? []} />
             {gapSkills.length > 0 && (
               <Card>
                 <CardHeader>

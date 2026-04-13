@@ -79,6 +79,7 @@ export interface CompanyResponse {
   fit_score: number | null;
   status: string;
   research_status: string;
+  created_at: string;
 }
 
 export interface CompanyListResponse {

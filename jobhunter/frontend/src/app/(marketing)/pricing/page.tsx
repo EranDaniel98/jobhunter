@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/constants";
 import { Check, X, HelpCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
     title: "Pricing | JobHunter",
     description:
       "Simple, transparent pricing. Start free and upgrade when you need more reach.",
-    url: "https://hunter-job.com/pricing",
+    url: `${SITE_URL}/pricing`,
   },
 };
 

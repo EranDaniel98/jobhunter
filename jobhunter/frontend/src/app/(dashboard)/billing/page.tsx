@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { QUOTA_UPGRADE_THRESHOLD } from "@/lib/constants";
 import { useAuth } from "@/providers/auth-provider";
 import { useSubscription, usePortal } from "@/lib/hooks/use-billing";
 import { useQuery } from "@tanstack/react-query";
@@ -180,7 +181,7 @@ export default function BillingPage() {
               )}
 
               {usage && Object.values(usage.quotas).some(
-                (q) => q.limit > 0 && q.used / q.limit >= 0.7
+                (q) => q.limit > 0 && q.used / q.limit >= QUOTA_UPGRADE_THRESHOLD
               ) && (
                 <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-sm">
                   <p className="font-medium text-primary">Running low on quotas?</p>

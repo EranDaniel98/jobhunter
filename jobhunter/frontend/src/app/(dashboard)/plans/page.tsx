@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { QUOTA_UPGRADE_THRESHOLD } from "@/lib/constants";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
@@ -118,7 +119,7 @@ export default function PlansPage() {
     const currentIdx = TIER_ORDER.indexOf(currentTier);
     const quotaEntries = Object.entries(usage.quotas);
     const atCapacity = quotaEntries.some(
-      ([, q]) => q.limit > 0 && q.used / q.limit >= 0.7
+      ([, q]) => q.limit > 0 && q.used / q.limit >= QUOTA_UPGRADE_THRESHOLD
     );
     if (atCapacity && currentIdx < TIER_ORDER.length - 1) {
       return TIER_ORDER[currentIdx + 1];

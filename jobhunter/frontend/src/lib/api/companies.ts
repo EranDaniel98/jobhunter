@@ -32,11 +32,6 @@ export async function listCompanies(params?: {
   return data;
 }
 
-export async function getSuggestedCompanies(): Promise<CompanyListResponse> {
-  const { data } = await api.get<CompanyListResponse>("/companies/suggested");
-  return data;
-}
-
 export async function getCompany(id: string): Promise<CompanyResponse> {
   const { data } = await api.get<CompanyResponse>(`/companies/${id}`);
   return data;

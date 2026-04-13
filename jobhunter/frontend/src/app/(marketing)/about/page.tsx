@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_URL } from "@/lib/constants";
 import {
   Crosshair,
   Brain,
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     title: "About | JobHunter",
     description:
       "Learn how JobHunter AI uses intelligent agents to automate every stage of your job search.",
-    url: "https://hunter-job.com/about",
+    url: `${SITE_URL}/about`,
   },
 };
 

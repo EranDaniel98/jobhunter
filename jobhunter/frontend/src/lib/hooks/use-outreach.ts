@@ -108,7 +108,6 @@ export function useDeleteMessage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages"] });
       qc.invalidateQueries({ queryKey: ["approvals"] });
-      qc.invalidateQueries({ queryKey: ["pending-actions"] });
     },
   });
 }

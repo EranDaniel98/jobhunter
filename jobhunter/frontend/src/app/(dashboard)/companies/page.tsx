@@ -118,14 +118,8 @@ export default function CompaniesPage() {
           : (b.fit_score || 0) - (a.fit_score || 0);
       }
       if (sortBy === "date_added") {
-        const da = (a as unknown as Record<string, unknown>).created_at as
-          | string
-          | undefined;
-        const db = (b as unknown as Record<string, unknown>).created_at as
-          | string
-          | undefined;
-        const ta = da ? new Date(da).getTime() : 0;
-        const tb = db ? new Date(db).getTime() : 0;
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
         return sortDir === "asc" ? ta - tb : tb - ta;
       }
       if (sortBy === "status") {

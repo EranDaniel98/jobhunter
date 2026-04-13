@@ -4,6 +4,7 @@ import type { SystemOverview } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Building2, Mail, UserCheck, AlertTriangle } from "lucide-react";
 import { useIncidentStats } from "@/lib/hooks/use-incidents";
+import { GITHUB_ISSUES_URL } from "@/lib/constants";
 
 interface OverviewStatsProps {
   data: SystemOverview;
@@ -40,7 +41,7 @@ export function OverviewStats({ data }: OverviewStatsProps) {
       value: incidentStats?.total ?? 0,
       subtitle: incidentStats?.failed ? `${incidentStats.failed} failed sync` : undefined,
       icon: AlertTriangle,
-      href: "https://github.com/EranDaniel98/jobhunter/issues",
+      href: GITHUB_ISSUES_URL,
     },
   ];
 

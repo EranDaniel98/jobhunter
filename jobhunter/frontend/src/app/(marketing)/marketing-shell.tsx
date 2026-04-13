@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import {
@@ -168,7 +169,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground">Contact</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="mailto:support@hunter-job.com" className="hover:text-foreground transition-colors no-underline">support@hunter-job.com</a></li>
+                <li><a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-foreground transition-colors no-underline">{SUPPORT_EMAIL}</a></li>
               </ul>
             </div>
           </div>

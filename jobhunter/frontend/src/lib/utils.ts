@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { FIT_SCORE_HIGH, FIT_SCORE_LOW } from "@/lib/constants"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -35,14 +36,14 @@ export function truncate(str: string, maxLen: number): string {
 
 export function fitScoreColor(score: number | null): string {
   if (score === null) return "text-muted-foreground";
-  if (score < 0.4) return "text-destructive";
-  if (score < 0.7) return "text-chart-3";
+  if (score < FIT_SCORE_LOW) return "text-destructive";
+  if (score < FIT_SCORE_HIGH) return "text-chart-3";
   return "text-primary";
 }
 
 export function fitScoreBarColor(score: number | null): string {
   if (score === null) return "[&_[data-slot=progress-indicator]]:bg-muted-foreground";
-  if (score < 0.4) return "[&_[data-slot=progress-indicator]]:bg-red-500";
-  if (score < 0.7) return "[&_[data-slot=progress-indicator]]:bg-yellow-400";
+  if (score < FIT_SCORE_LOW) return "[&_[data-slot=progress-indicator]]:bg-red-500";
+  if (score < FIT_SCORE_HIGH) return "[&_[data-slot=progress-indicator]]:bg-yellow-400";
   return "[&_[data-slot=progress-indicator]]:bg-green-500";
 }

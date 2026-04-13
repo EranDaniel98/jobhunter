@@ -101,7 +101,6 @@ export default function ApprovalsPage() {
         toast.success(`${succeeded} actions completed`);
       }
       setSelected(new Set());
-      queryClient.invalidateQueries({ queryKey: ["pending-actions"] });
       queryClient.invalidateQueries({ queryKey: ["approvals"] });
     } finally {
       setBulkPending(false);
