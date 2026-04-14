@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -36,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PanelSection } from "@/components/shared/panel-section";
 import {
   Shield,
   ShieldOff,
@@ -48,6 +48,8 @@ import {
   Calendar,
   Link2,
   CreditCard,
+  BarChart3,
+  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -163,9 +165,9 @@ export function UserDetailDrawer({ userId, currentUserId, onClose }: UserDetailD
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : user ? (
-            <div className="space-y-6 mt-6">
-              {/* Profile info */}
-              <div className="space-y-2">
+            <div className="space-y-0 mt-6">
+              {/* Profile info — kept as header, not wrapped */}
+              <div className="space-y-2 pb-5">
                 <h3 className="text-lg font-semibold">{user.full_name}</h3>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
                 <div className="flex gap-2 flex-wrap">
@@ -181,154 +183,148 @@ export function UserDetailDrawer({ userId, currentUserId, onClose }: UserDetailD
                 </div>
               </div>
 
-              <Separator />
-
               {/* Details */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Joined:</span>
-                  <span>{new Date(user.created_at).toLocaleDateString()}</span>
-                </div>
-                {user.invited_by_email && (
+              <PanelSection title="Details" icon={Calendar}>
+                <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <Link2 className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Invited by:</span>
-                    <span>{user.invited_by_email}</span>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Joined:</span>
+                    <span>{new Date(user.created_at).toLocaleDateString()}</span>
                   </div>
-                )}
-                {user.invite_code_used && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Link2 className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Code:</span>
-                    <code className="text-xs">{user.invite_code_used.slice(0, 12)}...</code>
-                  </div>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Plan tier */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Plan tier:</span>
-                  {!isEditingTier ? (
-                    <>
-                      <Badge variant="outline" className="capitalize">
-                        {user.plan_tier}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-auto h-7 px-2"
-                        disabled={isSelf}
-                        title={isSelf ? "You cannot change your own tier" : undefined}
-                        onClick={() => setIsEditingTier(true)}
-                      >
-                        Edit
-                      </Button>
-                    </>
-                  ) : (
-                    <div className="ml-auto flex items-center gap-2">
-                      <Select
-                        value={user.plan_tier}
-                        onValueChange={handleTierSelect}
-                        disabled={updatePlan.isPending}
-                      >
-                        <SelectTrigger className="h-8 w-[130px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIER_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2"
-                        onClick={handleCancelTierEdit}
-                        disabled={updatePlan.isPending}
-                      >
-                        Cancel
-                      </Button>
+                  {user.invited_by_email && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Link2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Invited by:</span>
+                      <span>{user.invited_by_email}</span>
                     </div>
                   )}
+                  {user.invite_code_used && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Link2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Code:</span>
+                      <code className="text-xs">{user.invite_code_used.slice(0, 12)}...</code>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Plan tier:</span>
+                    {!isEditingTier ? (
+                      <>
+                        <Badge variant="outline" className="capitalize">
+                          {user.plan_tier}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto h-7 px-2"
+                          disabled={isSelf}
+                          title={isSelf ? "You cannot change your own tier" : undefined}
+                          onClick={() => setIsEditingTier(true)}
+                        >
+                          Edit
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="ml-auto flex items-center gap-2">
+                        <Select
+                          value={user.plan_tier}
+                          onValueChange={handleTierSelect}
+                          disabled={updatePlan.isPending}
+                        >
+                          <SelectTrigger className="h-8 w-[130px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIER_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={handleCancelTierEdit}
+                          disabled={updatePlan.isPending}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </PanelSection>
 
-              <Separator />
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-md border p-3 text-center">
-                  <Building2 className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                  <div className="text-2xl font-bold">{user.companies_count}</div>
-                  <p className="text-xs text-muted-foreground">Companies</p>
+              {/* Activity */}
+              <PanelSection title="Activity" icon={BarChart3}>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-md border p-3 text-center">
+                    <Building2 className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                    <div className="text-2xl font-bold">{user.companies_count}</div>
+                    <p className="text-xs text-muted-foreground">Companies</p>
+                  </div>
+                  <div className="rounded-md border p-3 text-center">
+                    <Mail className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                    <div className="text-2xl font-bold">{user.messages_sent_count}</div>
+                    <p className="text-xs text-muted-foreground">Messages Sent</p>
+                  </div>
                 </div>
-                <div className="rounded-md border p-3 text-center">
-                  <Mail className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                  <div className="text-2xl font-bold">{user.messages_sent_count}</div>
-                  <p className="text-xs text-muted-foreground">Messages Sent</p>
-                </div>
-              </div>
-
-              <Separator />
+              </PanelSection>
 
               {/* Actions */}
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={handleToggleAdmin}
-                  disabled={toggleAdmin.isPending}
-                >
-                  {toggleAdmin.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : user.is_admin ? (
-                    <ShieldOff className="mr-2 h-4 w-4" />
-                  ) : (
-                    <Shield className="mr-2 h-4 w-4" />
-                  )}
-                  {user.is_admin ? "Remove admin" : "Make admin"}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={handleToggleActive}
-                  disabled={toggleActive.isPending}
-                >
-                  {toggleActive.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : user.is_active ? (
-                    <UserX className="mr-2 h-4 w-4" />
-                  ) : (
-                    <UserCheck className="mr-2 h-4 w-4" />
-                  )}
-                  {user.is_active ? "Suspend user" : "Activate user"}
-                </Button>
-
-                {!isSelf && (
+              <PanelSection title="Actions" icon={Settings}>
+                <div className="space-y-2">
                   <Button
-                    variant="destructive"
+                    variant="outline"
                     className="w-full justify-start"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={deleteUser.isPending}
+                    onClick={handleToggleAdmin}
+                    disabled={toggleAdmin.isPending}
                   >
-                    {deleteUser.isPending ? (
+                    {toggleAdmin.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : user.is_admin ? (
+                      <ShieldOff className="mr-2 h-4 w-4" />
                     ) : (
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Shield className="mr-2 h-4 w-4" />
                     )}
-                    Delete user
+                    {user.is_admin ? "Remove admin" : "Make admin"}
                   </Button>
-                )}
-              </div>
+
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={handleToggleActive}
+                    disabled={toggleActive.isPending}
+                  >
+                    {toggleActive.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : user.is_active ? (
+                      <UserX className="mr-2 h-4 w-4" />
+                    ) : (
+                      <UserCheck className="mr-2 h-4 w-4" />
+                    )}
+                    {user.is_active ? "Suspend user" : "Activate user"}
+                  </Button>
+
+                  {!isSelf && (
+                    <Button
+                      variant="destructive"
+                      className="w-full justify-start"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      disabled={deleteUser.isPending}
+                    >
+                      {deleteUser.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-2 h-4 w-4" />
+                      )}
+                      Delete user
+                    </Button>
+                  )}
+                </div>
+              </PanelSection>
             </div>
           ) : null}
         </SheetContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -168,6 +169,7 @@ function InsightCard({
 /*  Main page                                                          */
 /* ------------------------------------------------------------------ */
 export default function AnalyticsPage() {
+  const router = useRouter();
   const dashboardQuery = useAnalyticsDashboard();
   const refreshMutation = useRefreshInsights();
   const markReadMutation = useMarkInsightRead();
@@ -324,6 +326,10 @@ export default function AnalyticsPage() {
           icon={BarChart3}
           title="No data yet"
           description="Start discovering companies and sending outreach to see your analytics dashboard come to life."
+          action={{
+            label: "Discover Companies",
+            onClick: () => router.push("/companies"),
+          }}
         />
       ) : (
         <>

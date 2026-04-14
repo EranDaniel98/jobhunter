@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { OperationProgress } from "@/components/shared/operation-progress";
 import { useJobPostings, useApplyAnalysis, useAnalyzeJob, useScrapeUrl, useUpdatePostingStage, useDeletePosting } from "@/lib/hooks/use-apply";
 import type { JobPostingResponse, ResumeTipItem } from "@/lib/types";
 import {
@@ -462,19 +463,12 @@ export default function ApplyPage() {
             </Card>
           )}
 
-          {selectedPostingId && !loadingAnalysis && !analysis && !analysisError && (
-            <Card className="flex items-center justify-center min-h-[400px]">
-              <CardContent className="text-center py-16 w-full max-w-xs">
-                <Loader2 className="mx-auto h-10 w-10 text-muted-foreground/40 mb-4 animate-spin" />
-                <p className="text-muted-foreground font-medium">Analysis in progress...</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  This usually takes 20-30 seconds
-                </p>
-                <div className="mt-4 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                  <div className="h-full w-1/3 rounded-full bg-primary animate-[indeterminate_1.5s_ease-in-out_infinite]" />
-                </div>
-              </CardContent>
-            </Card>
+          {selectedPostingId && !loadingAnalysis && !analysis && !analysisError &&
+            (selectedPosting?.status === "pending" || selectedPosting?.status === "analyzing") && (
+            <OperationProgress
+              status="in_progress"
+              label="Analyzing job posting…"
+            />
           )}
 
           {analysis && (

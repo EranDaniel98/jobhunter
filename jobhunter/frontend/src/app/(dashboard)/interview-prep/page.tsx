@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +19,7 @@ import {
 import type { InterviewPrepSessionResponse } from "@/lib/types";
 import { GraduationCap, MessageSquare, Loader2, Sparkles, Clock, CheckCircle2, XCircle, Circle, Timer, X, Building2 } from "lucide-react";
 import { PrepContentRenderer } from "@/components/interview/prep-content-renderer";
+import { OperationProgress } from "@/components/shared/operation-progress";
 import { MockInterviewChat } from "@/components/interview/mock-interview-chat";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -111,6 +113,7 @@ function SessionHistory({
 // ---------- Main Page ----------
 
 export default function InterviewPrepPage() {
+  const router = useRouter();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("company_qa");
   const [mockInterviewType, setMockInterviewType] = useState<string>("behavioral");
@@ -297,6 +300,10 @@ export default function InterviewPrepPage() {
           icon={GraduationCap}
           title="Select a company to begin"
           description="Choose an approved company above to generate interview prep materials or start a mock interview."
+          action={{
+            label: "Browse Companies",
+            onClick: () => router.push("/companies"),
+          }}
         />
       )}
 
@@ -342,11 +349,10 @@ export default function InterviewPrepPage() {
               </div>
 
               {generatePrep.isPending && activeTab === pt.value && (
-                <div className="space-y-3">
-                  <Skeleton className="h-32 w-full" />
-                  <Skeleton className="h-32 w-full" />
-                  <p className="text-sm text-muted-foreground text-center">Generating {pt.label} content...</p>
-                </div>
+                <OperationProgress
+                  status="in_progress"
+                  label={`Generating ${pt.label} content…`}
+                />
               )}
 
               {sessionsLoading && (

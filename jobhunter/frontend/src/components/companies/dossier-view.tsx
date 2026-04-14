@@ -1,8 +1,9 @@
 import type { CompanyDossierResponse } from "@/lib/types";
+import { OperationProgress } from "@/components/shared/operation-progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CardSkeleton } from "@/components/shared/loading-skeleton";
-import { Loader2, AlertTriangle, Briefcase, MessageSquare, DollarSign, Users, Newspaper, Lightbulb, TrendingUp } from "lucide-react";
+import { AlertTriangle, Briefcase, MessageSquare, DollarSign, Users, Newspaper, Lightbulb, TrendingUp } from "lucide-react";
 
 interface DossierViewProps {
   dossier: CompanyDossierResponse | null;
@@ -22,11 +23,15 @@ export function DossierView({ dossier, isLoading, researchStatus, companyStatus 
 
   if (researchStatus === "pending" || researchStatus === "in_progress") {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium">Researching company...</p>
-        <p className="text-xs text-muted-foreground">This may take a moment</p>
-      </div>
+      <OperationProgress
+        status={researchStatus}
+        label="Researching company"
+        steps={[
+          { key: "pending", label: "Queued" },
+          { key: "in_progress", label: "Researching" },
+          { key: "completed", label: "Done" },
+        ]}
+      />
     );
   }
 
