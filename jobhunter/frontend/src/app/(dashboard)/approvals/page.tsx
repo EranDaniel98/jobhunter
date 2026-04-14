@@ -7,6 +7,7 @@ import { useApprovals, useApproveAction, useRejectAction } from "@/lib/hooks/use
 import * as approvalsApi from "@/lib/api/approvals";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PanelSection } from "@/components/shared/panel-section";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
 import { QueryError } from "@/components/shared/query-error";
@@ -24,13 +25,16 @@ import { toast } from "sonner";
 import { toastError } from "@/lib/api/error-utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ClipboardCheck,
+  Brain,
+  Building2,
   Check,
-  X,
-  Mail,
+  CheckCircle,
+  ClipboardCheck,
   Linkedin,
   Loader2,
-  Building2,
+  Mail,
+  User,
+  X,
 } from "lucide-react";
 import type { PendingAction } from "@/lib/types";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -360,8 +364,9 @@ export default function ApprovalsPage() {
                   Action Details
                 </SheetTitle>
               </SheetHeader>
-              <div className="px-4 pb-6 space-y-4">
-                <div className="flex items-center gap-2">
+              <div className="px-4 pb-6">
+                {/* Status badges — kept as header */}
+                <div className="flex items-center gap-2 pb-5">
                   <StatusBadge type="message" status={selectedAction.status} />
                   <Badge variant="secondary">
                     {ACTION_TYPE_LABELS[selectedAction.action_type] || selectedAction.action_type}
@@ -372,81 +377,85 @@ export default function ApprovalsPage() {
                 </div>
 
                 {selectedAction.contact_name && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Contact</p>
+                  <PanelSection title="Contact" icon={User}>
                     <p className="text-sm">
                       {selectedAction.contact_name}
                       {selectedAction.company_name && (
                         <span className="text-muted-foreground"> at {selectedAction.company_name}</span>
                       )}
                     </p>
-                  </div>
+                  </PanelSection>
                 )}
 
                 {selectedAction.ai_reasoning && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">AI Reasoning</p>
+                  <PanelSection title="AI Reasoning" icon={Brain}>
                     <p className="text-sm text-muted-foreground italic">
                       {selectedAction.ai_reasoning}
                     </p>
-                  </div>
+                  </PanelSection>
                 )}
 
-                {selectedAction.message_subject && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Subject</p>
-                    <p
-                      className="text-sm"
-                      dir={detectDir(selectedAction.message_subject)}
-                    >
-                      {selectedAction.message_subject}
-                    </p>
-                  </div>
-                )}
-
-                {selectedAction.message_body && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Body</p>
-                    <div
-                      className="whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed"
-                      dir={detectDir(selectedAction.message_body)}
-                    >
-                      {selectedAction.message_body}
+                {(selectedAction.message_subject || selectedAction.message_body) && (
+                  <PanelSection title="Message" icon={Mail}>
+                    <div className="space-y-3">
+                      {selectedAction.message_subject && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Subject</p>
+                          <p
+                            className="text-sm"
+                            dir={detectDir(selectedAction.message_subject)}
+                          >
+                            {selectedAction.message_subject}
+                          </p>
+                        </div>
+                      )}
+                      {selectedAction.message_body && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Body</p>
+                          <div
+                            className="whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed"
+                            dir={detectDir(selectedAction.message_body)}
+                          >
+                            {selectedAction.message_body}
+                          </div>
+                        </div>
+                      )}
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p>Created: {formatDateTime(selectedAction.created_at)}</p>
+                        {selectedAction.reviewed_at && (
+                          <p>Reviewed: {formatDateTime(selectedAction.reviewed_at)}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </PanelSection>
                 )}
-
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>Created: {formatDateTime(selectedAction.created_at)}</p>
-                  {selectedAction.reviewed_at && (
-                    <p>Reviewed: {formatDateTime(selectedAction.reviewed_at)}</p>
-                  )}
-                </div>
 
                 {selectedAction.status === "pending" && (
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      onClick={() => handleApprove(selectedAction.id)}
-                      disabled={approveMutation.isPending}
-                    >
-                      {approveMutation.isPending && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      <Check className="mr-1 h-4 w-4" />
-                      Approve & Send
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => handleReject(selectedAction.id)}
-                      disabled={rejectMutation.isPending}
-                    >
-                      {rejectMutation.isPending && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      <X className="mr-1 h-4 w-4" />
-                      Reject
-                    </Button>
-                  </div>
+                  <PanelSection title="Actions" icon={CheckCircle}>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleApprove(selectedAction.id)}
+                        disabled={approveMutation.isPending}
+                      >
+                        {approveMutation.isPending && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        <Check className="mr-1 h-4 w-4" />
+                        Approve & Send
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleReject(selectedAction.id)}
+                        disabled={rejectMutation.isPending}
+                      >
+                        {rejectMutation.isPending && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        <X className="mr-1 h-4 w-4" />
+                        Reject
+                      </Button>
+                    </div>
+                  </PanelSection>
                 )}
               </div>
             </>
