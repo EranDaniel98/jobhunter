@@ -11,6 +11,7 @@ import { DnaProfile } from "@/components/resume/dna-profile";
 import { SkillsGrid } from "@/components/resume/skills-grid";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CardSkeleton } from "@/components/shared/loading-skeleton";
+import { OperationProgress } from "@/components/shared/operation-progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, CheckCircle2, Circle, FileText, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, FileText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/auth-provider";
 import type { CandidateDNAResponse, SkillResponse } from "@/lib/types";
@@ -277,19 +278,10 @@ export default function ResumePage() {
       )}
 
       {!isLoading && uploadedRecently && !hasDna && (
-        <Card>
-          <CardContent className="py-6 space-y-3">
-            <div className="flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Processing your resume and generating DNA profile...
-              </p>
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-              <div className="h-full w-1/3 rounded-full bg-primary animate-[indeterminate_1.5s_ease-in-out_infinite]" />
-            </div>
-          </CardContent>
-        </Card>
+        <OperationProgress
+          status="in_progress"
+          label="Processing your resume and generating DNA profile"
+        />
       )}
 
       {!isLoading && !uploadedRecently && !hasDna && (
