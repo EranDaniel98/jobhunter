@@ -463,7 +463,8 @@ export default function ApplyPage() {
             </Card>
           )}
 
-          {selectedPostingId && !loadingAnalysis && !analysis && !analysisError && (
+          {selectedPostingId && !loadingAnalysis && !analysis && !analysisError &&
+            (selectedPosting?.status === "pending" || selectedPosting?.status === "analyzing") && (
             <OperationProgress
               status="in_progress"
               label="Analyzing job posting…"

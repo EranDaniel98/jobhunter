@@ -48,4 +48,30 @@ describe("OperationProgress", () => {
     render(<OperationProgress status="completed" label="All done" />);
     expect(screen.getByText("All done")).toBeInTheDocument();
   });
+
+  it("treats 'analyzed' status as completed", () => {
+    render(<OperationProgress status="analyzed" label="Analysis complete" />);
+    expect(screen.getByText("Analysis complete")).toBeInTheDocument();
+  });
+
+  it("renders single-state bar when steps is empty array", () => {
+    render(<OperationProgress status="in_progress" label="Working" steps={[]} />);
+    expect(screen.getByText("Working")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+  });
+
+  it("falls back to first step when status is unknown", () => {
+    render(
+      <OperationProgress
+        status="mystery"
+        label="Working"
+        steps={[
+          { key: "a", label: "A" },
+          { key: "b", label: "B" },
+        ]}
+      />
+    );
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "1");
+  });
 });

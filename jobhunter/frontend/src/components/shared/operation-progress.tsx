@@ -88,7 +88,7 @@ export function OperationProgress({
             <p className="font-medium text-sm" aria-live="polite">{label}</p>
           </div>
           <div
-            className="flex items-center gap-2"
+            className="flex items-stretch gap-2"
             role="progressbar"
             aria-valuenow={activeIndex + 1}
             aria-valuemin={1}
@@ -96,29 +96,25 @@ export function OperationProgress({
             aria-label={`Step ${activeIndex + 1} of ${steps.length}`}
           >
             {steps.map((step, i) => (
-              <div key={step.key} className="flex items-center gap-2 flex-1">
+              <div key={step.key} className="flex-1 space-y-2">
                 <div
                   className={cn(
-                    "h-2 flex-1 rounded-full transition-colors",
+                    "h-2 rounded-full transition-colors",
                     i < activeIndex && "bg-chart-3",
                     i === activeIndex && "bg-primary",
                     i > activeIndex && "bg-muted"
                   )}
                 />
+                <span
+                  className={cn(
+                    "block text-xs text-muted-foreground",
+                    i === activeIndex && "text-primary font-medium",
+                    i < activeIndex && "text-chart-3"
+                  )}
+                >
+                  {step.label}
+                </span>
               </div>
-            ))}
-          </div>
-          <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-            {steps.map((step, i) => (
-              <span
-                key={step.key}
-                className={cn(
-                  i === activeIndex && "text-primary font-medium",
-                  i < activeIndex && "text-chart-3"
-                )}
-              >
-                {step.label}
-              </span>
             ))}
           </div>
         </CardContent>
