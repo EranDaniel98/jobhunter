@@ -9,6 +9,7 @@ import { QueryError } from "@/components/shared/query-error";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { FitScore } from "@/components/shared/fit-score";
 import { AddCompanyDialog } from "@/components/companies/add-company-dialog";
+import { OperationProgress } from "@/components/shared/operation-progress";
 import {
   useCompanies,
   useDiscoverCompanies,
@@ -300,18 +301,23 @@ export default function CompaniesPage() {
                 />
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
-              <Button
-                onClick={handleDiscover}
-                disabled={discoverMutation.isPending}
-              >
-                {discoverMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                {discoverMutation.isPending ? "Discovering…" : "Run Discovery"}
-              </Button>
+            <div className="mt-4 space-y-3">
+              {discoverMutation.isPending && (
+                <OperationProgress status="in_progress" label="Discovering companies that match your profile…" />
+              )}
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleDiscover}
+                  disabled={discoverMutation.isPending}
+                >
+                  {discoverMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  {discoverMutation.isPending ? "Discovering…" : "Run Discovery"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
