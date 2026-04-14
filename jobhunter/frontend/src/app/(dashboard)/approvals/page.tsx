@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useApprovals, useApproveAction, useRejectAction } from "@/lib/hooks/use-approvals";
 import * as approvalsApi from "@/lib/api/approvals";
@@ -60,6 +61,7 @@ function expirationLabel(expiresAt: string | null): { text: string; urgent: bool
 }
 
 export default function ApprovalsPage() {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("pending");
   const [selectedAction, setSelectedAction] = useState<PendingAction | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -301,6 +303,10 @@ export default function ApprovalsPage() {
               ? "All caught up! No pending approvals."
               : "No actions match this filter."
           }
+          action={{
+            label: "Go to Companies",
+            onClick: () => router.push("/companies"),
+          }}
         />
       )}
 
