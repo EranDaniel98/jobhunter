@@ -18,6 +18,7 @@ import {
 import type { InterviewPrepSessionResponse } from "@/lib/types";
 import { GraduationCap, MessageSquare, Loader2, Sparkles, Clock, CheckCircle2, XCircle, Circle, Timer, X, Building2 } from "lucide-react";
 import { PrepContentRenderer } from "@/components/interview/prep-content-renderer";
+import { OperationProgress } from "@/components/shared/operation-progress";
 import { MockInterviewChat } from "@/components/interview/mock-interview-chat";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -342,11 +343,10 @@ export default function InterviewPrepPage() {
               </div>
 
               {generatePrep.isPending && activeTab === pt.value && (
-                <div className="space-y-3">
-                  <Skeleton className="h-32 w-full" />
-                  <Skeleton className="h-32 w-full" />
-                  <p className="text-sm text-muted-foreground text-center">Generating {pt.label} content...</p>
-                </div>
+                <OperationProgress
+                  status="in_progress"
+                  label={`Generating ${pt.label} content…`}
+                />
               )}
 
               {sessionsLoading && (
