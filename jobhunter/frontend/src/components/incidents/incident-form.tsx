@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Bug, HelpCircle, ImagePlus, Lightbulb, Loader2, MoreHorizontal, X } from "lucide-react";
+import { Bug, FileText, HelpCircle, ImagePlus, Lightbulb, Loader2, MoreHorizontal, Paperclip, Tag, X } from "lucide-react";
+import { PanelSection } from "@/components/shared/panel-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,10 +96,9 @@ export function IncidentForm({ open, onOpenChange, consoleErrors }: IncidentForm
           <SheetDescription>Help us improve by sharing what happened.</SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-6">
           {/* Category */}
-          <div className="space-y-2">
-            <Label>Category</Label>
+          <PanelSection title="Category" icon={Tag}>
             <RadioGroup value={category} onValueChange={(v) => setCategory(v as Category)} className="grid grid-cols-2 gap-2">
               {CATEGORIES.map(({ value, label, icon }) => (
                 <Label
@@ -112,72 +112,78 @@ export function IncidentForm({ open, onOpenChange, consoleErrors }: IncidentForm
                 </Label>
               ))}
             </RadioGroup>
-          </div>
+          </PanelSection>
 
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="incident-title">Title <span className="text-destructive">*</span></Label>
-            <Input
-              id="incident-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={200}
-              placeholder="Brief summary"
-              required
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="incident-description">Description <span className="text-destructive">*</span></Label>
-            <Textarea
-              id="incident-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={5000}
-              placeholder={currentCategory.placeholder}
-              required
-              rows={5}
-            />
-          </div>
+          {/* Title + Description */}
+          <PanelSection title="Details" icon={FileText}>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="incident-title">Title <span className="text-destructive">*</span></Label>
+                <Input
+                  id="incident-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  maxLength={200}
+                  placeholder="Brief summary"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="incident-description">Description <span className="text-destructive">*</span></Label>
+                <Textarea
+                  id="incident-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={5000}
+                  placeholder={currentCategory.placeholder}
+                  required
+                  rows={5}
+                />
+              </div>
+            </div>
+          </PanelSection>
 
           {/* Attachments */}
-          <div className="space-y-2">
-            <Label>Attachments <span className="text-muted-foreground text-xs">(max {MAX_FILES}, 5 MB each)</span></Label>
-            {files.length > 0 && (
-              <ul className="space-y-1">
-                {files.map((f, i) => (
-                  <li key={i} className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm">
-                    <span className="truncate max-w-[calc(100%-2rem)]">{f.name}</span>
-                    <button type="button" onClick={() => removeFile(i)} className="ml-2 text-muted-foreground hover:text-destructive">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {files.length < MAX_FILES && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => fileInputRef.current?.click()}>
-                  <ImagePlus className="h-4 w-4" />
-                  Add image
-                </Button>
-              </>
-            )}
-          </div>
+          <PanelSection title="Attachments" icon={Paperclip}>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">(max {MAX_FILES}, 5 MB each)</p>
+              {files.length > 0 && (
+                <ul className="space-y-1">
+                  {files.map((f, i) => (
+                    <li key={i} className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm">
+                      <span className="truncate max-w-[calc(100%-2rem)]">{f.name}</span>
+                      <button type="button" onClick={() => removeFile(i)} className="ml-2 text-muted-foreground hover:text-destructive">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {files.length < MAX_FILES && (
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+                    <ImagePlus className="h-4 w-4" />
+                    Add image
+                  </Button>
+                </>
+              )}
+            </div>
+          </PanelSection>
 
           {/* Submit */}
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</> : "Submit"}
-          </Button>
+          <div className="pt-5">
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</> : "Submit"}
+            </Button>
+          </div>
         </form>
       </SheetContent>
     </Sheet>
