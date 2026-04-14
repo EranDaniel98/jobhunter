@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -112,6 +113,7 @@ function SessionHistory({
 // ---------- Main Page ----------
 
 export default function InterviewPrepPage() {
+  const router = useRouter();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("company_qa");
   const [mockInterviewType, setMockInterviewType] = useState<string>("behavioral");
@@ -298,6 +300,10 @@ export default function InterviewPrepPage() {
           icon={GraduationCap}
           title="Select a company to begin"
           description="Choose an approved company above to generate interview prep materials or start a mock interview."
+          action={{
+            label: "Browse Companies",
+            onClick: () => router.push("/companies"),
+          }}
         />
       )}
 
