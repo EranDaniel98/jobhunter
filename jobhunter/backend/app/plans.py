@@ -33,6 +33,7 @@ PLANS: dict[PlanTier, PlanDefinition] = {
             "hunter": 5,
             "email": 3,
             "openai": 30,
+            "scout_frequency_days": 7,  # weekly (Mondays only)
         },
         features=(
             "Basic company research",
@@ -51,6 +52,7 @@ PLANS: dict[PlanTier, PlanDefinition] = {
             "hunter": 30,
             "email": 20,
             "openai": 150,
+            "scout_frequency_days": 1,  # daily
         },
         features=(
             "Everything in Free",
@@ -70,6 +72,7 @@ PLANS: dict[PlanTier, PlanDefinition] = {
             "hunter": 100,
             "email": 75,
             "openai": 500,
+            "scout_frequency_days": 1,
         },
         features=(
             "Everything in Explorer",
