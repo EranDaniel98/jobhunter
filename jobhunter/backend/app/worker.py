@@ -359,8 +359,6 @@ async def process_scout_chunk(ctx, candidate_ids: list):
             state = {
                 "candidate_id": str(candidate_id),
                 "plan_tier": plan_tier,
-                "search_queries": None,
-                "raw_articles": None,
                 "parsed_companies": None,
                 "scored_companies": None,
                 "companies_created": 0,
