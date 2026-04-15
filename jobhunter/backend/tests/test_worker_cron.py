@@ -247,9 +247,10 @@ class TestRunDailyScout:
         mock_db.__aenter__ = AsyncMock(return_value=mock_db)
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
-        scalars_result = MagicMock()
-        scalars_result.scalars.return_value.all.return_value = [cand_id_1, cand_id_2]
-        mock_db.execute.return_value = scalars_result
+        rows_result = MagicMock()
+        # Post-B4 coordinator reads tuples of (id, plan_tier) via result.all()
+        rows_result.all.return_value = [(cand_id_1, "hunter"), (cand_id_2, "hunter")]
+        mock_db.execute.return_value = rows_result
 
         mock_factory = MagicMock(return_value=mock_db)
 
@@ -280,9 +281,9 @@ class TestRunDailyScout:
         mock_db.__aenter__ = AsyncMock(return_value=mock_db)
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
-        scalars_result = MagicMock()
-        scalars_result.scalars.return_value.all.return_value = cand_ids
-        mock_db.execute.return_value = scalars_result
+        rows_result = MagicMock()
+        rows_result.all.return_value = [(cid, "hunter") for cid in cand_ids]
+        mock_db.execute.return_value = rows_result
 
         mock_factory = MagicMock(return_value=mock_db)
 
