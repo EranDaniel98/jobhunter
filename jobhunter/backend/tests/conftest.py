@@ -24,7 +24,15 @@ from app.models.invite import InviteCode
 class OpenAIStub:
     """Test stub that returns plausible data without hitting real OpenAI."""
 
-    async def parse_structured(self, system_prompt: str, user_content: str, response_schema: dict) -> dict:
+    async def parse_structured(
+        self,
+        system_prompt: str,
+        user_content: str,
+        response_schema: dict,
+        *,
+        max_tokens: int = 4000,
+        model: str | None = None,
+    ) -> dict:
         # Detect schema type by checking top-level required keys
         schema_keys = set(response_schema.get("properties", {}).keys())
 
@@ -226,7 +234,13 @@ class OpenAIStub:
     async def batch_embed(self, texts: list[str], dimensions: int = 1536) -> list[list[float]]:
         return [[0.1] * dimensions for _ in texts]
 
-    async def chat(self, messages: list[dict]) -> str:
+    async def chat(
+        self,
+        messages: list[dict],
+        *,
+        max_tokens: int = 4000,
+        model: str | None = None,
+    ) -> str:
         return "Test chat response"
 
     async def vision(self, messages: list[dict], images: list[bytes]) -> str:
