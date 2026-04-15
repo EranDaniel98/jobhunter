@@ -1,0 +1,9 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# No healthcheck — ARQ worker does not expose HTTP. Liveness is managed by
+# Railway's container-level health (OOM kills, crashes trigger restart).
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
