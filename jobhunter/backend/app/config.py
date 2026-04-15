@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     # Global daily OpenAI cost cap (in cents, default $50)
     DAILY_OPENAI_COST_LIMIT_CENTS: int = 5000
 
+    # LLM model routing per pipeline (cost optimization)
+    SCOUT_QUERIES_MODEL: str = "gpt-4o-mini"
+    SCOUT_PARSE_MODEL: str = "gpt-4o-mini"
+    ANALYTICS_INSIGHTS_MODEL: str = "gpt-4o-mini"
+
     # API cost limits (daily per user)
     DAILY_OPENAI_CALL_LIMIT: int = 100
     DAILY_HUNTER_CALL_LIMIT: int = 50
