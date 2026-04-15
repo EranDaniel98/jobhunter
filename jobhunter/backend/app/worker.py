@@ -477,6 +477,27 @@ async def process_analytics_chunk(ctx, candidate_ids: list):
 
 
 # ---------------------------------------------------------------------------
+# Daily news ingest cron: populates the shared funding_signals pool
+# ---------------------------------------------------------------------------
+
+
+async def run_daily_news_ingest(ctx) -> None:
+    """Fetch funding news once per day into the shared funding_signals pool."""
+    if not await _acquire_run_lock("daily_news_ingest", ttl=82800):
+        logger.info("cron.skipped_overlap", extra={"feature": "arq_batch", "action": "run_daily_news_ingest"})
+        return
+
+    from app.dependencies import get_newsapi, get_openai
+    from app.infrastructure.database import async_session_factory
+    from app.services.news_ingest_service import ingest_funding_news
+
+    async with async_session_factory() as db:
+        count = await ingest_funding_news(db, get_newsapi(), get_openai())
+
+    logger.info("news_ingest.cron_done", count=count)
+
+
+# ---------------------------------------------------------------------------
 # GitHub sync retry cron
 # ---------------------------------------------------------------------------
 
@@ -553,6 +574,7 @@ class WorkerSettings:
     cron_jobs: ClassVar[list] = [
         cron(check_followup_due, minute={0, 15, 30, 45}),
         cron(expire_stale_actions, hour={3}, minute={0}),  # Daily at 3 AM
+        cron(run_daily_news_ingest, hour={8}, minute={0}),  # Daily at 8 AM UTC (before scout)
         cron(run_daily_scout, hour={9}, minute={0}),  # Daily at 9 AM UTC
         cron(run_weekly_analytics, weekday={0}, hour={8}, minute={0}),  # Mondays 8 AM UTC
         cron(retry_failed_github_syncs, minute={5, 20, 35, 50}),  # Every 15 min (offset from followups)
