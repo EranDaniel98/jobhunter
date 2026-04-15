@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from typing_extensions import TypedDict
 
+from app.config import settings
 from app.dependencies import get_newsapi, get_openai
 from app.infrastructure import database as _db_mod
 from app.infrastructure.redis_client import get_redis
@@ -162,6 +163,7 @@ async def build_search_queries_node(state: ScoutState) -> dict:
             ),
             "",
             SCOUT_QUERIES_SCHEMA,
+            model=settings.SCOUT_QUERIES_MODEL,
         )
         queries = result.get("queries", [])[:3]  # Cap at 3
     except Exception as e:
@@ -292,6 +294,7 @@ async def parse_articles_node(state: ScoutState) -> dict:
             PARSE_ARTICLES_PROMPT.format(articles=articles_text),
             "",
             PARSE_ARTICLES_SCHEMA,
+            model=settings.SCOUT_PARSE_MODEL,
         )
         companies = result.get("companies", [])
     except Exception as e:
