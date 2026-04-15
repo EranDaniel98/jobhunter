@@ -32,6 +32,7 @@ from app.models.invite import InviteCode
 # Lightweight test stubs for external API clients
 # ---------------------------------------------------------------------------
 
+
 class OpenAIStub:
     """Test stub that returns plausible data without hitting real OpenAI."""
 
@@ -57,7 +58,9 @@ class OpenAIStub:
             }
 
         # Scout article parsing schema (companies with company_name)
-        companies_items = response_schema.get("properties", {}).get("companies", {}).get("items", {}).get("properties", {})
+        companies_items = (
+            response_schema.get("properties", {}).get("companies", {}).get("items", {}).get("properties", {})
+        )
         if "companies" in schema_keys and "company_name" in companies_items:
             return {
                 "companies": [
@@ -84,15 +87,30 @@ class OpenAIStub:
         if "companies" in schema_keys and len(schema_keys) == 1:
             return {
                 "companies": [
-                    {"domain": "stripe.com", "name": "Stripe", "reason": "Strong fintech fit",
-                     "industry": "Financial Technology", "size": "1001-5000",
-                     "tech_stack": ["Ruby", "Go", "React"]},
-                    {"domain": "plaid.com", "name": "Plaid", "reason": "API-focused fintech",
-                     "industry": "Financial Technology", "size": "501-1000",
-                     "tech_stack": ["Python", "TypeScript", "Kubernetes"]},
-                    {"domain": "vercel.com", "name": "Vercel", "reason": "Developer tools",
-                     "industry": "Developer Tools", "size": "201-500",
-                     "tech_stack": ["Next.js", "Go", "Rust"]},
+                    {
+                        "domain": "stripe.com",
+                        "name": "Stripe",
+                        "reason": "Strong fintech fit",
+                        "industry": "Financial Technology",
+                        "size": "1001-5000",
+                        "tech_stack": ["Ruby", "Go", "React"],
+                    },
+                    {
+                        "domain": "plaid.com",
+                        "name": "Plaid",
+                        "reason": "API-focused fintech",
+                        "industry": "Financial Technology",
+                        "size": "501-1000",
+                        "tech_stack": ["Python", "TypeScript", "Kubernetes"],
+                    },
+                    {
+                        "domain": "vercel.com",
+                        "name": "Vercel",
+                        "reason": "Developer tools",
+                        "industry": "Developer Tools",
+                        "size": "201-500",
+                        "tech_stack": ["Next.js", "Go", "Rust"],
+                    },
                 ]
             }
 
@@ -102,12 +120,27 @@ class OpenAIStub:
         if "skills" in schema_keys and "category" in items_props and "proficiency" in items_props:
             return {
                 "skills": [
-                    {"name": "Python", "category": "explicit", "proficiency": "expert",
-                     "years_experience": 5.0, "evidence": "5 years professional Python development"},
-                    {"name": "FastAPI", "category": "explicit", "proficiency": "advanced",
-                     "years_experience": 3.0, "evidence": "Built REST APIs with FastAPI"},
-                    {"name": "Leadership", "category": "transferable", "proficiency": "intermediate",
-                     "years_experience": 2.0, "evidence": "Led team of 5 engineers"},
+                    {
+                        "name": "Python",
+                        "category": "explicit",
+                        "proficiency": "expert",
+                        "years_experience": 5.0,
+                        "evidence": "5 years professional Python development",
+                    },
+                    {
+                        "name": "FastAPI",
+                        "category": "explicit",
+                        "proficiency": "advanced",
+                        "years_experience": 3.0,
+                        "evidence": "Built REST APIs with FastAPI",
+                    },
+                    {
+                        "name": "Leadership",
+                        "category": "transferable",
+                        "proficiency": "intermediate",
+                        "years_experience": 2.0,
+                        "evidence": "Led team of 5 engineers",
+                    },
                 ]
             }
 
@@ -115,8 +148,16 @@ class OpenAIStub:
         if "questions" in schema_keys and "tips" in schema_keys:
             return {
                 "questions": [
-                    {"question": "Tell me about your experience with Python", "suggested_answer": "I have 5 years of professional Python development...", "category": "technical"},
-                    {"question": "Why do you want to work here?", "suggested_answer": "I'm drawn to the company's innovative culture...", "category": "culture-fit"},
+                    {
+                        "question": "Tell me about your experience with Python",
+                        "suggested_answer": "I have 5 years of professional Python development...",
+                        "category": "technical",
+                    },
+                    {
+                        "question": "Why do you want to work here?",
+                        "suggested_answer": "I'm drawn to the company's innovative culture...",
+                        "category": "culture-fit",
+                    },
                 ],
                 "tips": ["Research the company culture", "Prepare STAR stories"],
             }
@@ -125,10 +166,13 @@ class OpenAIStub:
         if "stories" in schema_keys:
             return {
                 "stories": [
-                    {"question": "Tell me about a challenge you overcame", "situation": "At TestCo, we faced a critical production outage.",
-                     "task": "I needed to identify the root cause and restore service.",
-                     "action": "I led the incident response, identified a memory leak, and deployed a fix.",
-                     "result": "Service restored in 30 minutes, implemented monitoring to prevent recurrence."},
+                    {
+                        "question": "Tell me about a challenge you overcame",
+                        "situation": "At TestCo, we faced a critical production outage.",
+                        "task": "I needed to identify the root cause and restore service.",
+                        "action": "I led the incident response, identified a memory leak, and deployed a fix.",
+                        "result": "Service restored in 30 minutes, implemented monitoring to prevent recurrence.",
+                    },
                 ],
             }
 
@@ -136,9 +180,16 @@ class OpenAIStub:
         if "topics" in schema_keys:
             return {
                 "topics": [
-                    {"name": "System Design", "questions": [
-                        {"question": "Design a URL shortener", "answer": "I would use a hash-based approach with a NoSQL store...", "difficulty": "medium"},
-                    ]},
+                    {
+                        "name": "System Design",
+                        "questions": [
+                            {
+                                "question": "Design a URL shortener",
+                                "answer": "I would use a hash-based approach with a NoSQL store...",
+                                "difficulty": "medium",
+                            },
+                        ],
+                    },
                 ],
             }
 
@@ -147,7 +198,12 @@ class OpenAIStub:
             return {
                 "values": ["Innovation", "Collaboration"],
                 "alignment_tips": ["Show passion for continuous learning"],
-                "questions": [{"question": "How do you handle disagreements?", "suggested_answer": "I approach conflicts with empathy and data..."}],
+                "questions": [
+                    {
+                        "question": "How do you handle disagreements?",
+                        "suggested_answer": "I approach conflicts with empathy and data...",
+                    }
+                ],
             }
 
         # Interview prep: salary_negotiation schema
@@ -190,20 +246,32 @@ class OpenAIStub:
 
         # Apply: cover letter schema
         if "cover_letter" in schema_keys and len(schema_keys) == 1:
-            return {"cover_letter": "Dear Hiring Manager,\n\nI am excited to apply for this position. My experience in Python and FastAPI aligns well with your requirements.\n\nBest regards,\nTest User"}
+            return {
+                "cover_letter": "Dear Hiring Manager,\n\nI am excited to apply for this position. My experience in Python and FastAPI aligns well with your requirements.\n\nBest regards,\nTest User"
+            }
 
         # Analytics insights schema
         if "insights" in schema_keys:
-            items_props = response_schema.get("properties", {}).get("insights", {}).get("items", {}).get("properties", {})
+            items_props = (
+                response_schema.get("properties", {}).get("insights", {}).get("items", {}).get("properties", {})
+            )
             if "insight_type" in items_props:
                 return {
                     "insights": [
-                        {"insight_type": "pipeline_health", "title": "Pipeline Growing",
-                         "body": "You have 5 companies in your pipeline, up from 3 last week.",
-                         "severity": "success", "data": {"current": 5, "previous": 3}},
-                        {"insight_type": "recommendation", "title": "Follow Up Needed",
-                         "body": "3 companies haven't received follow-ups in over a week.",
-                         "severity": "action_needed", "data": {"company_count": 3}},
+                        {
+                            "insight_type": "pipeline_health",
+                            "title": "Pipeline Growing",
+                            "body": "You have 5 companies in your pipeline, up from 3 last week.",
+                            "severity": "success",
+                            "data": {"current": 5, "previous": 3},
+                        },
+                        {
+                            "insight_type": "recommendation",
+                            "title": "Follow Up Needed",
+                            "body": "3 companies haven't received follow-ups in over a week.",
+                            "severity": "action_needed",
+                            "data": {"company_count": 3},
+                        },
                     ],
                 }
 
@@ -211,8 +279,15 @@ class OpenAIStub:
         return {
             "name": "Test User",
             "headline": "Software Engineer",
-            "experiences": [{"company": "TestCo", "title": "Engineer", "dates": "2020-2024",
-                            "description": "Backend development", "achievements": ["Built API"]}],
+            "experiences": [
+                {
+                    "company": "TestCo",
+                    "title": "Engineer",
+                    "dates": "2020-2024",
+                    "description": "Backend development",
+                    "achievements": ["Built API"],
+                }
+            ],
             "skills": ["Python", "FastAPI"],
             "education": [{"institution": "MIT", "degree": "BS CS", "year": "2020"}],
             "certifications": [],
@@ -341,25 +416,39 @@ class NewsAPIStub:
 class ResendStub:
     """Test stub that returns plausible Resend-shaped data."""
 
-    async def send(self, to: str, from_email: str, subject: str, body: str,
-                   tags: list[str] | None = None, headers: dict | None = None,
-                   attachments: list[dict] | None = None, reply_to: str | None = None) -> dict:
+    async def send(
+        self,
+        to: str,
+        from_email: str,
+        subject: str,
+        body: str,
+        tags: list[str] | None = None,
+        headers: dict | None = None,
+        attachments: list[dict] | None = None,
+        reply_to: str | None = None,
+    ) -> dict:
         return {"id": f"test_{uuid.uuid4().hex[:12]}"}
 
     def verify_webhook(self, payload: bytes, headers: dict) -> dict:
         import json
+
         return json.loads(payload)
 
 
 class GitHubStub:
     """Stub for GitHubClientProtocol."""
+
     def __init__(self):
         self.created_issues = []
 
     async def create_issue(self, title: str, body: str, labels: list[str]) -> dict:
-        issue = {"number": len(self.created_issues) + 1, "url": f"https://github.com/test/repo/issues/{len(self.created_issues) + 1}"}
+        issue = {
+            "number": len(self.created_issues) + 1,
+            "url": f"https://github.com/test/repo/issues/{len(self.created_issues) + 1}",
+        }
         self.created_issues.append({"title": title, "body": body, "labels": labels})
         return issue
+
 
 # Use a separate test database (only replace the database name at the end of the URL).
 # When running under xdist, each worker gets its own DB via PYTEST_XDIST_WORKER suffix.
@@ -375,9 +464,7 @@ async def _ensure_test_db_exists() -> None:
     admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
     try:
         async with admin_engine.connect() as conn:
-            result = await conn.execute(
-                text("SELECT 1 FROM pg_database WHERE datname = :n"), {"n": TEST_DB_NAME}
-            )
+            result = await conn.execute(text("SELECT 1 FROM pg_database WHERE datname = :n"), {"n": TEST_DB_NAME})
             if result.scalar() is None:
                 await conn.execute(text(f'CREATE DATABASE "{TEST_DB_NAME}"'))
     finally:
@@ -400,9 +487,7 @@ async def test_engine():
 
 @pytest_asyncio.fixture
 async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    session_factory = async_sessionmaker(
-        test_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
         yield session
         await session.rollback()
@@ -435,6 +520,7 @@ async def client(db_session: AsyncSession, redis) -> AsyncGenerator[AsyncClient,
 
     # Use in-memory storage stub for tests
     import app.infrastructure.storage as _storage_mod
+
     _storage_mod._storage_instance = StorageStub()
 
     transport = ASGITransport(app=app)
@@ -458,9 +544,8 @@ async def _create_invite_code(db_session: AsyncSession) -> str:
 
     from app.models.candidate import Candidate
     from app.utils.security import hash_password
-    result = await db_session.execute(
-        select(Candidate).where(Candidate.email == "seed-inviter@test.local")
-    )
+
+    result = await db_session.execute(select(Candidate).where(Candidate.email == "seed-inviter@test.local"))
     inviter = result.scalar_one_or_none()
     if not inviter:
         inviter = Candidate(

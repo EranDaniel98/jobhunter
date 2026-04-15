@@ -33,6 +33,7 @@ from app.utils.security import (
 # Password hashing (pure utility)
 # ---------------------------------------------------------------------------
 
+
 class TestPasswordHashing:
     def test_hash_password_returns_different_from_plain(self):
         hashed = hash_password("mypassword")
@@ -55,6 +56,7 @@ class TestPasswordHashing:
 # ---------------------------------------------------------------------------
 # JWT creation / decode
 # ---------------------------------------------------------------------------
+
 
 class TestJWT:
     def test_create_access_token_decodeable(self):
@@ -95,6 +97,7 @@ class TestJWT:
 # ---------------------------------------------------------------------------
 # login
 # ---------------------------------------------------------------------------
+
 
 class TestLogin:
     @pytest.mark.asyncio
@@ -169,6 +172,7 @@ class TestLogin:
 # refresh_token
 # ---------------------------------------------------------------------------
 
+
 class TestRefreshToken:
     @pytest.mark.asyncio
     async def test_refresh_success(self):
@@ -229,6 +233,7 @@ class TestRefreshToken:
 # logout
 # ---------------------------------------------------------------------------
 
+
 class TestLogout:
     @pytest.mark.asyncio
     async def test_logout_blacklists_access_token(self):
@@ -264,6 +269,7 @@ class TestLogout:
 # ---------------------------------------------------------------------------
 # forgot_password
 # ---------------------------------------------------------------------------
+
 
 class TestForgotPassword:
     @pytest.mark.asyncio
@@ -320,6 +326,7 @@ class TestForgotPassword:
 # ---------------------------------------------------------------------------
 # reset_password
 # ---------------------------------------------------------------------------
+
 
 class TestResetPassword:
     @pytest.mark.asyncio

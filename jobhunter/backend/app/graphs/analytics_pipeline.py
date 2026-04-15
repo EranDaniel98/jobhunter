@@ -149,9 +149,7 @@ async def generate_insights_node(state: AnalyticsState) -> dict:
 
     try:
         client = get_openai()
-        result = await client.parse_structured(
-            prompt, "", INSIGHTS_SCHEMA, model=settings.ANALYTICS_INSIGHTS_MODEL
-        )
+        result = await client.parse_structured(prompt, "", INSIGHTS_SCHEMA, model=settings.ANALYTICS_INSIGHTS_MODEL)
         insights = result.get("insights", [])
     except Exception as e:
         logger.error("analytics_generate_insights_failed", error=str(e))

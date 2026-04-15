@@ -1,4 +1,5 @@
 """Verify login + refresh update candidate.last_seen_at."""
+
 import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
@@ -33,9 +34,7 @@ async def test_login_sets_last_seen_at(db_session):
 
     await auth_service.login(db_session, LoginRequest(email=cand.email, password="correctpass"))
 
-    refreshed = (await db_session.execute(
-        select(Candidate).where(Candidate.id == cand.id)
-    )).scalar_one()
+    refreshed = (await db_session.execute(select(Candidate).where(Candidate.id == cand.id))).scalar_one()
     assert refreshed.last_seen_at is not None
     assert (datetime.now(UTC) - refreshed.last_seen_at) < timedelta(seconds=5)
 
@@ -53,8 +52,6 @@ async def test_refresh_updates_last_seen_at(db_session):
     with patch("app.services.auth_service.get_redis", return_value=mock_redis):
         await auth_service.refresh_token(db_session, token)
 
-    refreshed = (await db_session.execute(
-        select(Candidate).where(Candidate.id == cand.id)
-    )).scalar_one()
+    refreshed = (await db_session.execute(select(Candidate).where(Candidate.id == cand.id))).scalar_one()
     assert refreshed.last_seen_at is not None
     assert (datetime.now(UTC) - refreshed.last_seen_at) < timedelta(seconds=5)

@@ -1,4 +1,5 @@
 """Verify scout_frequency_days per plan tier."""
+
 from app.plans import PlanTier, get_limits_for_tier
 
 

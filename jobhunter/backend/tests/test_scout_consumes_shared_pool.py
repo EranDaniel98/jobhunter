@@ -1,5 +1,6 @@
 """Verify the refactored scout pipeline reads from funding_signals and
 scores per-candidate via the existing CandidateDNA cosine similarity path."""
+
 import uuid
 from datetime import UTC, datetime
 
@@ -36,20 +37,24 @@ def _state(candidate_id: uuid.UUID) -> dict:
 
 async def _seed_candidate_with_dna(db_session):
     cand_id = uuid.uuid4()
-    db_session.add(Candidate(
-        id=cand_id,
-        email=f"scout-{uuid.uuid4().hex[:6]}@t.co",
-        password_hash=hash_password("x"),
-        full_name="T",
-        target_industries=["fintech"],
-    ))
-    db_session.add(CandidateDNA(
-        id=uuid.uuid4(),
-        candidate_id=cand_id,
-        embedding=[0.1] * 1536,
-        skills_vector=[0.1] * 1536,
-        experience_summary="Senior backend eng",
-    ))
+    db_session.add(
+        Candidate(
+            id=cand_id,
+            email=f"scout-{uuid.uuid4().hex[:6]}@t.co",
+            password_hash=hash_password("x"),
+            full_name="T",
+            target_industries=["fintech"],
+        )
+    )
+    db_session.add(
+        CandidateDNA(
+            id=uuid.uuid4(),
+            candidate_id=cand_id,
+            embedding=[0.1] * 1536,
+            skills_vector=[0.1] * 1536,
+            experience_summary="Senior backend eng",
+        )
+    )
     await db_session.commit()
     return cand_id
 
@@ -67,21 +72,23 @@ async def test_scout_scores_candidates_against_shared_pool(db_session, patched_g
     cand_id = await _seed_candidate_with_dna(db_session)
 
     # Seed a funding_signal whose embedding matches the DNA exactly (cosine=1.0)
-    db_session.add(FundingSignal(
-        id=uuid.uuid4(),
-        source_url=f"https://news.example/shared-{uuid.uuid4()}",
-        title="Acme raised $5M Series A",
-        description="Acme builds backend infra.",
-        published_at=datetime.now(UTC),
-        company_name="Acme",
-        estimated_domain=f"acme-{uuid.uuid4().hex[:6]}.co",
-        funding_round="Series A",
-        amount="$5M",
-        industry="dev tools",
-        signal_types=["funding_round"],
-        extra_data={"funding_round": "Series A", "amount": "$5M"},
-        embedding=[0.1] * 1536,
-    ))
+    db_session.add(
+        FundingSignal(
+            id=uuid.uuid4(),
+            source_url=f"https://news.example/shared-{uuid.uuid4()}",
+            title="Acme raised $5M Series A",
+            description="Acme builds backend infra.",
+            published_at=datetime.now(UTC),
+            company_name="Acme",
+            estimated_domain=f"acme-{uuid.uuid4().hex[:6]}.co",
+            funding_round="Series A",
+            amount="$5M",
+            industry="dev tools",
+            signal_types=["funding_round"],
+            extra_data={"funding_round": "Series A", "amount": "$5M"},
+            embedding=[0.1] * 1536,
+        )
+    )
     await db_session.commit()
 
     graph = get_scout_pipeline_no_checkpointer()
@@ -90,11 +97,7 @@ async def test_scout_scores_candidates_against_shared_pool(db_session, patched_g
     assert result["status"] == "completed"
     assert result["companies_created"] == 1
 
-    created = (
-        await db_session.execute(
-            select(Company).where(Company.candidate_id == cand_id)
-        )
-    ).scalars().all()
+    created = (await db_session.execute(select(Company).where(Company.candidate_id == cand_id))).scalars().all()
     assert len(created) == 1
     assert created[0].name == "Acme"
     assert created[0].source == "scout_funding"

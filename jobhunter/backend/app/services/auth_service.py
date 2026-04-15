@@ -172,9 +172,7 @@ async def refresh_token(db: AsyncSession, token: str) -> TokenPair:
             logger.warning("refresh_token_old_blacklist_failed", jti=jti, error=str(e))
 
     await db.execute(
-        update(Candidate)
-        .where(Candidate.id == uuid.UUID(candidate_id))
-        .values(last_seen_at=datetime.now(UTC))
+        update(Candidate).where(Candidate.id == uuid.UUID(candidate_id)).values(last_seen_at=datetime.now(UTC))
     )
     await db.commit()
 

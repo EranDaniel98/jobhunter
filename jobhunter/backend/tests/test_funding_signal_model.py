@@ -1,4 +1,5 @@
 """Verify FundingSignal ORM + unique constraint on source_url."""
+
 import uuid
 from datetime import UTC, datetime
 

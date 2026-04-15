@@ -140,20 +140,22 @@ async def test_full_pipeline(db_session, candidate_with_dna, patch_graph_db, pat
     from app.models.funding_signal import FundingSignal
 
     # Seed a funding_signal whose embedding matches the DNA for scoring
-    db_session.add(FundingSignal(
-        id=uuid.uuid4(),
-        source_url=f"https://news.example/full-{uuid.uuid4()}",
-        title="Acme raised $5M Series A",
-        description="Acme builds fintech APIs.",
-        published_at=datetime.now(UTC),
-        company_name="Acme",
-        estimated_domain=f"acme-{uuid.uuid4().hex[:6]}.co",
-        funding_round="Series A",
-        amount="$5M",
-        industry="fintech",
-        signal_types=["funding_round"],
-        embedding=[0.1] * 1536,
-    ))
+    db_session.add(
+        FundingSignal(
+            id=uuid.uuid4(),
+            source_url=f"https://news.example/full-{uuid.uuid4()}",
+            title="Acme raised $5M Series A",
+            description="Acme builds fintech APIs.",
+            published_at=datetime.now(UTC),
+            company_name="Acme",
+            estimated_domain=f"acme-{uuid.uuid4().hex[:6]}.co",
+            funding_round="Series A",
+            amount="$5M",
+            industry="fintech",
+            signal_types=["funding_round"],
+            embedding=[0.1] * 1536,
+        )
+    )
     await db_session.commit()
 
     candidate_id = candidate_with_dna
@@ -200,16 +202,18 @@ async def test_pipeline_no_dna_fails(db_session, candidate_no_dna, patch_graph_d
     from app.models.funding_signal import FundingSignal
 
     # Need at least one signal so scoring is reached (empty pool = completed no-op)
-    db_session.add(FundingSignal(
-        id=uuid.uuid4(),
-        source_url=f"https://news.example/nodna-{uuid.uuid4()}",
-        title="x",
-        description="d",
-        published_at=datetime.now(UTC),
-        company_name="X",
-        estimated_domain=f"x-{uuid.uuid4().hex[:6]}.co",
-        embedding=[0.1] * 1536,
-    ))
+    db_session.add(
+        FundingSignal(
+            id=uuid.uuid4(),
+            source_url=f"https://news.example/nodna-{uuid.uuid4()}",
+            title="x",
+            description="d",
+            published_at=datetime.now(UTC),
+            company_name="X",
+            estimated_domain=f"x-{uuid.uuid4().hex[:6]}.co",
+            embedding=[0.1] * 1536,
+        )
+    )
     await db_session.commit()
 
     candidate_id = candidate_no_dna
@@ -248,5 +252,3 @@ async def test_scout_signals_empty(client, auth_headers):
     data = resp.json()
     assert data["signals"] == []
     assert data["total"] == 0
-
-

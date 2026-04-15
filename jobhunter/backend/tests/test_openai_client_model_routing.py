@@ -16,13 +16,17 @@ def _install_fakes(monkeypatch, captured: dict):
     class FakeCompletions:
         async def create(self, **kwargs):
             captured.update(kwargs)
+
             class _Msg:
                 content = '{"x": 1}'
+
             class _Choice:
                 message = _Msg()
+
             class _Resp:
                 choices = [_Choice()]
                 usage = type("U", (), {"prompt_tokens": 1, "completion_tokens": 1})()
+
             return _Resp()
 
     class FakeClient:
@@ -42,7 +46,9 @@ async def test_parse_structured_accepts_model_kwarg(monkeypatch):
     client = _install_fakes(monkeypatch, captured)
 
     await client.parse_structured(
-        "system", "user", {"type": "object", "properties": {"x": {"type": "integer"}}},
+        "system",
+        "user",
+        {"type": "object", "properties": {"x": {"type": "integer"}}},
         model="gpt-4o-mini",
     )
 

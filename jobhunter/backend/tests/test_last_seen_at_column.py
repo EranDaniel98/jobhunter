@@ -1,4 +1,5 @@
 """Verify Candidate.last_seen_at exists as a nullable timezone-aware DateTime."""
+
 from sqlalchemy import DateTime
 
 from app.models.candidate import Candidate

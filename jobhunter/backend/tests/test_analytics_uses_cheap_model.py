@@ -1,4 +1,5 @@
 """Verify analytics pipeline routes insight-generation LLM call to the cheap model."""
+
 import pytest
 
 import app.dependencies as deps

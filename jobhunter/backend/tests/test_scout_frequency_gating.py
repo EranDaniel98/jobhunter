@@ -3,6 +3,7 @@
 These tests mock the DB layer (matching test_worker_cron.py style) — the real
 SQL `last_seen_at >= cutoff` filter is exercised implicitly via the mocked rows.
 """
+
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -134,11 +135,13 @@ async def test_mixed_tiers_on_non_monday_only_paid_enqueued():
     free_id = uuid.uuid4()
     hunter_id = uuid.uuid4()
     explorer_id = uuid.uuid4()
-    mock_factory = _make_db_mock([
-        (free_id, "free"),
-        (hunter_id, "hunter"),
-        (explorer_id, "explorer"),
-    ])
+    mock_factory = _make_db_mock(
+        [
+            (free_id, "free"),
+            (hunter_id, "hunter"),
+            (explorer_id, "explorer"),
+        ]
+    )
     mock_redis = AsyncMock()
 
     class _Wed(datetime):

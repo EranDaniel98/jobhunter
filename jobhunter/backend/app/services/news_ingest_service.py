@@ -1,4 +1,5 @@
 """Global daily NewsAPI ingest — writes to funding_signals for shared consumption."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -19,11 +20,13 @@ DEFAULT_QUERIES: list[str] = [
     "startup raised seed round hiring",
 ]
 
-PARSE_ARTICLES_PROMPT = """You extract structured funding data from recent news.
-For each article, return the funded company (name, estimated domain, funding round, amount, industry, 1-sentence description, and the original URL).
-Articles:
-{articles_block}
-"""
+PARSE_ARTICLES_PROMPT = (
+    "You extract structured funding data from recent news.\n"
+    "For each article, return the funded company (name, estimated domain, funding"
+    " round, amount, industry, 1-sentence description, and the original URL).\n"
+    "Articles:\n"
+    "{articles_block}\n"
+)
 
 PARSE_ARTICLES_SCHEMA: dict = {
     "type": "object",
@@ -81,11 +84,9 @@ async def ingest_funding_news(
     # 2. Dedupe by URL within this batch + against existing DB rows
     seen_urls = {a.get("url") for a in articles if a.get("url")}
     existing = set(
-        (
-            await db.execute(
-                select(FundingSignal.source_url).where(FundingSignal.source_url.in_(seen_urls))
-            )
-        ).scalars().all()
+        (await db.execute(select(FundingSignal.source_url).where(FundingSignal.source_url.in_(seen_urls))))
+        .scalars()
+        .all()
     )
     new_articles = [a for a in articles if a.get("url") and a["url"] not in existing]
 
@@ -95,8 +96,7 @@ async def ingest_funding_news(
 
     # 3. LLM parse (cheap model)
     articles_block = "\n".join(
-        f"- {a.get('title', '')} | {a.get('description', '')} | URL: {a.get('url')}"
-        for a in new_articles[:50]
+        f"- {a.get('title', '')} | {a.get('description', '')} | URL: {a.get('url')}" for a in new_articles[:50]
     )
     try:
         parsed = await openai.parse_structured(
@@ -121,9 +121,7 @@ async def ingest_funding_news(
             continue
 
         source_article = article_by_url.get(url, {})
-        embed_text_input = (
-            f"{c.get('company_name', '')} {c.get('description', '')} {c.get('industry', '')}".strip()
-        )
+        embed_text_input = f"{c.get('company_name', '')} {c.get('description', '')} {c.get('industry', '')}".strip()
         try:
             embedding = await openai.embed(embed_text_input, dimensions=1536)
         except Exception as e:
