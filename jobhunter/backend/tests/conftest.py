@@ -1,3 +1,4 @@
+import os
 import secrets
 import uuid
 from collections.abc import AsyncGenerator
@@ -5,10 +6,20 @@ from datetime import UTC, datetime, timedelta
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.dependencies as _deps
 from app.config import settings
+
+# --- xdist worker isolation: per-worker DB + Redis DB number ------------------
+# Non-parallel runs: worker_id="" → DB "jobhunter_test", Redis DB 0
+# Parallel runs: worker_id="gw0","gw1",... → DB "jobhunter_test_gw0", Redis DB 1,2,...
+_worker_id = os.environ.get("PYTEST_XDIST_WORKER", "")
+if _worker_id and _worker_id.startswith("gw"):
+    _worker_num = int(_worker_id[2:]) + 1
+    _redis_base, _, _ = settings.REDIS_URL.rpartition("/")
+    settings.REDIS_URL = f"{_redis_base}/{_worker_num}"
 from app.dependencies import get_db, get_email_client
 from app.infrastructure.database import get_session
 from app.infrastructure.redis_client import close_redis, init_redis
@@ -350,18 +361,35 @@ class GitHubStub:
         self.created_issues.append({"title": title, "body": body, "labels": labels})
         return issue
 
-# Use a separate test database (only replace the database name at the end of the URL)
+# Use a separate test database (only replace the database name at the end of the URL).
+# When running under xdist, each worker gets its own DB via PYTEST_XDIST_WORKER suffix.
 _base_url, _, _db_name = settings.DATABASE_URL.rpartition("/")
-TEST_DATABASE_URL = f"{_base_url}/{_db_name}_test"
+_db_suffix = f"_{_worker_id}" if _worker_id else ""
+TEST_DATABASE_URL = f"{_base_url}/{_db_name}_test{_db_suffix}"
+TEST_DB_NAME = f"{_db_name}_test{_db_suffix}"
+
+
+async def _ensure_test_db_exists() -> None:
+    """Create the per-worker test DB if it doesn't already exist."""
+    admin_url = f"{_base_url}/postgres"
+    admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
+    try:
+        async with admin_engine.connect() as conn:
+            result = await conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :n"), {"n": TEST_DB_NAME}
+            )
+            if result.scalar() is None:
+                await conn.execute(text(f'CREATE DATABASE "{TEST_DB_NAME}"'))
+    finally:
+        await admin_engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="session")
 async def test_engine():
+    await _ensure_test_db_exists()
     engine = create_async_engine(TEST_DATABASE_URL, pool_pre_ping=True)
     async with engine.begin() as conn:
-        await conn.execute(
-            __import__("sqlalchemy").text("CREATE EXTENSION IF NOT EXISTS vector")
-        )
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield engine
