@@ -85,8 +85,11 @@ async def load_shared_signals_node(state: ScoutState) -> dict:
 
 
 async def score_and_filter_node(state: ScoutState) -> dict:
-    """Score each company against CandidateDNA, filter by fit_score >= 0.55.
-    Reuses precomputed embeddings from the shared pool when available."""
+    """Score each company against CandidateDNA, filter by
+    fit_score >= settings.SCOUT_FIT_THRESHOLD. Reuses precomputed embeddings
+    from the shared pool when available."""
+    from app.config import settings
+
     parsed = state.get("parsed_companies") or []
     if not parsed:
         return {"scored_companies": [], "companies_created": 0, "status": "completed"}
@@ -122,7 +125,7 @@ async def score_and_filter_node(state: ScoutState) -> dict:
             logger.warning("scout_score_failed", company=company["company_name"], error=str(e))
             continue
 
-        if fit_score >= 0.55:
+        if fit_score >= settings.SCOUT_FIT_THRESHOLD:
             company["domain"] = domain
             company["embedding"] = embedding
             company["fit_score"] = fit_score

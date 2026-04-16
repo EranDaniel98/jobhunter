@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     SCOUT_PARSE_MODEL: str = "gpt-4o-mini"
     ANALYTICS_INSIGHTS_MODEL: str = "gpt-4o-mini"
 
+    # Scout fit-score threshold for surfacing a funding signal as a suggested
+    # company. Tuned for cross-domain cosine similarity (resume-style DNA vs.
+    # company-description embedding); validated 2026-04-16 against prod data
+    # where real scores ranged 0.09-0.32. Raise after deploying Option B or C.
+    SCOUT_FIT_THRESHOLD: float = 0.25
+
     # API cost limits (daily per user)
     DAILY_OPENAI_CALL_LIMIT: int = 100
     DAILY_HUNTER_CALL_LIMIT: int = 50
