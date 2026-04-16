@@ -122,7 +122,7 @@ async def list_users(db: AsyncSession, skip: int = 0, limit: int = 20, search: s
             companies_sub,
             messages_sub,
         )
-        .order_by(Candidate.created_at.desc())
+        .order_by(Candidate.created_at.desc(), Candidate.id.desc())
         .offset(skip)
         .limit(limit)
     )
