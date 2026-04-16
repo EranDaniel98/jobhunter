@@ -36,12 +36,12 @@ import {
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { toast } from "sonner";
+import { LinkedinIcon } from "@/components/icons/linkedin";
 import {
   Loader2,
   UserPlus,
   ShieldCheck,
   Mail,
-  Linkedin,
   Users,
   Star,
   FlaskConical,
@@ -245,7 +245,7 @@ export function ContactsList({ companyId, contacts, isLoading }: ContactsListPro
                       title="Draft LinkedIn message"
                       aria-label={`Draft LinkedIn message for ${contact.full_name}`}
                     >
-                      <Linkedin className="h-4 w-4" />
+                      <LinkedinIcon className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>

@@ -30,12 +30,12 @@ import {
   Check,
   CheckCircle,
   ClipboardCheck,
-  Linkedin,
   Loader2,
   Mail,
   User,
   X,
 } from "lucide-react";
+import { LinkedinIcon } from "@/components/icons/linkedin";
 import type { PendingAction } from "@/lib/types";
 import { cn, formatDateTime } from "@/lib/utils";
 
@@ -169,7 +169,7 @@ export default function ApprovalsPage() {
           )}
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
             {action.channel === "linkedin" ? (
-              <Linkedin className="h-4 w-4" />
+              <LinkedinIcon className="h-4 w-4" />
             ) : (
               <Mail className="h-4 w-4" />
             )}
@@ -276,7 +276,7 @@ export default function ApprovalsPage() {
               {ch === "all" ? "All" : ch === "email" ? (
                 <><Mail className="mr-1 h-3 w-3" />Email</>
               ) : (
-                <><Linkedin className="mr-1 h-3 w-3" />LinkedIn</>
+                <><LinkedinIcon className="mr-1 h-3 w-3" />LinkedIn</>
               )}
             </Button>
           ))}

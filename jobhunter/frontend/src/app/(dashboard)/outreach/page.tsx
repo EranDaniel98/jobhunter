@@ -42,9 +42,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { toastError } from "@/lib/api/error-utils";
+import { LinkedinIcon } from "@/components/icons/linkedin";
 import {
   Mail,
-  Linkedin,
   Loader2,
   Send,
   Reply,
@@ -617,7 +617,7 @@ export default function OutreachPage() {
                         className="text-[10px] px-1.5 py-0 gap-1"
                       >
                         {selectedMessage.channel === "linkedin" ? (
-                          <Linkedin className="h-3 w-3" />
+                          <LinkedinIcon className="h-3 w-3" />
                         ) : (
                           <Mail className="h-3 w-3" />
                         )}

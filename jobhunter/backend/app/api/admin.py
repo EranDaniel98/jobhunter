@@ -334,9 +334,7 @@ async def list_waitlist(
     entries = list(entries_result.scalars().all())
 
     # Status counts (always unfiltered so cards show global totals)
-    count_result = await db.execute(
-        select(WaitlistEntry.status, func.count()).group_by(WaitlistEntry.status)
-    )
+    count_result = await db.execute(select(WaitlistEntry.status, func.count()).group_by(WaitlistEntry.status))
     raw_counts = dict(count_result.all())
     status_counts = {
         "pending": raw_counts.get("pending", 0),

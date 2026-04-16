@@ -29,7 +29,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { cn, formatDateTime } from "@/lib/utils";
-import { ArrowLeft, Building2, Check, Loader2, X, Globe, MapPin, Users, Banknote, Mail, Linkedin } from "lucide-react";
+import { ArrowLeft, Building2, Check, Loader2, X, Globe, MapPin, Users, Banknote, Mail } from "lucide-react";
+import { LinkedinIcon } from "@/components/icons/linkedin";
 
 function statusDotColor(status: string): string {
   switch (status) {
@@ -239,7 +240,7 @@ export default function CompanyDetailPage({
                 {companyMessages.map(msg => (
                   <div key={msg.id} className="flex items-center gap-3 rounded-lg border p-3">
                     <div className={cn("h-2.5 w-2.5 rounded-full shrink-0", statusDotColor(msg.status))} />
-                    {msg.channel === "linkedin" ? <Linkedin className="h-4 w-4 text-muted-foreground" /> : <Mail className="h-4 w-4 text-muted-foreground" />}
+                    {msg.channel === "linkedin" ? <LinkedinIcon className="h-4 w-4 text-muted-foreground" /> : <Mail className="h-4 w-4 text-muted-foreground" />}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{msg.subject || "(No subject)"}</p>
                       <p className="text-xs text-muted-foreground">{msg.sent_at ? formatDateTime(msg.sent_at) : "Draft"}</p>

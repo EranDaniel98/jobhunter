@@ -101,12 +101,16 @@ async def regular_headers(client: AsyncClient, regular_user: Candidate) -> dict:
 class TestAdminAuthGuard:
     """Every admin endpoint must return 403 for non-admin users and 401 for unauthenticated."""
 
+    # Fixed UUID (not uuid.uuid4() at module load time) so pytest-xdist
+    # workers agree on test IDs during collection. These tests only care
+    # about request shape, not the UUID value.
+    _FAKE_ID = "00000000-0000-0000-0000-000000000001"
     ADMIN_ENDPOINTS = [
         ("GET", "/admin/overview"),
         ("GET", "/admin/users"),
-        ("GET", f"/admin/users/{uuid.uuid4()}"),
-        ("PATCH", f"/admin/users/{uuid.uuid4()}"),
-        ("DELETE", f"/admin/users/{uuid.uuid4()}"),
+        ("GET", f"/admin/users/{_FAKE_ID}"),
+        ("PATCH", f"/admin/users/{_FAKE_ID}"),
+        ("DELETE", f"/admin/users/{_FAKE_ID}"),
         ("GET", "/admin/analytics/registrations"),
         ("GET", "/admin/analytics/invites"),
         ("GET", "/admin/analytics/top-users"),

@@ -3,6 +3,7 @@
 Used only when LOADTEST_MODE=1 and LOADTEST_AI_BUDGET>0. In production these
 settings are 0/False and this module is a no-op.
 """
+
 from redis.asyncio import Redis
 
 
@@ -22,6 +23,4 @@ async def enforce_ai_budget(redis: Redis, budget: int) -> None:
         return
     count = await redis.incr(AI_RUNS_KEY)
     if count > budget:
-        raise AIBudgetExceeded(
-            f"Load-test AI budget exhausted: {count} > {budget}"
-        )
+        raise AIBudgetExceeded(f"Load-test AI budget exhausted: {count} > {budget}")

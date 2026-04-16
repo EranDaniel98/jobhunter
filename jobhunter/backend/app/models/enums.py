@@ -134,11 +134,13 @@ class RoleType(StrEnum):
 
 # ── Incidents ────────────────────────────────────────────────────────
 
+
 class IncidentCategory(StrEnum):
     BUG = "bug"
     FEATURE_REQUEST = "feature_request"
     QUESTION = "question"
     OTHER = "other"
+
 
 class GitHubSyncStatus(StrEnum):
     PENDING = "pending"

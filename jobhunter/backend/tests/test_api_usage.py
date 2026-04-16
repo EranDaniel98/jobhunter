@@ -184,15 +184,19 @@ async def admin_with_costs(db_session: AsyncSession, client: AsyncClient):
 @pytest.mark.asyncio
 async def test_admin_api_costs(client: AsyncClient, admin_with_costs):
     """Admin can see aggregated API costs."""
-    _, headers, _, _ = admin_with_costs
+    _, headers, user1, user2 = admin_with_costs
     resp = await client.get(f"{API}/admin/api-costs", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
-    assert len(data) == 2  # Two users with usage
 
-    entry = data[0]
-    assert "candidate_id" in entry
+    # Resilient to leakage from other tests that committed api_usage rows
+    # via HTTP endpoints (conftest session rollback doesn't cover commits).
+    by_id = {entry["candidate_id"]: entry for entry in data}
+    assert str(user1.id) in by_id
+    assert str(user2.id) in by_id
+
+    entry = by_id[str(user1.id)]
     assert "total_tokens_in" in entry
     assert "total_tokens_out" in entry
     assert "total_cost_cents" in entry

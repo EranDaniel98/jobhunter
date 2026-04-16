@@ -23,9 +23,7 @@ def _build_issue_body(incident: Incident) -> str:
     ctx = incident.context or {}
     attachments_md = "None"
     if incident.attachments:
-        attachments_md = "\n".join(
-            f"![{a['filename']}]({a['url']})" for a in incident.attachments
-        )
+        attachments_md = "\n".join(f"![{a['filename']}]({a['url']})" for a in incident.attachments)
 
     console_errors = ctx.get("console_errors") or "None"
     if isinstance(console_errors, list):
@@ -43,11 +41,11 @@ def _build_issue_body(incident: Incident) -> str:
 
 | Field | Value |
 |-------|-------|
-| User | {ctx.get('email', 'N/A')} |
-| Plan | {ctx.get('plan_tier', 'N/A')} |
-| Page | {ctx.get('page_url', 'N/A')} |
-| Browser | {ctx.get('browser', 'N/A')} |
-| OS | {ctx.get('os', 'N/A')} |
+| User | {ctx.get("email", "N/A")} |
+| Plan | {ctx.get("plan_tier", "N/A")} |
+| Page | {ctx.get("page_url", "N/A")} |
+| Browser | {ctx.get("browser", "N/A")} |
+| OS | {ctx.get("os", "N/A")} |
 | Submitted | {incident.created_at} |
 | Incident ID | {incident.id} |
 
@@ -76,12 +74,14 @@ async def create_incident(
     for filename, data, content_type in files:
         key = f"incidents/{incident_id}/{filename}"
         url = await storage.upload(key, data, content_type)
-        attachments.append({
-            "filename": filename,
-            "url": url,
-            "size_bytes": len(data),
-            "content_type": content_type,
-        })
+        attachments.append(
+            {
+                "filename": filename,
+                "url": url,
+                "size_bytes": len(data),
+                "content_type": content_type,
+            }
+        )
 
     incident = Incident(
         id=incident_id,
@@ -140,8 +140,11 @@ async def retry_failed_syncs(db: AsyncSession, github: GitHubClientProtocol) -> 
 
 
 async def list_incidents(
-    db: AsyncSession, page: int = 1, per_page: int = 20,
-    github_status: str | None = None, category: str | None = None,
+    db: AsyncSession,
+    page: int = 1,
+    per_page: int = 20,
+    github_status: str | None = None,
+    category: str | None = None,
 ) -> tuple[list, int]:
     query = select(Incident).join(Candidate)
     count_query = select(func.count(Incident.id))
@@ -154,17 +157,13 @@ async def list_incidents(
         count_query = count_query.where(Incident.category == category)
 
     total = (await db.execute(count_query)).scalar() or 0
-    result = await db.execute(
-        query.order_by(Incident.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-    )
+    result = await db.execute(query.order_by(Incident.created_at.desc()).offset((page - 1) * per_page).limit(per_page))
     return result.scalars().all(), total
 
 
 async def get_incident_count(db: AsyncSession) -> dict:
     total = (await db.execute(select(func.count(Incident.id)))).scalar() or 0
-    failed = (await db.execute(
-        select(func.count(Incident.id)).where(Incident.github_status == GitHubSyncStatus.FAILED)
-    )).scalar() or 0
+    failed = (
+        await db.execute(select(func.count(Incident.id)).where(Incident.github_status == GitHubSyncStatus.FAILED))
+    ).scalar() or 0
     return {"total": total, "failed": failed}
