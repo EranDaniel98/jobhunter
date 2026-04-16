@@ -11,6 +11,19 @@ from app.models.funding_signal import FundingSignal
 from app.services import news_ingest_service
 
 
+def test_parse_articles_schema_is_openai_strict_compliant():
+    """OpenAI strict structured-output mode requires additionalProperties=false
+    and all properties listed in required. Regression guard: scout's first
+    prod run (2026-04-16) failed with HTTP 400 because the schema was missing
+    these fields."""
+    schema = news_ingest_service.PARSE_ARTICLES_SCHEMA
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == set(schema["properties"].keys())
+    items = schema["properties"]["companies"]["items"]
+    assert items["additionalProperties"] is False
+    assert set(items["required"]) == set(items["properties"].keys())
+
+
 @pytest.mark.asyncio
 async def test_ingest_creates_funding_signals(db_session):
     news = AsyncMock()
