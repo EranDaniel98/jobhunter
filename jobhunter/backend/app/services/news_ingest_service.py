@@ -37,18 +37,28 @@ PARSE_ARTICLES_SCHEMA: dict = {
                 "type": "object",
                 "properties": {
                     "company_name": {"type": "string"},
-                    "estimated_domain": {"type": "string"},
-                    "funding_round": {"type": "string"},
-                    "amount": {"type": "string"},
-                    "industry": {"type": "string"},
-                    "description": {"type": "string"},
+                    "estimated_domain": {"type": ["string", "null"]},
+                    "funding_round": {"type": ["string", "null"]},
+                    "amount": {"type": ["string", "null"]},
+                    "industry": {"type": ["string", "null"]},
+                    "description": {"type": ["string", "null"]},
                     "source_url": {"type": "string"},
                 },
-                "required": ["company_name", "source_url"],
+                "required": [
+                    "company_name",
+                    "estimated_domain",
+                    "funding_round",
+                    "amount",
+                    "industry",
+                    "description",
+                    "source_url",
+                ],
+                "additionalProperties": False,
             },
         }
     },
     "required": ["companies"],
+    "additionalProperties": False,
 }
 
 
