@@ -3,7 +3,15 @@ from typing import Protocol, runtime_checkable
 
 @runtime_checkable
 class OpenAIClientProtocol(Protocol):
-    async def parse_structured(self, system_prompt: str, user_content: str, response_schema: dict) -> dict:
+    async def parse_structured(
+        self,
+        system_prompt: str,
+        user_content: str,
+        response_schema: dict,
+        *,
+        max_tokens: int = 4000,
+        model: str | None = None,
+    ) -> dict:
         """Send a prompt and get structured JSON output."""
         ...
 
@@ -15,7 +23,13 @@ class OpenAIClientProtocol(Protocol):
         """Generate embedding vectors for multiple texts in a single API call."""
         ...
 
-    async def chat(self, messages: list[dict]) -> str:
+    async def chat(
+        self,
+        messages: list[dict],
+        *,
+        max_tokens: int = 4000,
+        model: str | None = None,
+    ) -> str:
         """Send a chat message and get a text response."""
         ...
 

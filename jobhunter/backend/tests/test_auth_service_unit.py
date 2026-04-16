@@ -33,6 +33,7 @@ from app.utils.security import (
 # Password hashing (pure utility)
 # ---------------------------------------------------------------------------
 
+
 class TestPasswordHashing:
     def test_hash_password_returns_different_from_plain(self):
         hashed = hash_password("mypassword")
@@ -55,6 +56,7 @@ class TestPasswordHashing:
 # ---------------------------------------------------------------------------
 # JWT creation / decode
 # ---------------------------------------------------------------------------
+
 
 class TestJWT:
     def test_create_access_token_decodeable(self):
@@ -95,6 +97,7 @@ class TestJWT:
 # ---------------------------------------------------------------------------
 # login
 # ---------------------------------------------------------------------------
+
 
 class TestLogin:
     @pytest.mark.asyncio
@@ -169,20 +172,27 @@ class TestLogin:
 # refresh_token
 # ---------------------------------------------------------------------------
 
+
 class TestRefreshToken:
     @pytest.mark.asyncio
     async def test_refresh_success(self):
-        token, jti = create_refresh("cand-123")
+        # cand-123 is not a valid UUID, so use a real one for the UPDATE stmt
+        cand_id = str(uuid.uuid4())
+        token, jti = create_refresh(cand_id)
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None  # not blacklisted
+        db = AsyncMock()
 
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
-            result = await refresh_token(token)
+            result = await refresh_token(db, token)
             assert isinstance(result, TokenPair)
             assert result.access_token
             assert result.refresh_token
             # Old token should be blacklisted
             mock_redis.setex.assert_awaited_once()
+            # last_seen_at updated
+            db.execute.assert_awaited_once()
+            db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_refresh_with_access_token_rejects(self):
@@ -190,10 +200,11 @@ class TestRefreshToken:
         token, _ = create_access_token("cand-123")
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None
+        db = AsyncMock()
 
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
             with pytest.raises(HTTPException) as exc_info:
-                await refresh_token(token)
+                await refresh_token(db, token)
             assert exc_info.value.status_code == 401
             assert "token type" in exc_info.value.detail.lower()
 
@@ -202,23 +213,26 @@ class TestRefreshToken:
         token, jti = create_refresh("cand-123")
         mock_redis = AsyncMock()
         mock_redis.get.return_value = "revoked"  # blacklisted
+        db = AsyncMock()
 
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
             with pytest.raises(HTTPException) as exc_info:
-                await refresh_token(token)
+                await refresh_token(db, token)
             assert exc_info.value.status_code == 401
             assert "revoked" in exc_info.value.detail.lower()
 
     @pytest.mark.asyncio
     async def test_refresh_invalid_token_rejects(self):
+        db = AsyncMock()
         with pytest.raises(HTTPException) as exc_info:
-            await refresh_token("this.is.garbage")
+            await refresh_token(db, "this.is.garbage")
         assert exc_info.value.status_code == 401
 
 
 # ---------------------------------------------------------------------------
 # logout
 # ---------------------------------------------------------------------------
+
 
 class TestLogout:
     @pytest.mark.asyncio
@@ -255,6 +269,7 @@ class TestLogout:
 # ---------------------------------------------------------------------------
 # forgot_password
 # ---------------------------------------------------------------------------
+
 
 class TestForgotPassword:
     @pytest.mark.asyncio
@@ -311,6 +326,7 @@ class TestForgotPassword:
 # ---------------------------------------------------------------------------
 # reset_password
 # ---------------------------------------------------------------------------
+
 
 class TestResetPassword:
     @pytest.mark.asyncio

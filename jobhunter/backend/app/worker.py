@@ -276,26 +276,44 @@ async def process_followup_chunk(ctx, message_ids: list):
 
 
 async def run_daily_scout(ctx):
-    """Coordinator: find active candidates with DNA and enqueue scout chunks."""
+    """Coordinator: find active candidates with DNA, filter by last_seen_at and
+    plan-tier scout_frequency_days, then enqueue scout chunks."""
     if not await _acquire_run_lock("daily_scout", ttl=82800):
         logger.info("cron.skipped_overlap", extra={"feature": "arq_batch", "action": "run_daily_scout"})
         return
 
     from app.infrastructure.database import async_session_factory
     from app.models.candidate import Candidate, CandidateDNA
+    from app.plans import PlanTier, get_limits_for_tier
+
+    now = datetime.now(UTC)
+    activity_cutoff = now - timedelta(days=14)
+    today_is_monday = now.weekday() == 0
 
     async with async_session_factory() as db:
         result = await db.execute(
-            select(Candidate.id).where(
+            select(Candidate.id, Candidate.plan_tier).where(
                 Candidate.is_active,
+                Candidate.last_seen_at.is_not(None),
+                Candidate.last_seen_at >= activity_cutoff,
                 exists(select(CandidateDNA.id).where(CandidateDNA.candidate_id == Candidate.id)),
             )
         )
-        all_candidate_ids = result.scalars().all()
+        rows = result.all()
 
-    total = len(all_candidate_ids)
+    eligible_ids: list = []
+    for cand_id, plan_tier_str in rows:
+        try:
+            tier = PlanTier(plan_tier_str)
+        except ValueError:
+            tier = PlanTier.free  # safe default for unknown tier strings
+        frequency = get_limits_for_tier(tier).get("scout_frequency_days", 7)
+        if frequency == 1 or (frequency == 7 and today_is_monday):
+            eligible_ids.append(cand_id)
+
+    total = len(eligible_ids)
     max_items = settings.ARQ_MAX_CHUNKS_PER_RUN * settings.ARQ_CHUNK_SIZE
-    processing_ids = list(all_candidate_ids)[:max_items]
+    processing_ids = eligible_ids[:max_items]
     deferred = total - len(processing_ids)
 
     if deferred > 0:
@@ -341,8 +359,6 @@ async def process_scout_chunk(ctx, candidate_ids: list):
             state = {
                 "candidate_id": str(candidate_id),
                 "plan_tier": plan_tier,
-                "search_queries": None,
-                "raw_articles": None,
                 "parsed_companies": None,
                 "scored_companies": None,
                 "companies_created": 0,
@@ -373,7 +389,8 @@ async def process_scout_chunk(ctx, candidate_ids: list):
 
 
 async def run_weekly_analytics(ctx):
-    """Coordinator: find active candidates with DNA and enqueue analytics chunks."""
+    """Coordinator: find active candidates with DNA who have been active in the
+    last 14 days; enqueue analytics chunks."""
     if not await _acquire_run_lock("weekly_analytics", ttl=590400):
         logger.info("cron.skipped_overlap", extra={"feature": "arq_batch", "action": "run_weekly_analytics"})
         return
@@ -381,10 +398,14 @@ async def run_weekly_analytics(ctx):
     from app.infrastructure.database import async_session_factory
     from app.models.candidate import Candidate, CandidateDNA
 
+    activity_cutoff = datetime.now(UTC) - timedelta(days=14)
+
     async with async_session_factory() as db:
         result = await db.execute(
             select(Candidate.id).where(
                 Candidate.is_active,
+                Candidate.last_seen_at.is_not(None),
+                Candidate.last_seen_at >= activity_cutoff,
                 exists(select(CandidateDNA.id).where(CandidateDNA.candidate_id == Candidate.id)),
             )
         )
@@ -451,6 +472,27 @@ async def process_analytics_chunk(ctx, candidate_ids: list):
         settings.ARQ_CHUNK_CONCURRENCY,
         "process_analytics_chunk",
     )
+
+
+# ---------------------------------------------------------------------------
+# Daily news ingest cron: populates the shared funding_signals pool
+# ---------------------------------------------------------------------------
+
+
+async def run_daily_news_ingest(ctx) -> None:
+    """Fetch funding news once per day into the shared funding_signals pool."""
+    if not await _acquire_run_lock("daily_news_ingest", ttl=82800):
+        logger.info("cron.skipped_overlap", extra={"feature": "arq_batch", "action": "run_daily_news_ingest"})
+        return
+
+    from app.dependencies import get_newsapi, get_openai
+    from app.infrastructure.database import async_session_factory
+    from app.services.news_ingest_service import ingest_funding_news
+
+    async with async_session_factory() as db:
+        count = await ingest_funding_news(db, get_newsapi(), get_openai())
+
+    logger.info("news_ingest.cron_done", count=count)
 
 
 # ---------------------------------------------------------------------------
@@ -530,6 +572,7 @@ class WorkerSettings:
     cron_jobs: ClassVar[list] = [
         cron(check_followup_due, minute={0, 15, 30, 45}),
         cron(expire_stale_actions, hour={3}, minute={0}),  # Daily at 3 AM
+        cron(run_daily_news_ingest, hour={8}, minute={0}),  # Daily at 8 AM UTC (before scout)
         cron(run_daily_scout, hour={9}, minute={0}),  # Daily at 9 AM UTC
         cron(run_weekly_analytics, weekday={0}, hour={8}, minute={0}),  # Mondays 8 AM UTC
         cron(retry_failed_github_syncs, minute={5, 20, 35, 50}),  # Every 15 min (offset from followups)

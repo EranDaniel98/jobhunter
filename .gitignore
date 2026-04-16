@@ -37,6 +37,8 @@ alembic/versions/__pycache__/
 .coverage
 htmlcov/
 .pytest_cache/
+.testmondata
+.testmondata-*
 
 # OS
 .DS_Store

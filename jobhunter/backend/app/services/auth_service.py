@@ -1,9 +1,10 @@
 import uuid
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import HTTPException, status
 from jwt import PyJWTError as JWTError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -117,11 +118,14 @@ async def login(db: AsyncSession, data: LoginRequest) -> TokenPair:
     access_token, _ = create_access_token(str(candidate.id))
     refresh_token, _ = create_refresh_token(str(candidate.id))
 
+    candidate.last_seen_at = datetime.now(UTC)
+    await db.commit()
+
     logger.info("candidate_logged_in", candidate_id=str(candidate.id))
     return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
 
-async def refresh_token(token: str) -> TokenPair:
+async def refresh_token(db: AsyncSession, token: str) -> TokenPair:
     try:
         payload = decode_token(token)
     except JWTError:
@@ -166,6 +170,11 @@ async def refresh_token(token: str) -> TokenPair:
             await redis.setex(f"{TOKEN_BLACKLIST_PREFIX}{jti}", ttl, "revoked")
         except Exception as e:
             logger.warning("refresh_token_old_blacklist_failed", jti=jti, error=str(e))
+
+    await db.execute(
+        update(Candidate).where(Candidate.id == uuid.UUID(candidate_id)).values(last_seen_at=datetime.now(UTC))
+    )
+    await db.commit()
 
     return TokenPair(access_token=access_token, refresh_token=new_refresh)
 

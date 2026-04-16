@@ -30,10 +30,12 @@ class OpenAIClient:
         max_tokens: int = 4000,
         candidate_id: str | None = None,
         endpoint: str | None = None,
+        model: str | None = None,
     ) -> dict:
+        resolved_model = model or "gpt-4o"
         await check_budget()
         response = await self._client.chat.completions.create(
-            model="gpt-4o",
+            model=resolved_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
@@ -54,7 +56,7 @@ class OpenAIClient:
                 response.usage.completion_tokens,
                 candidate_id=candidate_id,
                 endpoint=endpoint,
-                model="gpt-4o",
+                model=resolved_model,
             )
         return json.loads(response.choices[0].message.content)
 
@@ -90,10 +92,12 @@ class OpenAIClient:
         max_tokens: int = 2000,
         candidate_id: str | None = None,
         endpoint: str | None = None,
+        model: str | None = None,
     ) -> str:
+        resolved_model = model or "gpt-4o"
         await check_budget()
         response = await self._client.chat.completions.create(
-            model="gpt-4o",
+            model=resolved_model,
             messages=messages,
             max_tokens=max_tokens,
         )
@@ -103,7 +107,7 @@ class OpenAIClient:
                 response.usage.completion_tokens,
                 candidate_id=candidate_id,
                 endpoint=endpoint,
-                model="gpt-4o",
+                model=resolved_model,
             )
         return response.choices[0].message.content
 

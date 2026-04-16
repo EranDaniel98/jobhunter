@@ -116,6 +116,7 @@ class TestRefreshTokenBlacklistRedisFailure:
         from app.utils.security import create_refresh_token
 
         token, _ = create_refresh_token(str(uuid.uuid4()))
+        db = AsyncMock()
 
         mock_redis = AsyncMock()
         mock_redis.get.side_effect = RuntimeError("Connection refused")
@@ -124,7 +125,7 @@ class TestRefreshTokenBlacklistRedisFailure:
             patch("app.services.auth_service.get_redis", return_value=mock_redis),
             pytest.raises(HTTPException) as exc_info,
         ):
-            await refresh_token(token)
+            await refresh_token(db, token)
 
         assert exc_info.value.status_code == 503
 
@@ -143,6 +144,7 @@ class TestRefreshTokenOldBlacklistFailure:
         from app.utils.security import create_refresh_token
 
         token, _ = create_refresh_token(str(uuid.uuid4()))
+        db = AsyncMock()
 
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None  # not blacklisted
@@ -153,7 +155,7 @@ class TestRefreshTokenOldBlacklistFailure:
             patch("app.services.auth_service.settings") as ms,
         ):
             ms.JWT_REFRESH_EXPIRE_DAYS = 30
-            result = await refresh_token(token)
+            result = await refresh_token(db, token)
 
         assert isinstance(result, TokenPair)
         assert result.access_token

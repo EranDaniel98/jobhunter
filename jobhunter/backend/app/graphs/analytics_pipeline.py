@@ -18,6 +18,7 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy import select
 from typing_extensions import TypedDict
 
+from app.config import settings
 from app.dependencies import get_email_client, get_openai
 from app.infrastructure import database as _db_mod
 from app.infrastructure.websocket_manager import ws_manager
@@ -148,7 +149,7 @@ async def generate_insights_node(state: AnalyticsState) -> dict:
 
     try:
         client = get_openai()
-        result = await client.parse_structured(prompt, "", INSIGHTS_SCHEMA)
+        result = await client.parse_structured(prompt, "", INSIGHTS_SCHEMA, model=settings.ANALYTICS_INSIGHTS_MODEL)
         insights = result.get("insights", [])
     except Exception as e:
         logger.error("analytics_generate_insights_failed", error=str(e))

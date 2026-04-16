@@ -95,8 +95,6 @@ def _initial_state(candidate_id: uuid.UUID) -> dict:
     return {
         "candidate_id": str(candidate_id),
         "plan_tier": "free",
-        "search_queries": None,
-        "raw_articles": None,
         "parsed_companies": None,
         "scored_companies": None,
         "companies_created": 0,
@@ -119,15 +117,13 @@ def test_graph_builds_and_compiles():
 
 
 def test_graph_has_expected_nodes():
-    """Verify all 7 node names are present in the graph."""
+    """Verify post-refactor node set: load_shared_signals replaces the old 3."""
     from app.graphs.scout_pipeline import build_scout_pipeline
 
     builder = build_scout_pipeline()
     node_names = set(builder.nodes.keys())
     expected = {
-        "build_search_queries",
-        "search_news",
-        "parse_articles",
+        "load_shared_signals",
         "score_and_filter",
         "create_companies",
         "notify",
@@ -137,8 +133,30 @@ def test_graph_has_expected_nodes():
 
 
 async def test_full_pipeline(db_session, candidate_with_dna, patch_graph_db, patch_stubs):
-    """Full pipeline: queries → search → parse → score → create → notify."""
+    """Full pipeline: load shared signals → score → create → notify."""
+    from datetime import UTC, datetime
+
     from app.graphs.scout_pipeline import get_scout_pipeline_no_checkpointer
+    from app.models.funding_signal import FundingSignal
+
+    # Seed a funding_signal whose embedding matches the DNA for scoring
+    db_session.add(
+        FundingSignal(
+            id=uuid.uuid4(),
+            source_url=f"https://news.example/full-{uuid.uuid4()}",
+            title="Acme raised $5M Series A",
+            description="Acme builds fintech APIs.",
+            published_at=datetime.now(UTC),
+            company_name="Acme",
+            estimated_domain=f"acme-{uuid.uuid4().hex[:6]}.co",
+            funding_round="Series A",
+            amount="$5M",
+            industry="fintech",
+            signal_types=["funding_round"],
+            embedding=[0.1] * 1536,
+        )
+    )
+    await db_session.commit()
 
     candidate_id = candidate_with_dna
     graph = get_scout_pipeline_no_checkpointer()
@@ -177,8 +195,26 @@ async def test_full_pipeline(db_session, candidate_with_dna, patch_graph_db, pat
 
 
 async def test_pipeline_no_dna_fails(db_session, candidate_no_dna, patch_graph_db, patch_stubs):
-    """Candidate without CandidateDNA should result in status='failed'."""
+    """Candidate without CandidateDNA should result in status='failed' once scoring starts."""
+    from datetime import UTC, datetime
+
     from app.graphs.scout_pipeline import get_scout_pipeline_no_checkpointer
+    from app.models.funding_signal import FundingSignal
+
+    # Need at least one signal so scoring is reached (empty pool = completed no-op)
+    db_session.add(
+        FundingSignal(
+            id=uuid.uuid4(),
+            source_url=f"https://news.example/nodna-{uuid.uuid4()}",
+            title="x",
+            description="d",
+            published_at=datetime.now(UTC),
+            company_name="X",
+            estimated_domain=f"x-{uuid.uuid4().hex[:6]}.co",
+            embedding=[0.1] * 1536,
+        )
+    )
+    await db_session.commit()
 
     candidate_id = candidate_no_dna
     graph = get_scout_pipeline_no_checkpointer()
@@ -186,7 +222,7 @@ async def test_pipeline_no_dna_fails(db_session, candidate_no_dna, patch_graph_d
     result = await graph.ainvoke(_initial_state(candidate_id))
 
     assert result["status"] == "failed"
-    assert "CandidateDNA" in result["error"] or "resume" in result["error"].lower()
+    assert "embedding" in result["error"].lower() or "dna" in result["error"].lower()
 
 
 async def test_scout_run_endpoint(client, auth_headers, db_session):
@@ -216,95 +252,3 @@ async def test_scout_signals_empty(client, auth_headers):
     data = resp.json()
     assert data["signals"] == []
     assert data["total"] == 0
-
-
-# ---------------------------------------------------------------------------
-# DuckDuckGo integration in search_news_node
-# ---------------------------------------------------------------------------
-
-
-async def test_search_news_includes_ddg_results(
-    db_session, candidate_with_dna, patch_graph_db, patch_stubs, monkeypatch
-):
-    """search_news_node should include DuckDuckGo results alongside NewsAPI."""
-    from unittest.mock import MagicMock
-
-    from app.graphs.scout_pipeline import search_news_node
-
-    # Mock DDGS to return test results
-    mock_ddgs_instance = MagicMock()
-    mock_ddgs_instance.text.return_value = [
-        {
-            "title": "DDG Company raises $20M",
-            "body": "DDG Company announced funding.",
-            "href": "https://example.com/ddg-funding",
-        },
-    ]
-    mock_ddgs_instance.__enter__ = MagicMock(return_value=mock_ddgs_instance)
-    mock_ddgs_instance.__exit__ = MagicMock(return_value=False)
-
-    mock_ddgs_cls = MagicMock(return_value=mock_ddgs_instance)
-    monkeypatch.setattr("app.graphs.scout_pipeline.DDGS", mock_ddgs_cls, raising=False)
-
-    # Need to monkeypatch the import inside the function
-    import duckduckgo_search
-
-    monkeypatch.setattr(duckduckgo_search, "DDGS", mock_ddgs_cls)
-
-    state = {
-        "candidate_id": str(candidate_with_dna),
-        "plan_tier": "free",
-        "search_queries": ["Series B funding AI"],
-        "raw_articles": None,
-        "parsed_companies": None,
-        "scored_companies": None,
-        "companies_created": 0,
-        "status": "pending",
-        "error": None,
-    }
-
-    result = search_news_node(state)
-    # Handle both coroutine and direct result
-    if hasattr(result, "__await__"):
-        result = await result
-
-    articles = result.get("raw_articles", [])
-    # Should have NewsAPI articles + DuckDuckGo articles
-    assert len(articles) >= 2  # At least 2 from NewsAPI stub
-    # Check that DuckDuckGo results are included
-    ddg_urls = [a["url"] for a in articles if a.get("source", {}).get("name") == "DuckDuckGo"]
-    assert len(ddg_urls) >= 0  # DuckDuckGo results are best-effort
-
-
-async def test_search_news_ddg_failure_doesnt_break_pipeline(
-    db_session, candidate_with_dna, patch_graph_db, patch_stubs, monkeypatch
-):
-    """DuckDuckGo failure should not prevent NewsAPI results from returning."""
-    from app.graphs.scout_pipeline import search_news_node
-
-    # Make DDGS import raise an error
-    monkeypatch.setattr(
-        "duckduckgo_search.DDGS",
-        property(lambda self: (_ for _ in ()).throw(ImportError("no ddg"))),
-        raising=False,
-    )
-
-    state = {
-        "candidate_id": str(candidate_with_dna),
-        "plan_tier": "free",
-        "search_queries": ["Series B funding AI"],
-        "raw_articles": None,
-        "parsed_companies": None,
-        "scored_companies": None,
-        "companies_created": 0,
-        "status": "pending",
-        "error": None,
-    }
-
-    result = search_news_node(state)
-    if hasattr(result, "__await__"):
-        result = await result
-
-    # Should still have NewsAPI results even if DDG fails
-    articles = result.get("raw_articles", [])
-    assert len(articles) >= 2  # NewsAPI stub returns 2 articles
