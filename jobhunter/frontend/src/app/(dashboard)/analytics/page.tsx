@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnalyticsDashboard, useRefreshInsights, useMarkInsightRead } from "@/lib/hooks/use-analytics-insights";
-import { BarChart3, RefreshCw, Loader2, TrendingUp, Mail, Building2, Lightbulb, Zap, AlertTriangle, Download, CheckCheck, Linkedin } from "lucide-react";
+import { BarChart3, RefreshCw, Loader2, TrendingUp, Mail, Building2, Lightbulb, Zap, AlertTriangle, Download, CheckCheck } from "lucide-react";
+import { LinkedinIcon } from "@/components/icons/linkedin";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -520,7 +521,7 @@ export default function AnalyticsPage() {
                       <div key={channel} className="space-y-2">
                         <div className="flex items-center gap-2">
                           {channel === "linkedin" ? (
-                            <Linkedin className="h-4 w-4 text-chart-1" />
+                            <LinkedinIcon className="h-4 w-4 text-chart-1" />
                           ) : (
                             <Mail className="h-4 w-4 text-chart-2" />
                           )}
