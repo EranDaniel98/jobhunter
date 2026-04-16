@@ -76,6 +76,7 @@ def get_github() -> GitHubClientProtocol:
     global _github_client
     if _github_client is None:
         from app.infrastructure.github_client import GitHubClient
+
         _github_client = GitHubClient()
     return _github_client
 

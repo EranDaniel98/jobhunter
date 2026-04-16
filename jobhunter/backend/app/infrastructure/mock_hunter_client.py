@@ -3,6 +3,7 @@
 Simulates realistic latency (~200ms) and returns canned deterministic data.
 Used only when LOADTEST_MODE=True. Never imported in production code paths.
 """
+
 import asyncio
 
 

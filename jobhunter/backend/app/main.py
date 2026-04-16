@@ -169,12 +169,12 @@ from app.api.candidates import router as candidates_router  # noqa: E402
 from app.api.companies import router as companies_router  # noqa: E402
 from app.api.contacts import router as contacts_router  # noqa: E402
 from app.api.health import router as health_router  # noqa: E402
+from app.api.incidents import router as incidents_router  # noqa: E402
 from app.api.interview import router as interview_router  # noqa: E402
 from app.api.invites import router as invites_router  # noqa: E402
 from app.api.outreach import router as outreach_router  # noqa: E402
 from app.api.plans import router as plans_router  # noqa: E402
 from app.api.scout import router as scout_router  # noqa: E402
-from app.api.incidents import router as incidents_router  # noqa: E402
 from app.api.waitlist import router as waitlist_router  # noqa: E402
 from app.api.webhooks import router as webhooks_router  # noqa: E402
 from app.api.ws import router as ws_router  # noqa: E402

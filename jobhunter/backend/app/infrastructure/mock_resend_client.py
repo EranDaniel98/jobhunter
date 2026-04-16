@@ -3,6 +3,7 @@
 Simulates realistic send latency and returns synthetic message IDs. Performs
 no network I/O. Used only when LOADTEST_MODE=True.
 """
+
 import asyncio
 import uuid
 

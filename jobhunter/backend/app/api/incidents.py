@@ -1,7 +1,7 @@
 import json
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_admin, get_current_candidate, get_db, get_github
@@ -9,7 +9,7 @@ from app.infrastructure.protocols import GitHubClientProtocol, StorageProtocol
 from app.infrastructure.storage import get_storage
 from app.models.candidate import Candidate
 from app.rate_limit import limiter
-from app.schemas.incident import IncidentListResponse, IncidentAdminResponse, IncidentResponse
+from app.schemas.incident import IncidentAdminResponse, IncidentListResponse, IncidentResponse
 from app.services import incident_service
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
@@ -58,14 +58,23 @@ async def submit_incident(
 
     storage: StorageProtocol = get_storage()
     incident = await incident_service.create_incident(
-        db=db, candidate=candidate, category=category,
-        title=title, description=description, context=context_data,
-        files=file_tuples, storage=storage, github=github,
+        db=db,
+        candidate=candidate,
+        category=category,
+        title=title,
+        description=description,
+        context=context_data,
+        files=file_tuples,
+        storage=storage,
+        github=github,
     )
 
     return IncidentResponse(
-        id=str(incident.id), category=incident.category, title=incident.title,
-        github_issue_url=incident.github_issue_url, github_status=incident.github_status,
+        id=str(incident.id),
+        category=incident.category,
+        title=incident.title,
+        github_issue_url=incident.github_issue_url,
+        github_status=incident.github_status,
         created_at=str(incident.created_at),
     )
 
@@ -80,21 +89,31 @@ async def list_incidents(
     db: AsyncSession = Depends(get_db),
 ):
     items, total = await incident_service.list_incidents(
-        db=db, page=page, per_page=per_page,
-        github_status=github_status, category=category,
+        db=db,
+        page=page,
+        per_page=per_page,
+        github_status=github_status,
+        category=category,
     )
     return IncidentListResponse(
         items=[
             IncidentAdminResponse(
-                id=str(i.id), candidate_email=i.candidate.email,
-                category=i.category, title=i.title, description=i.description,
-                github_issue_url=i.github_issue_url, github_issue_number=i.github_issue_number,
-                github_status=i.github_status, retry_count=i.retry_count,
+                id=str(i.id),
+                candidate_email=i.candidate.email,
+                category=i.category,
+                title=i.title,
+                description=i.description,
+                github_issue_url=i.github_issue_url,
+                github_issue_number=i.github_issue_number,
+                github_status=i.github_status,
+                retry_count=i.retry_count,
                 created_at=str(i.created_at),
             )
             for i in items
         ],
-        total=total, page=page, per_page=per_page,
+        total=total,
+        page=page,
+        per_page=per_page,
     )
 
 
