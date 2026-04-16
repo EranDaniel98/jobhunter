@@ -67,6 +67,10 @@ jobs:
         run: uv run alembic upgrade head
       - run: uv run pytest tests/ -q --tb=short --cov=app --cov-report=term-missing --cov-fail-under=60
       - name: pip-audit security scan
+        # Informational only — don't block CI on new vulns. A month of CI
+        # outage (2026-03-19 → 2026-04-16) taught us this lesson.
+        # Track fixes via Dependabot + explicit dep-sweep PRs instead.
+        continue-on-error: true
         run: uv run pip-audit
 
   frontend:
