@@ -582,11 +582,11 @@ async def auth_headers(client: AsyncClient, db_session: AsyncSession) -> dict:
     email = f"test-{uuid.uuid4().hex[:8]}@example.com"
     await client.post(
         f"{settings.API_V1_PREFIX}/auth/register",
-        json={"email": email, "password": "testpass123", "full_name": "Test User", "invite_code": code},
+        json={"email": email, "password": "Testpass123", "full_name": "Test User", "invite_code": code},
     )
     resp = await client.post(
         f"{settings.API_V1_PREFIX}/auth/login",
-        json={"email": email, "password": "testpass123"},
+        json={"email": email, "password": "Testpass123"},
     )
     tokens = resp.json()
     return {"Authorization": f"Bearer {tokens['access_token']}"}

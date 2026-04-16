@@ -20,7 +20,7 @@ async def _register_and_login(client: AsyncClient, db_session: AsyncSession) -> 
 
     code = await _create_invite_code(db_session)
     email = f"authtest-{uuid.uuid4().hex[:8]}@example.com"
-    password = "testpass123"
+    password = "Testpass123"
     await client.post(
         f"{API}/auth/register",
         json={"email": email, "password": password, "full_name": "Auth Test User", "invite_code": code},
@@ -157,7 +157,7 @@ async def test_change_password_success(client: AsyncClient, db_session: AsyncSes
     resp = await client.post(
         f"{API}/auth/me/password",
         headers=headers,
-        json={"current_password": password, "new_password": "newpass456"},
+        json={"current_password": password, "new_password": "Newpass456"},
     )
     assert resp.status_code == 204
 
@@ -170,7 +170,7 @@ async def test_change_password_wrong_current(client: AsyncClient, db_session: As
     resp = await client.post(
         f"{API}/auth/me/password",
         headers=headers,
-        json={"current_password": "wrongpassword", "new_password": "newpass456"},
+        json={"current_password": "wrongpassword", "new_password": "Newpass456"},
     )
     assert resp.status_code == 400
     assert "incorrect" in resp.json()["detail"].lower()

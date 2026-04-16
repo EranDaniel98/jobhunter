@@ -10,7 +10,7 @@ API = settings.API_V1_PREFIX
 async def test_register(client: AsyncClient, invite_code: str):
     resp = await client.post(
         f"{API}/auth/register",
-        json={"email": "new@example.com", "password": "securepass1", "full_name": "New User", "invite_code": invite_code},
+        json={"email": "new@example.com", "password": "Securepass1", "full_name": "New User", "invite_code": invite_code},
     )
     assert resp.status_code == 201
     data = resp.json()
@@ -23,7 +23,7 @@ async def test_register(client: AsyncClient, invite_code: str):
 async def test_register_without_invite(client: AsyncClient):
     resp = await client.post(
         f"{API}/auth/register",
-        json={"email": "noinvite@example.com", "password": "securepass1", "full_name": "No Invite"},
+        json={"email": "noinvite@example.com", "password": "Securepass1", "full_name": "No Invite"},
     )
     assert resp.status_code == 422
 
@@ -32,14 +32,14 @@ async def test_register_without_invite(client: AsyncClient):
 async def test_register_invalid_invite(client: AsyncClient):
     resp = await client.post(
         f"{API}/auth/register",
-        json={"email": "bad@example.com", "password": "securepass1", "full_name": "Bad Invite", "invite_code": "nonexistent-code"},
+        json={"email": "bad@example.com", "password": "Securepass1", "full_name": "Bad Invite", "invite_code": "nonexistent-code"},
     )
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_register_duplicate_email(client: AsyncClient, invite_code: str):
-    payload = {"email": "dup@example.com", "password": "securepass1", "full_name": "Dup User", "invite_code": invite_code}
+    payload = {"email": "dup@example.com", "password": "Securepass1", "full_name": "Dup User", "invite_code": invite_code}
     await client.post(f"{API}/auth/register", json=payload)
     # Second registration with same email needs a new invite code (previous one consumed)
     # but will fail on duplicate email before invite validation matters
@@ -60,11 +60,11 @@ async def test_register_weak_password(client: AsyncClient):
 async def test_login(client: AsyncClient, invite_code: str):
     await client.post(
         f"{API}/auth/register",
-        json={"email": "login@example.com", "password": "securepass1", "full_name": "Login User", "invite_code": invite_code},
+        json={"email": "login@example.com", "password": "Securepass1", "full_name": "Login User", "invite_code": invite_code},
     )
     resp = await client.post(
         f"{API}/auth/login",
-        json={"email": "login@example.com", "password": "securepass1"},
+        json={"email": "login@example.com", "password": "Securepass1"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -77,7 +77,7 @@ async def test_login(client: AsyncClient, invite_code: str):
 async def test_login_wrong_password(client: AsyncClient, invite_code: str):
     await client.post(
         f"{API}/auth/register",
-        json={"email": "wrong@example.com", "password": "securepass1", "full_name": "Wrong User", "invite_code": invite_code},
+        json={"email": "wrong@example.com", "password": "Securepass1", "full_name": "Wrong User", "invite_code": invite_code},
     )
     resp = await client.post(
         f"{API}/auth/login",
@@ -119,11 +119,11 @@ async def test_update_me(client: AsyncClient, auth_headers: dict):
 async def test_refresh_token(client: AsyncClient, invite_code: str):
     await client.post(
         f"{API}/auth/register",
-        json={"email": "refresh@example.com", "password": "securepass1", "full_name": "Refresh User", "invite_code": invite_code},
+        json={"email": "refresh@example.com", "password": "Securepass1", "full_name": "Refresh User", "invite_code": invite_code},
     )
     login_resp = await client.post(
         f"{API}/auth/login",
-        json={"email": "refresh@example.com", "password": "securepass1"},
+        json={"email": "refresh@example.com", "password": "Securepass1"},
     )
     tokens = login_resp.json()
 

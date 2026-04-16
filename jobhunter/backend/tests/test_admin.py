@@ -506,7 +506,7 @@ class TestDeleteUser:
 
         resp = await client.post(
             f"{API}/auth/login",
-            json={"email": victim_email, "password": "testpass123"},
+            json={"email": victim_email, "password": "Testpass123"},
         )
         assert resp.status_code == 401
 
@@ -719,7 +719,7 @@ class TestIsAdminInAuth:
             f"{API}/auth/register",
             json={
                 "email": "newreg@test.com",
-                "password": "securepass1",
+                "password": "Securepass1",
                 "full_name": "New Reg",
                 "invite_code": invite_code,
             },

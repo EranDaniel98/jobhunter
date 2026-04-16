@@ -282,12 +282,12 @@ async def test_approve_other_users_action_not_found(
         f"{API}/auth/register",
         json={
             "email": email_b,
-            "password": "testpass123",
+            "password": "Testpass123",
             "full_name": "User B Approval",
             "invite_code": code_b,
         },
     )
-    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "testpass123"})
+    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "Testpass123"})
     headers_b = {"Authorization": f"Bearer {login_b.json()['access_token']}"}
 
     action_id = str(action_data["action"].id)
@@ -388,12 +388,12 @@ async def test_reject_other_users_action_not_found(
         f"{API}/auth/register",
         json={
             "email": email_b,
-            "password": "testpass123",
+            "password": "Testpass123",
             "full_name": "User B Reject",
             "invite_code": code_b,
         },
     )
-    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "testpass123"})
+    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "Testpass123"})
     headers_b = {"Authorization": f"Bearer {login_b.json()['access_token']}"}
 
     action_id = str(seeded["action"].id)
