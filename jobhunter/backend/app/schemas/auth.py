@@ -10,6 +10,11 @@ _PASSWORD_COMPLEXITY_MSG = (
 )
 
 
+def _normalize_email(value: str) -> str:
+    """Emails are case-insensitive by convention — store and compare lowercased."""
+    return value.strip().lower()
+
+
 def _validate_password_complexity(value: str) -> str:
     """Reject passwords that don't have mixed case + a digit.
 
@@ -35,6 +40,11 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=1, max_length=255)
     invite_code: str = Field(min_length=1, max_length=64)
     preferences: RegistrationPreferences | None = None
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return _normalize_email(v)
 
     @field_validator("password")
     @classmethod
@@ -63,6 +73,11 @@ class RegisterRequest(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return _normalize_email(v)
+
 
 class ResetPasswordRequest(BaseModel):
     token: str
@@ -87,6 +102,11 @@ class ChangePasswordRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return _normalize_email(v)
 
 
 class RefreshRequest(BaseModel):
