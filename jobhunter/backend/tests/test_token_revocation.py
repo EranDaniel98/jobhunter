@@ -70,6 +70,32 @@ async def test_token_issued_after_password_reset_still_works(
 
 
 @pytest.mark.asyncio
+async def test_old_refresh_token_rejected_after_password_change(
+    client: AsyncClient, db_session: AsyncSession, invite_code: str
+):
+    email = f"rt-{uuid.uuid4().hex[:6]}@example.com"
+    await client.post(
+        f"{API}/auth/register",
+        json={"email": email, "password": "Oldrtpass1", "full_name": "RT", "invite_code": invite_code},
+    )
+    login = await client.post(
+        f"{API}/auth/login", json={"email": email, "password": "Oldrtpass1"}
+    )
+    refresh = login.json()["refresh_token"]
+
+    # Advance password_changed_at past the token's iat.
+    candidate = (
+        await db_session.execute(select(Candidate).where(Candidate.email == email))
+    ).scalar_one()
+    candidate.password_changed_at = datetime.now(UTC) + timedelta(hours=1)
+    await db_session.commit()
+
+    resp = await client.post(f"{API}/auth/refresh", json={"refresh_token": refresh})
+    assert resp.status_code == 401
+    assert "revoked" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
 async def test_register_sets_password_changed_at(
     client: AsyncClient, db_session: AsyncSession, invite_code: str
 ):

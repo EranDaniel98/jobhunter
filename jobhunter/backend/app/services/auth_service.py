@@ -161,6 +161,23 @@ async def refresh_token(db: AsyncSession, token: str) -> TokenPair:
             ) from exc
 
     candidate_id = payload["sub"]
+
+    # Reject refresh tokens issued before the last password change.
+    iat = payload.get("iat")
+    if iat is not None:
+        candidate_row = (
+            await db.execute(select(Candidate).where(Candidate.id == uuid.UUID(candidate_id)))
+        ).scalar_one_or_none()
+        if (
+            candidate_row
+            and candidate_row.password_changed_at
+            and iat < int(candidate_row.password_changed_at.timestamp())
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+            )
+
     access_token, _ = create_access_token(candidate_id)
     new_refresh, _ = create_refresh_token(candidate_id)
 
