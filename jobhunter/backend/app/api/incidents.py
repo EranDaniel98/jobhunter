@@ -11,6 +11,7 @@ from app.models.candidate import Candidate
 from app.rate_limit import limiter
 from app.schemas.incident import IncidentAdminResponse, IncidentListResponse, IncidentResponse
 from app.services import incident_service
+from app.utils.file_validation import is_valid_image_bytes
 
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 logger = structlog.get_logger()
@@ -54,6 +55,12 @@ async def submit_incident(
         data = await f.read()
         if len(data) > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail=f"File {f.filename} too large (max 5MB)")
+        # Magic-byte check — don't trust Content-Type header alone.
+        if not is_valid_image_bytes(data):
+            raise HTTPException(
+                status_code=400,
+                detail=f"File {f.filename} is not a valid PNG/JPEG/GIF/WebP image",
+            )
         file_tuples.append((f.filename or "image", data, f.content_type))
 
     storage: StorageProtocol = get_storage()
