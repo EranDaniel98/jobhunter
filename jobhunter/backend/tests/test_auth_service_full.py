@@ -45,7 +45,7 @@ class TestRegisterVerificationEmail:
 
         data = RegisterRequest(
             email="dup@example.com",
-            password="password123",
+            password="Password123",
             full_name="Dup User",
             invite_code="INVITE123",
         )
@@ -93,7 +93,7 @@ class TestRegisterVerificationEmail:
                 mock_db,
                 RegisterRequest(
                     email="new@example.com",
-                    password="password123",
+                    password="Password123",
                     full_name="New User",
                     invite_code="INVITE456",
                 ),

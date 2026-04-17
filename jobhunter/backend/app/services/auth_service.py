@@ -43,6 +43,7 @@ async def register(db: AsyncSession, data: RegisterRequest, email_client=None) -
         full_name=data.full_name,
         preferences=data.preferences.model_dump() if data.preferences else None,
         email_verified=False,
+        password_changed_at=datetime.now(UTC),
     )
     db.add(candidate)
     await db.flush()
@@ -233,6 +234,7 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Non
         )
 
     candidate.password_hash = hash_password(new_password)
+    candidate.password_changed_at = datetime.now(UTC)
     await db.commit()
     logger.info("password_reset", candidate_id=candidate_id)
 

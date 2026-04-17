@@ -20,9 +20,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(candidate_id: str) -> tuple[str, str]:
     """Returns (token, jti)."""
     jti = str(uuid.uuid4())
+    now = datetime.now(UTC)
     payload = {
         "sub": candidate_id,
-        "exp": datetime.now(UTC) + timedelta(minutes=settings.JWT_ACCESS_EXPIRE_MINUTES),
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.JWT_ACCESS_EXPIRE_MINUTES),
         "type": "access",
         "jti": jti,
     }
@@ -33,9 +35,11 @@ def create_access_token(candidate_id: str) -> tuple[str, str]:
 def create_refresh_token(candidate_id: str) -> tuple[str, str]:
     """Returns (token, jti)."""
     jti = str(uuid.uuid4())
+    now = datetime.now(UTC)
     payload = {
         "sub": candidate_id,
-        "exp": datetime.now(UTC) + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS),
+        "iat": now,
+        "exp": now + timedelta(days=settings.JWT_REFRESH_EXPIRE_DAYS),
         "type": "refresh",
         "jti": jti,
     }

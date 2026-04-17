@@ -166,6 +166,15 @@ async def get_current_candidate(
             detail="Candidate not found",
         )
 
+    # Tokens issued before the last password change are revoked.
+    iat = payload.get("iat")
+    if candidate.password_changed_at and iat is not None:
+        if iat < int(candidate.password_changed_at.timestamp()):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+            )
+
     return candidate
 
 
