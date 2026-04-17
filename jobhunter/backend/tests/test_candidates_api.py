@@ -84,20 +84,20 @@ async def test_change_password_success(client: AsyncClient, invite_code: str):
     email = f"pwchange-{uuid.uuid4().hex[:8]}@example.com"
     await client.post(
         f"{API}/auth/register",
-        json={"email": email, "password": "oldpass123", "full_name": "PW User", "invite_code": invite_code},
+        json={"email": email, "password": "Oldpass123", "full_name": "PW User", "invite_code": invite_code},
     )
-    login_resp = await client.post(f"{API}/auth/login", json={"email": email, "password": "oldpass123"})
+    login_resp = await client.post(f"{API}/auth/login", json={"email": email, "password": "Oldpass123"})
     headers = {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
 
     resp = await client.post(
         f"{API}/auth/me/password",
         headers=headers,
-        json={"current_password": "oldpass123", "new_password": "newpass456"},
+        json={"current_password": "Oldpass123", "new_password": "Newpass456"},
     )
     assert resp.status_code == 204
 
     # Verify new password works
-    login_resp2 = await client.post(f"{API}/auth/login", json={"email": email, "password": "newpass456"})
+    login_resp2 = await client.post(f"{API}/auth/login", json={"email": email, "password": "Newpass456"})
     assert login_resp2.status_code == 200
 
 
@@ -107,7 +107,7 @@ async def test_change_password_wrong_current(client: AsyncClient, auth_headers: 
     resp = await client.post(
         f"{API}/auth/me/password",
         headers=auth_headers,
-        json={"current_password": "wrongcurrent", "new_password": "newpass456"},
+        json={"current_password": "wrongcurrent", "new_password": "Newpass456"},
     )
     assert resp.status_code == 400
     assert "incorrect" in resp.json()["detail"].lower()
