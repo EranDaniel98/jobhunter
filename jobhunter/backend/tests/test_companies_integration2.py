@@ -186,12 +186,12 @@ async def test_get_company_wrong_tenant(
         f"{API}/auth/register",
         json={
             "email": email_b,
-            "password": "testpass123",
+            "password": "Testpass123",
             "full_name": "Tenant B2",
             "invite_code": code_b,
         },
     )
-    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "testpass123"})
+    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "Testpass123"})
     headers_b = {"Authorization": f"Bearer {login_b.json()['access_token']}"}
 
     resp = await client.get(f"{API}/companies/{company.id}", headers=headers_b)

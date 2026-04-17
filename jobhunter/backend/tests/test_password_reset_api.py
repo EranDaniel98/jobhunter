@@ -157,6 +157,6 @@ async def test_old_password_no_longer_works_after_reset(client: AsyncClient, aut
     # Old password should fail
     resp = await client.post(
         f"{API}/auth/login",
-        json={"email": user_data["email"], "password": "testpass123"},
+        json={"email": user_data["email"], "password": "Testpass123"},
     )
     assert resp.status_code == 401

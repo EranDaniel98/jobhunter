@@ -51,7 +51,7 @@ async def candidate_with_data(db_session: AsyncSession):
     candidate = Candidate(
         id=candidate_id,
         email=f"analytics-{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name="Analytics Test User",
     )
     db_session.add(candidate)

@@ -23,7 +23,7 @@ async def scheduler_data(db_session: AsyncSession):
     candidate = Candidate(
         id=uuid.uuid4(),
         email=f"sched-{uuid.uuid4().hex[:6]}@test.com",
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name="Scheduler Tester",
     )
     db_session.add(candidate)

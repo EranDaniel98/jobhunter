@@ -23,7 +23,7 @@ async def _create_admin(db: AsyncSession) -> Candidate:
     admin = Candidate(
         id=uuid.uuid4(),
         email=f"admin-wl-{uuid.uuid4().hex[:8]}@test.com",
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name="Admin Waitlist",
         is_admin=True,
     )
@@ -32,7 +32,7 @@ async def _create_admin(db: AsyncSession) -> Candidate:
     return admin
 
 
-async def _login(client: AsyncClient, email: str, password: str = "testpass123") -> dict:
+async def _login(client: AsyncClient, email: str, password: str = "Testpass123") -> dict:
     resp = await client.post(
         f"{API}/auth/login",
         json={"email": email, "password": password},
@@ -221,7 +221,7 @@ async def test_registration_updates_waitlist_status(db_session):
 
     req = RegisterRequest(
         email="hook@example.com",
-        password="testpass123",
+        password="Testpass123",
         full_name="Test User",
         invite_code=invite.code,
     )

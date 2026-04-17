@@ -33,7 +33,7 @@ async def _create_user(db: AsyncSession, *, name: str = "Test", is_admin: bool =
     c = Candidate(
         id=uuid.uuid4(),
         email=f"{uuid.uuid4().hex[:8]}@rls.com",
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name=name,
         is_admin=is_admin,
     )
@@ -45,7 +45,7 @@ async def _create_user(db: AsyncSession, *, name: str = "Test", is_admin: bool =
 async def _login(client: AsyncClient, email: str) -> dict:
     resp = await client.post(
         f"{API}/auth/login",
-        json={"email": email, "password": "testpass123"},
+        json={"email": email, "password": "Testpass123"},
     )
     assert resp.status_code == 200, f"Login failed for {email}: {resp.text}"
     tokens = resp.json()

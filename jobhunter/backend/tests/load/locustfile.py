@@ -11,7 +11,7 @@ class JobHunterUser(HttpUser):
         """Login and get token."""
         response = self.client.post("/api/v1/auth/login", json={
             "email": "test@example.com",
-            "password": "testpass123",
+            "password": "Testpass123",
         })
         if response.status_code == 200:
             self.token = response.json()["access_token"]

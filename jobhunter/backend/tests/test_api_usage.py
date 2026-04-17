@@ -34,7 +34,7 @@ async def _create_user(
     candidate = Candidate(
         id=uuid.uuid4(),
         email=email or _unique_email(),
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name=full_name,
         is_admin=is_admin,
     )
@@ -46,7 +46,7 @@ async def _create_user(
 async def _login(client: AsyncClient, email: str) -> dict:
     resp = await client.post(
         f"{API}/auth/login",
-        json={"email": email, "password": "testpass123"},
+        json={"email": email, "password": "Testpass123"},
     )
     assert resp.status_code == 200, f"Login failed for {email}: {resp.text}"
     tokens = resp.json()

@@ -152,9 +152,9 @@ async def test_get_company_cross_tenant_404(
     email_b = f"tenantb-{uuid.uuid4().hex[:8]}@example.com"
     await client.post(
         f"{API}/auth/register",
-        json={"email": email_b, "password": "testpass123", "full_name": "Tenant B", "invite_code": code_b},
+        json={"email": email_b, "password": "Testpass123", "full_name": "Tenant B", "invite_code": code_b},
     )
-    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "testpass123"})
+    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "Testpass123"})
     headers_b = {"Authorization": f"Bearer {login_b.json()['access_token']}"}
 
     resp = await client.get(f"{API}/companies/{company.id}", headers=headers_b)

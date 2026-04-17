@@ -34,7 +34,7 @@ async def _create_user(
     candidate = Candidate(
         id=uuid.uuid4(),
         email=_unique_email(),
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name=full_name,
         is_admin=is_admin,
         is_active=is_active,
