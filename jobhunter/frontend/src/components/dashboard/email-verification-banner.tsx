@@ -15,11 +15,14 @@ export function EmailVerificationBanner() {
   const [loading, setLoading] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
-  // Restore cooldown from localStorage
+  // Restore cooldown from localStorage.
+  // Sync setState is intentional: localStorage isn't available during SSR,
+  // so we can't do this in a useState lazy initializer.
   useEffect(() => {
     const until = localStorage.getItem(COOLDOWN_KEY);
     if (until) {
       const remaining = Math.max(0, Math.floor((Number(until) - Date.now()) / 1000));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCooldownRemaining(remaining);
     }
   }, []);
