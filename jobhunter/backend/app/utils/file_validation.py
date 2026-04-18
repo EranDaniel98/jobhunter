@@ -28,6 +28,4 @@ def is_valid_image_bytes(data: bytes) -> bool:
     if data.startswith(_GIF87) or data.startswith(_GIF89):
         return True
     # WebP: "RIFF" + 4 bytes size + "WEBP"
-    if data.startswith(_RIFF) and data[8:12] == _WEBP:
-        return True
-    return False
+    return data.startswith(_RIFF) and data[8:12] == _WEBP

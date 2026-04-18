@@ -3,11 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-
-_PASSWORD_COMPLEXITY_MSG = (
-    "Password must contain at least one uppercase letter, one lowercase letter,"
-    " and one digit"
-)
+_PASSWORD_COMPLEXITY_MSG = "Password must contain at least one uppercase letter, one lowercase letter, and one digit"
 
 
 def _normalize_email(value: str) -> str:
