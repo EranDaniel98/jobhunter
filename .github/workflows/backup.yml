@@ -28,5 +28,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
+          # Diagnostic: verify secrets are populated (lengths only, never values)
+          echo "DATABASE_URL length: ${#DATABASE_URL}"
+          echo "R2_ENDPOINT_URL length: ${#R2_ENDPOINT_URL}"
+          echo "R2_BACKUP_BUCKET length: ${#R2_BACKUP_BUCKET}"
+          echo "AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
+          echo "AWS_SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}"
           chmod +x jobhunter/backend/scripts/backup-db.sh
           bash jobhunter/backend/scripts/backup-db.sh
