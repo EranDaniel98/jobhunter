@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install PostgreSQL 16 client + AWS CLI
+      - name: Install PostgreSQL 18 client + AWS CLI
         run: |
           sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
@@ -31,6 +31,5 @@ jobs:
           # ubuntu-latest ships pg_dump 16 and wins in PATH;
           # prepend the PG18 install dir so the right pg_dump is used.
           export PATH="/usr/lib/postgresql/18/bin:$PATH"
-          pg_dump --version
           chmod +x jobhunter/backend/scripts/backup-db.sh
           bash jobhunter/backend/scripts/backup-db.sh
