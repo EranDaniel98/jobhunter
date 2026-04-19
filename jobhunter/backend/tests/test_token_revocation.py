@@ -41,19 +41,18 @@ async def test_old_token_rejected_after_password_changed_at_advances(
 
 @pytest.mark.asyncio
 async def test_token_issued_after_password_reset_still_works(
-    client: AsyncClient, auth_headers: dict
+    client: AsyncClient, auth_headers: dict, db_session: AsyncSession
 ):
     # Get the candidate.
     me = await client.get(f"{API}/auth/me", headers=auth_headers)
     user = me.json()
 
-    # Reset password via reset token flow.
+    # Call the reset-password service directly — the HTTP endpoint shares a
+    # 5/hour slowapi limit with the rest of the suite and goes 429 in CI.
+    from app.services.auth_service import reset_password as reset_password_svc
+
     reset_token = create_reset_token(user["id"])
-    resp = await client.post(
-        f"{API}/auth/reset-password",
-        json={"token": reset_token, "new_password": "FreshPass1"},
-    )
-    assert resp.status_code == 200
+    await reset_password_svc(db_session, reset_token, "FreshPass1")
 
     # Login with new password — token issued AFTER password_changed_at.
     login = await client.post(

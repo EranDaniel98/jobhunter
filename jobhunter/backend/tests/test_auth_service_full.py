@@ -139,12 +139,18 @@ class TestRefreshTokenOldBlacklistFailure:
     @pytest.mark.asyncio
     async def test_refresh_succeeds_even_when_old_token_blacklist_fails(self):
         """If blacklisting the old refresh token fails, refresh still returns new tokens."""
+        from unittest.mock import MagicMock
+
         from app.schemas.auth import TokenPair
         from app.services.auth_service import refresh_token
         from app.utils.security import create_refresh_token
 
         token, _ = create_refresh_token(str(uuid.uuid4()))
         db = AsyncMock()
+        # Candidate lookup for password-change revocation returns None.
+        select_result = MagicMock()
+        select_result.scalar_one_or_none.return_value = None
+        db.execute.return_value = select_result
 
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None  # not blacklisted

@@ -182,6 +182,11 @@ class TestRefreshToken:
         mock_redis = AsyncMock()
         mock_redis.get.return_value = None  # not blacklisted
         db = AsyncMock()
+        # refresh_token looks up the candidate to enforce password_changed_at
+        # revocation; scalar_one_or_none=None = "no row" = skip check.
+        select_result = MagicMock()
+        select_result.scalar_one_or_none.return_value = None
+        db.execute.return_value = select_result
 
         with patch("app.services.auth_service.get_redis", return_value=mock_redis):
             result = await refresh_token(db, token)
@@ -190,8 +195,8 @@ class TestRefreshToken:
             assert result.refresh_token
             # Old token should be blacklisted
             mock_redis.setex.assert_awaited_once()
-            # last_seen_at updated
-            db.execute.assert_awaited_once()
+            # execute called twice now: SELECT for revocation check + UPDATE last_seen_at
+            assert db.execute.await_count == 2
             db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
