@@ -1,0 +1,24 @@
+# GitGuardian configuration.
+# Docs: https://docs.gitguardian.com/ggshield-docs/reference/configuration
+#
+# We keep the full detector set enabled. The only exclusions here are for
+# hard-coded test-fixture passwords under jobhunter/backend/tests/, which
+# must be literal strings to exercise real auth flows (register, login,
+# password reset). These are not real credentials.
+
+version: 2
+
+secret:
+  # Path-scoped: test fixtures can contain literal passwords.
+  ignored_paths:
+    - "jobhunter/backend/tests/**"
+    - "jobhunter/frontend/src/**/__tests__/**"
+    - "jobhunter/frontend/e2e/**"
+
+  # Specific incident SHAs already triaged as false positives on PR #168.
+  # Leaving these here protects against reintroduction if the file is moved.
+  ignored_matches:
+    - name: test-fixture password "Regpass1" in auth integration tests
+      match: 4efe11d2510840eb49876649f827b5077ad7c3788a155d724d3315304b7f20e8
+    - name: test-fixture password "Dup1pass" in case-insensitive email tests
+      match: ff5d121d38d66f0777459428a77106a0465419073bc52f7936ee90b25874c99e
