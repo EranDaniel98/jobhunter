@@ -70,3 +70,6 @@ data/
 .loadtest-staging-url
 .loadtest-runner-ip
 .loadtest-runner-name
+
+# Added by ggshield
+.cache_ggshield
