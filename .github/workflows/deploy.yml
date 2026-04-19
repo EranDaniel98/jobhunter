@@ -33,12 +33,19 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Deploy Backend
+      - name: Deploy Backend API
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           cd jobhunter/backend
           railway up --service jobhunter --detach
+
+      - name: Deploy Backend Worker
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          cd jobhunter/backend
+          railway up --service jobhunter-worker --detach
 
       - name: Wait for deployment to stabilize
         run: sleep 30
