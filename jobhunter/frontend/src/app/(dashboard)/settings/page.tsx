@@ -79,8 +79,12 @@ export default function SettingsPage() {
   const createInvite = useCreateInvite();
   const [inviteFilter, setInviteFilter] = useState<InviteFilter>("all");
 
+  // Hydrate form fields when user data arrives from React Query.
+  // Sync setState is intentional — the form is a reflection of server state
+  // and needs to reset whenever `user` changes (e.g. after a refetch).
   useEffect(() => {
     if (user) {
+      /* eslint-disable react-hooks/set-state-in-effect */
       setFullName(user.full_name || "");
       setHeadline(user.headline || "");
       setLocation(user.location || "");
@@ -89,6 +93,7 @@ export default function SettingsPage() {
       setTargetLocations(user.target_locations || []);
       setSalaryMin(user.salary_min?.toString() || "");
       setSalaryMax(user.salary_max?.toString() || "");
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [user]);
 

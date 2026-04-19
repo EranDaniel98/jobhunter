@@ -51,7 +51,7 @@ async def candidate_with_dna(db_session: AsyncSession):
     candidate = Candidate(
         id=candidate_id,
         email=f"scout-test-{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name="Scout Test User",
         target_industries=["technology", "fintech"],
     )
@@ -81,7 +81,7 @@ async def candidate_no_dna(db_session: AsyncSession):
     candidate = Candidate(
         id=candidate_id,
         email=f"scout-nodna-{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name="No DNA User",
     )
     db_session.add(candidate)

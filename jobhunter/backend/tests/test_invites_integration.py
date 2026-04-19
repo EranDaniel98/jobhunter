@@ -97,9 +97,9 @@ async def test_list_invites_tenant_scoped(client: AsyncClient, auth_headers: dic
     email_b = f"inviteb-{uuid.uuid4().hex[:8]}@example.com"
     await client.post(
         f"{API}/auth/register",
-        json={"email": email_b, "password": "testpass123", "full_name": "Invite B", "invite_code": code_b},
+        json={"email": email_b, "password": "Testpass123", "full_name": "Invite B", "invite_code": code_b},
     )
-    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "testpass123"})
+    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "Testpass123"})
     headers_b = {"Authorization": f"Bearer {login_b.json()['access_token']}"}
 
     resp_b = await client.get(f"{API}/invites", headers=headers_b)
@@ -156,7 +156,7 @@ async def test_validate_used_invite(client: AsyncClient, auth_headers: dict, db_
         f"{API}/auth/register",
         json={
             "email": f"consumer-{uuid.uuid4().hex[:8]}@example.com",
-            "password": "testpass123",
+            "password": "Testpass123",
             "full_name": "Consumer",
             "invite_code": code,
         },

@@ -60,11 +60,17 @@ class TenantMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
             try:
+                # Permissive decode is intentional: expiry, blacklist, and
+                # password-change revocation (iat < password_changed_at) are
+                # all enforced by get_current_candidate downstream. Tenant
+                # context set here only scopes RLS filtering to the token's
+                # own sub, so a revoked token can't see anyone else's data
+                # even before the auth dep rejects the request.
                 payload = jwt.decode(
                     token,
                     settings.JWT_SECRET,
                     algorithms=[settings.JWT_ALGORITHM],
-                    options={"verify_exp": False},  # Don't fail here; auth dep handles expiry
+                    options={"verify_exp": False},
                 )
                 candidate_id = payload.get("sub")
                 if candidate_id:

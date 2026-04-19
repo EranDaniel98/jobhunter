@@ -33,6 +33,7 @@ class Candidate(TimestampMixin, Base):
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     tour_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relationships
     resumes: Mapped[list["Resume"]] = relationship(back_populates="candidate", cascade="all, delete-orphan")

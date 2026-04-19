@@ -173,14 +173,14 @@ class TestOutreachListMessages:
             f"{API}/auth/register",
             json={
                 "email": other_email,
-                "password": "testpass123",
+                "password": "Testpass123",
                 "full_name": "Other",
                 "invite_code": invite_code,
             },
         )
         other_resp = await client.post(
             f"{API}/auth/login",
-            json={"email": other_email, "password": "testpass123"},
+            json={"email": other_email, "password": "Testpass123"},
         )
         other_id = uuid.UUID(
             (
@@ -235,14 +235,14 @@ class TestOutreachGetMessage:
             f"{API}/auth/register",
             json={
                 "email": other_email,
-                "password": "testpass123",
+                "password": "Testpass123",
                 "full_name": "Iso User",
                 "invite_code": invite_code,
             },
         )
         other_resp = await client.post(
             f"{API}/auth/login",
-            json={"email": other_email, "password": "testpass123"},
+            json={"email": other_email, "password": "Testpass123"},
         )
         other_headers = {"Authorization": f"Bearer {other_resp.json()['access_token']}"}
         other_id = uuid.UUID((await client.get(f"{API}/auth/me", headers=other_headers)).json()["id"])

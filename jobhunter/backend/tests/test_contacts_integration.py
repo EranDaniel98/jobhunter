@@ -286,9 +286,9 @@ async def test_verify_contact_cross_tenant(
     email_b = f"contacttenantb-{uuid.uuid4().hex[:8]}@example.com"
     await client.post(
         f"{API}/auth/register",
-        json={"email": email_b, "password": "testpass123", "full_name": "Contact B", "invite_code": code_b},
+        json={"email": email_b, "password": "Testpass123", "full_name": "Contact B", "invite_code": code_b},
     )
-    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "testpass123"})
+    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "Testpass123"})
     headers_b = {"Authorization": f"Bearer {login_b.json()['access_token']}"}
 
     resp = await client.post(f"{API}/contacts/{contact.id}/verify", headers=headers_b)

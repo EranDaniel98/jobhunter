@@ -44,7 +44,7 @@ async def _create_user(
     candidate = Candidate(
         id=uuid.uuid4(),
         email=email or _unique_email("user"),
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name=full_name,
         is_admin=is_admin,
         is_active=is_active,
@@ -58,7 +58,7 @@ async def _create_user(
     return candidate
 
 
-async def _login(client: AsyncClient, email: str, password: str = "testpass123") -> dict:
+async def _login(client: AsyncClient, email: str, password: str = "Testpass123") -> dict:
     resp = await client.post(
         f"{API}/auth/login",
         json={"email": email, "password": password},
@@ -278,7 +278,7 @@ class TestSuspendedLoginGuard:
         # Try to login
         resp = await client.post(
             f"{API}/auth/login",
-            json={"email": regular_user.email, "password": "testpass123"},
+            json={"email": regular_user.email, "password": "Testpass123"},
         )
         assert resp.status_code == 403
         assert "suspended" in resp.json()["detail"].lower()
@@ -297,7 +297,7 @@ class TestSuspendedLoginGuard:
         # Login should succeed
         resp = await client.post(
             f"{API}/auth/login",
-            json={"email": user.email, "password": "testpass123"},
+            json={"email": user.email, "password": "Testpass123"},
         )
         assert resp.status_code == 200
         assert "access_token" in resp.json()

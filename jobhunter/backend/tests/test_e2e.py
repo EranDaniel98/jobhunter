@@ -15,14 +15,14 @@ async def test_full_e2e_flow(client: AsyncClient, invite_code: str, db_session: 
     # 1. Register
     resp = await client.post(
         f"{API}/auth/register",
-        json={"email": "e2e@example.com", "password": "securepass1", "full_name": "E2E Tester", "invite_code": invite_code},
+        json={"email": "e2e@example.com", "password": "Securepass1", "full_name": "E2E Tester", "invite_code": invite_code},
     )
     assert resp.status_code == 201
 
     # 2. Login
     resp = await client.post(
         f"{API}/auth/login",
-        json={"email": "e2e@example.com", "password": "securepass1"},
+        json={"email": "e2e@example.com", "password": "Securepass1"},
     )
     assert resp.status_code == 200
     tokens = resp.json()

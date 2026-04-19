@@ -241,14 +241,14 @@ class TestInterviewPrepGetSession:
             f"{API}/auth/register",
             json={
                 "email": other_email,
-                "password": "testpass123",
+                "password": "Testpass123",
                 "full_name": "Other",
                 "invite_code": invite_code,
             },
         )
         other_login = await client.post(
             f"{API}/auth/login",
-            json={"email": other_email, "password": "testpass123"},
+            json={"email": other_email, "password": "Testpass123"},
         )
         other_headers = {"Authorization": f"Bearer {other_login.json()['access_token']}"}
 

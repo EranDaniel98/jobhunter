@@ -38,7 +38,7 @@ async def _create_user(
     candidate = Candidate(
         id=uuid.uuid4(),
         email=email or _unique_email("user"),
-        password_hash=hash_password("testpass123"),
+        password_hash=hash_password("Testpass123"),
         full_name=full_name,
         is_admin=is_admin,
     )
@@ -49,7 +49,7 @@ async def _create_user(
     return candidate
 
 
-async def _login(client: AsyncClient, email: str, password: str = "testpass123") -> dict:
+async def _login(client: AsyncClient, email: str, password: str = "Testpass123") -> dict:
     resp = await client.post(
         f"{API}/auth/login",
         json={"email": email, "password": password},
@@ -506,7 +506,7 @@ class TestDeleteUser:
 
         resp = await client.post(
             f"{API}/auth/login",
-            json={"email": victim_email, "password": "testpass123"},
+            json={"email": victim_email, "password": "Testpass123"},
         )
         assert resp.status_code == 401
 
@@ -719,7 +719,7 @@ class TestIsAdminInAuth:
             f"{API}/auth/register",
             json={
                 "email": "newreg@test.com",
-                "password": "securepass1",
+                "password": "Securepass1",
                 "full_name": "New Reg",
                 "invite_code": invite_code,
             },

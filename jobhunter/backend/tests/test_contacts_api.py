@@ -197,9 +197,9 @@ async def test_notes_scoped_to_candidate(client: AsyncClient, auth_headers: dict
     email_b = f"candidateb-{uuid.uuid4().hex[:8]}@example.com"
     await client.post(
         f"{API}/auth/register",
-        json={"email": email_b, "password": "testpass123", "full_name": "Candidate B", "invite_code": code_b},
+        json={"email": email_b, "password": "Testpass123", "full_name": "Candidate B", "invite_code": code_b},
     )
-    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "testpass123"})
+    login_b = await client.post(f"{API}/auth/login", json={"email": email_b, "password": "Testpass123"})
     headers_b = {"Authorization": f"Bearer {login_b.json()['access_token']}"}
 
     # Candidate B cannot see Candidate A's company (tenant isolation at company level)
